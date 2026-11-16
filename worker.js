@@ -435,6 +435,48 @@ export default {
         return json({ success: true, user: publicUser(user) }, 200, { "Set-Cookie": sessionCookie(token) });
       }
 
+      if (path === "/api/customer/passenger-profiles" && method === "GET") {
+        const user = await getSessionUser(request, env, now);
+        if (!user || user.role !== "customer") return json({ success: false, message: "Customer sign-in is required." }, 403);
+        const result = await env.DB.prepare(
+          "SELECT full_name AS fullName, age, gender, from_station AS fromStation, to_station AS toStation, travel_class AS travelClass FROM customer_passenger_profiles WHERE customer_id = ? ORDER BY updated_at DESC"
+        ).bind(user.id).all();
+        return json({ success: true, profiles: result.results || [] });
+      }
+
+      if (path === "/api/customer/passenger-profiles" && method === "POST") {
+        const user = await getSessionUser(request, env, now);
+        if (!user || user.role !== "customer") return json({ success: false, message: "Customer sign-in is required." }, 403);
+        const body = await readJson(request);
+        const profiles = Array.isArray(body.profiles) ? body.profiles.slice(0, 10) : [];
+        let saved = 0;
+        for (const item of profiles) {
+          if (!item || typeof item !== "object") continue;
+          const fullName = String(item.fullName || "").trim().slice(0, 100);
+          if (!fullName) continue;
+          const age = String(item.age || "").slice(0, 3);
+          const gender = String(item.gender || "").slice(0, 20);
+          const fromStation = String(item.fromStation || "").slice(0, 120);
+          const toStation = String(item.toStation || "").slice(0, 120);
+          const travelClass = String(item.travelClass || "").slice(0, 30);
+          await env.DB.prepare(
+            "DELETE FROM customer_passenger_profiles WHERE customer_id = ? AND full_name = ? COLLATE NOCASE"
+          ).bind(user.id, fullName).run();
+          await env.DB.prepare(
+            "INSERT INTO customer_passenger_profiles (id, customer_id, full_name, age, gender, from_station, to_station, travel_class, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+          ).bind(crypto.randomUUID(), user.id, fullName, age, gender, fromStation, toStation, travelClass, now).run();
+          saved++;
+        }
+        return json({ success: true, saved });
+      }
+
+      if (path === "/api/customer/passenger-profiles" && method === "DELETE") {
+        const user = await getSessionUser(request, env, now);
+        if (!user || user.role !== "owner") return json({ success: false, message: "Only the Owner can clear saved customer filters." }, 403);
+        const result = await env.DB.prepare("DELETE FROM customer_passenger_profiles").run();
+        return json({ success: true, deleted: result.meta ? result.meta.changes || 0 : 0, message: "My ARTfive! Saved passenger filters were permanently cleared." });
+      }
+
       if (path === "/api/requests" && method === "GET") {
         const user = await getSessionUser(request, env, now);
         if (!user) return json({ success: false, message: "Please sign in to continue." }, 401);
