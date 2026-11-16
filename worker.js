@@ -310,6 +310,77 @@ export default {
         return json({ success: true, message: "Ticket request deleted." });
       }
 
+
+      if (path === "/api/customers" && method === "GET") {
+        const user = await getSessionUser(request, env, now);
+        if (!user || !["owner", "staff"].includes(user.role)) {
+          return json({ success: false, message: "Owner or Staff sign-in is required." }, 403);
+        }
+        const result = await env.DB.prepare(
+          "SELECT id, name, phone FROM users WHERE role = 'customer' AND active = 1 ORDER BY name COLLATE NOCASE"
+        ).all();
+        return json({ success: true, customers: result.results || [] });
+      }
+
+      if (path === "/api/tickets" && method === "GET") {
+        const user = await getSessionUser(request, env, now);
+        if (!user) return json({ success: false, message: "Please sign in to continue." }, 401);
+        let result;
+        if (user.role === "owner" || user.role === "staff") {
+          result = await env.DB.prepare(
+            "SELECT id, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets ORDER BY created_at DESC"
+          ).all();
+        } else if (user.role === "customer") {
+          result = await env.DB.prepare(
+            "SELECT id, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets WHERE customer_id = ? ORDER BY created_at DESC"
+          ).bind(user.id).all();
+        } else {
+          return json({ success: false, message: "Access denied." }, 403);
+        }
+        return json({ success: true, tickets: result.results || [] });
+      }
+
+      if (path === "/api/tickets" && method === "POST") {
+        const user = await getSessionUser(request, env, now);
+        if (!user || !["owner", "staff"].includes(user.role)) {
+          return json({ success: false, message: "Owner or Staff sign-in is required to send tickets." }, 403);
+        }
+        const body = await readJson(request);
+        const customerId = String(body.customerId || "").trim();
+        const ticketTitle = String(body.ticketTitle || "").trim();
+        const fileData = String(body.fileData || "");
+        if (!customerId || !ticketTitle || !fileData || body.paymentConfirmed !== true) {
+          return json({ success: false, message: "Select a customer, ticket file and confirm collection payment before sending." }, 400);
+        }
+        if (ticketTitle.length > 180 || fileData.length > 1400000) {
+          return json({ success: false, message: "Ticket file is too large. Please use a file smaller than about 1 MB." }, 413);
+        }
+        const match = fileData.match(/^data:(application\/pdf|image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
+        if (!match) return json({ success: false, message: "Only PDF, PNG, JPEG or WEBP ticket files are accepted." }, 400);
+        const customer = await env.DB.prepare(
+          "SELECT id, name, phone FROM users WHERE id = ? AND role = 'customer' AND active = 1 LIMIT 1"
+        ).bind(customerId).first();
+        if (!customer) return json({ success: false, message: "The selected customer account was not found." }, 404);
+        const id = crypto.randomUUID();
+        await env.DB.prepare(
+          "INSERT INTO tickets (id, customer_id, customer_name, customer_phone, ticket_title, mime_type, file_data, payment_confirmed, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
+        ).bind(id, customer.id, customer.name, customer.phone, ticketTitle, match[1], fileData, user.id, now).run();
+        return json({ success: true, id, message: "My ARTfive! Ticket sent successfully." }, 201);
+      }
+
+      if (path === "/api/tickets" && method === "DELETE") {
+        const user = await getSessionUser(request, env, now);
+        if (!user || user.role !== "owner") {
+          return json({ success: false, message: "Only the Owner can permanently delete ticket files." }, 403);
+        }
+        const body = await readJson(request);
+        const id = String(body.id || "").trim();
+        if (!id) return json({ success: false, message: "Ticket ID is required." }, 400);
+        const result = await env.DB.prepare("DELETE FROM tickets WHERE id = ?").bind(id).run();
+        if (!result.meta || result.meta.changes === 0) return json({ success: false, message: "Ticket was not found." }, 404);
+        return json({ success: true, message: "Ticket file and its database record were permanently deleted." });
+      }
+
       return json({ success: false, message: "API endpoint not found." }, 404);
     } catch (error) {
       if (error && error.message === "Request too large.") return json({ success: false, message: error.message }, 413);
