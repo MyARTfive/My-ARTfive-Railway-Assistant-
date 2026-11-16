@@ -311,6 +311,11 @@
                             <h3 class="font-bold text-white text-base mb-1" x-text="cms.ownerOpt9Name"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.ownerOpt9Desc"></p>
                         </div>
+                        <div @click="ownerSelectOption(10)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-amber-500/50 p-5 rounded-xl cursor-pointer transition shadow group">
+                            <div class="flex items-center justify-between mb-3"><span class="text-xs font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg">OPTION 10</span><i class="fa-solid fa-shield-halved text-amber-400 text-xl"></i></div>
+                            <h3 class="font-bold text-white text-base mb-1">Control</h3>
+                            <p class="text-xs text-slate-400">Review visitor activity and control blocked access.</p>
+                        </div>
                         <div @click="ownerSelectOption(11)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-xl cursor-pointer transition shadow group">
                             <div class="flex items-center justify-between mb-3"><span class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg">OPTION 11</span><i class="fa-solid fa-code text-emerald-400 text-xl"></i></div>
                             <h3 class="font-bold text-white text-base mb-1" x-text="cms.ownerOpt11Name"></h3>
@@ -1132,6 +1137,79 @@
                     </div>
                 </div>
 
+                <!-- Owner Option 10: Control (Owner + Manager verification only) -->
+                <div x-show="activeMenuOption === 10" class="space-y-6">
+                    <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700 gap-3">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Option 10 — Control</h3>
+                            <p class="text-xs text-amber-300">Owner-only visitor activity and access control. Manager verification required.</p>
+                        </div>
+                        <button @click="activeMenuOption = null; option10Authenticated = false; option10Password = ''" class="bg-slate-700 text-white text-xs px-3.5 py-2 rounded-lg">Back</button>
+                    </div>
+
+                    <template x-if="!option10Authenticated">
+                        <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 max-w-md mx-auto space-y-5 shadow-2xl">
+                            <div class="text-center space-y-2">
+                                <div class="bg-amber-500/10 text-amber-400 w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl border border-amber-500/30"><i class="fa-solid fa-user-lock"></i></div>
+                                <h4 class="font-bold text-white text-lg">Control Security Verification</h4>
+                                <p class="text-xs text-slate-400">Enter the same Manager phone number and password used in Option 11. No separate Control account is needed.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Manager phone number</label>
+                                <input type="text" x-model="option10Phone" autocomplete="username" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter Manager phone number">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Manager password</label>
+                                <input type="password" x-model="option10Password" @keyup.enter="verifyOption10Login()" autocomplete="current-password" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter Manager password">
+                            </div>
+                            <button @click="verifyOption10Login()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg py-3">Unlock Control</button>
+                        </div>
+                    </template>
+
+                    <template x-if="option10Authenticated">
+                        <div class="space-y-5">
+                            <div class="flex flex-wrap justify-between items-center gap-3">
+                                <div class="text-xs text-slate-400">Visitor details are approximate where location data is available. Unknown means the visitor has not provided a name.</div>
+                                <button @click="loadOption10Visitors()" class="bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold px-4 py-2 rounded-lg"><i class="fa-solid fa-rotate mr-1"></i> Refresh</button>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div class="bg-slate-800 border border-slate-700 rounded-xl p-4"><p class="text-xs text-slate-400">Unique visitor records</p><p class="text-2xl font-extrabold text-white" x-text="option10Totals.visitors"></p></div>
+                                <div class="bg-slate-800 border border-slate-700 rounded-xl p-4"><p class="text-xs text-slate-400">Total visits</p><p class="text-2xl font-extrabold text-white" x-text="option10Totals.visits"></p></div>
+                                <div class="bg-slate-800 border border-slate-700 rounded-xl p-4"><p class="text-xs text-slate-400">Blocked IP addresses</p><p class="text-2xl font-extrabold text-rose-400" x-text="option10BlockedCount"></p></div>
+                            </div>
+                            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                                <div class="flex justify-between items-center gap-2 mb-3"><h4 class="font-bold text-white">Visitor activity</h4><span class="text-xs text-slate-400" x-text="option10Visitors.length + ' records (maximum 500 shown)'"></span></div>
+                                <template x-if="option10Loading"><p class="text-sm text-slate-400 py-4">Loading visitor activity...</p></template>
+                                <template x-if="!option10Loading && option10Visitors.length === 0"><p class="text-sm text-slate-400 py-4">No visitor records yet. New page visits will appear here.</p></template>
+                                <div class="space-y-3">
+                                    <template x-for="visitor in option10Visitors" :key="visitor.visitor_key">
+                                        <div class="bg-slate-900 border border-slate-700 rounded-lg p-4 space-y-3">
+                                            <div class="flex flex-wrap justify-between gap-2">
+                                                <div><p class="font-bold text-white" x-text="visitor.visitor_name || 'Unknown'"></p><p class="text-xs text-slate-400" x-text="[visitor.city, visitor.region, visitor.country].filter(Boolean).join(', ') || 'Location unavailable'"></p></div>
+                                                <span class="text-xs font-bold px-2 py-1 rounded" :class="Number(visitor.is_blocked) ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'" x-text="Number(visitor.is_blocked) ? 'BLOCKED' : 'ALLOWED'"></span>
+                                            </div>
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300">
+                                                <p><span class="text-slate-500">IP:</span> <span x-text="visitor.ip_address"></span></p>
+                                                <p><span class="text-slate-500">Network/ISP:</span> <span x-text="visitor.isp || 'Unavailable'"></span></p>
+                                                <p><span class="text-slate-500">Device:</span> <span x-text="[visitor.device, visitor.operating_system, visitor.browser].filter(Boolean).join(' / ')"></span></p>
+                                                <p><span class="text-slate-500">Visits:</span> <span x-text="visitor.visit_count"></span></p>
+                                                <p><span class="text-slate-500">First visit:</span> <span x-text="new Date(visitor.first_seen).toLocaleString()"></span></p>
+                                                <p><span class="text-slate-500">Latest visit:</span> <span x-text="new Date(visitor.last_seen).toLocaleString()"></span></p>
+                                                <p class="sm:col-span-2"><span class="text-slate-500">Last page:</span> <span x-text="visitor.last_path || '/'"></span></p>
+                                            </div>
+                                            <div class="flex justify-end">
+                                                <button x-show="!Number(visitor.is_blocked)" @click="toggleOption10Block(visitor, true)" class="bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold px-3 py-2 rounded-lg">Block visitor</button>
+                                                <button x-show="Number(visitor.is_blocked)" @click="toggleOption10Block(visitor, false)" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg">Unblock visitor</button>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-500">Privacy note: names are shown only when the visitor is signed in. Location is approximate and depends on Cloudflare availability; a website cannot identify a visitor's real name or exact home address automatically. Blocking is by IP address, so shared networks may affect multiple people.</p>
+                        </div>
+                    </template>
+                </div>
+
                 <!-- Owner Option 11: Manager (Protected Single-Owner Setup & Verification) -->
                 <div x-show="activeMenuOption === 11" class="space-y-6">
                     <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
@@ -1905,6 +1983,13 @@
 
                 currentUser: null,
 
+                option10Authenticated: false,
+                option10Phone: '',
+                option10Password: '',
+                option10Visitors: [],
+                option10Totals: { visitors: 0, visits: 0 },
+                option10BlockedCount: 0,
+                option10Loading: false,
                 option11Authenticated: false,
                 option11D1Exists: false,
                 option11Phone: '',
@@ -2329,7 +2414,19 @@
                 },
 
                 ownerSelectOption(optNum) {
+                    if (optNum === 10 && (!this.currentUser || this.currentUser.role !== 'owner')) {
+                        alert('Access denied. Only the signed-in Owner can open Control.');
+                        return;
+                    }
                     this.activeMenuOption = optNum;
+                    if (optNum === 10) {
+                        this.option10Authenticated = false;
+                        this.option10Phone = '';
+                        this.option10Password = '';
+                        this.option10Visitors = [];
+                        this.option10Totals = { visitors: 0, visits: 0 };
+                        this.option10BlockedCount = 0;
+                    }
                     this.ownerInspectStaffOpt = null;
                     this.ownerInspectCustOpt = null;
                     if (optNum === 8) {
@@ -2356,6 +2453,61 @@
                         if (!this.appSourceCode) {
                             this.appSourceCode = localStorage.getItem('artfive_live_code') || document.documentElement.outerHTML;
                         }
+                    }
+                },
+
+                async verifyOption10Login() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') {
+                        alert('Access denied. Only the signed-in Owner can unlock Control.');
+                        return;
+                    }
+                    if (!this.option10Phone.trim() || !this.option10Password) {
+                        alert('Enter the same Manager phone number and password used in Option 11.');
+                        return;
+                    }
+                    try {
+                        const result = await this.apiRequest('/api/owner/manager/verify', {
+                            method: 'POST',
+                            body: { phone: this.option10Phone.trim(), password: this.option10Password }
+                        });
+                        this.option10Authenticated = true;
+                        this.option10Password = '';
+                        await this.loadOption10Visitors();
+                        alert(result.message || 'My ARTfive! Control security verified.');
+                    } catch (error) {
+                        alert(error.message || 'Control verification failed.');
+                    }
+                },
+
+                async loadOption10Visitors() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated) return;
+                    this.option10Loading = true;
+                    try {
+                        const result = await this.apiRequest('/api/owner/control/visitors');
+                        this.option10Visitors = result.visitors || [];
+                        this.option10Totals = result.totals || { visitors: 0, visits: 0 };
+                        this.option10BlockedCount = Number(result.blockedCount || 0);
+                    } catch (error) {
+                        this.option10Authenticated = false;
+                        alert(error.message || 'My ARTfive! Could not load visitor activity. Please verify Manager access again.');
+                    } finally {
+                        this.option10Loading = false;
+                    }
+                },
+
+                async toggleOption10Block(visitor, shouldBlock) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated) return;
+                    const action = shouldBlock ? 'block' : 'unblock';
+                    if (!confirm('My ARTfive! Are you sure you want to ' + action + ' this IP address: ' + visitor.ip_address + '?')) return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/control/' + action, {
+                            method: 'POST',
+                            body: { ip_address: visitor.ip_address, reason: 'Blocked by My ARTfive! Owner from Option 10 Control' }
+                        });
+                        alert(result.message || 'My ARTfive! Visitor access updated.');
+                        await this.loadOption10Visitors();
+                    } catch (error) {
+                        alert(error.message || 'My ARTfive! Could not update visitor access.');
                     }
                 },
 
@@ -2540,6 +2692,9 @@
                     this.activeStaffOption = null;
                     this.ownerInspectStaffOpt = null;
                     this.ownerInspectCustOpt = null;
+                    this.option10Authenticated = false;
+                    this.option10Phone = '';
+                    this.option10Password = '';
                     this.option11Authenticated = false;
                     this.option11Phone = '';
                     this.option11Password = '';
