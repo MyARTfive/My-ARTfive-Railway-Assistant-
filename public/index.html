@@ -1160,7 +1160,19 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-300 mb-1">Manager password</label>
-                                <input type="password" x-model="option10Password" @keyup.enter="verifyOption10Login()" autocomplete="current-password" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter Manager password">
+                                <div class="flex gap-2">
+                                    <input :type="option10ShowPassword ? 'text' : 'password'" x-model="option10Password" @keyup.enter="verifyOption10Login()" autocomplete="current-password" class="flex-1 min-w-0 bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter Manager password">
+                                    <button type="button" @click="option10ShowPassword = !option10ShowPassword" class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 rounded-lg" :aria-label="option10ShowPassword ? 'Hide password' : 'Show password'"><i :class="option10ShowPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i> <span x-text="option10ShowPassword ? 'Hide' : 'Show'"></span></button>
+                                </div>
+                            </div>
+                            <div class="text-right"><a href="#" @click.prevent="option10ForgotOpen = !option10ForgotOpen" class="text-amber-300 hover:underline text-xs">Forgot password?</a></div>
+                            <div x-show="option10ForgotOpen" x-cloak class="bg-slate-900 border border-amber-500/30 rounded-xl p-4 space-y-3">
+                                <p class="text-sm font-bold text-white">Recover Manager password</p>
+                                <p class="text-xs text-slate-400">Verify your Owner account password, then set a new Manager password. Your existing Manager phone number will stay the same.</p>
+                                <div><label class="block text-xs text-slate-300 mb-1">Owner account password</label><input type="password" x-model="option10OwnerPassword" autocomplete="current-password" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Owner account password"></div>
+                                <div><label class="block text-xs text-slate-300 mb-1">New Manager password (12+ characters)</label><input type="password" x-model="option10NewPassword" autocomplete="new-password" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Create a new Manager password"></div>
+                                <div><label class="block text-xs text-slate-300 mb-1">Confirm new Manager password</label><input type="password" x-model="option10ConfirmPassword" autocomplete="new-password" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter it again"></div>
+                                <button @click="resetOption10ManagerPassword()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg py-2.5 text-sm">Verify Owner & Reset Manager Password</button>
                             </div>
                             <button @click="verifyOption10Login()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg py-3">Unlock Control</button>
                         </div>
@@ -1176,6 +1188,18 @@
                                 <div class="bg-slate-800 border border-slate-700 rounded-xl p-4"><p class="text-xs text-slate-400">Unique visitor records</p><p class="text-2xl font-extrabold text-white" x-text="option10Totals.visitors"></p></div>
                                 <div class="bg-slate-800 border border-slate-700 rounded-xl p-4"><p class="text-xs text-slate-400">Total visits</p><p class="text-2xl font-extrabold text-white" x-text="option10Totals.visits"></p></div>
                                 <div class="bg-slate-800 border border-slate-700 rounded-xl p-4"><p class="text-xs text-slate-400">Blocked IP addresses</p><p class="text-2xl font-extrabold text-rose-400" x-text="option10BlockedCount"></p></div>
+                            </div>
+                            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                                <div class="flex justify-between items-center gap-2 mb-3"><h4 class="font-bold text-white">Blocked IP addresses</h4><span class="text-xs text-slate-400" x-text="option10BlockedIps.length + ' blocked'"></span></div>
+                                <template x-if="option10BlockedIps.length === 0"><p class="text-sm text-slate-400 py-2">No blocked IP addresses.</p></template>
+                                <div class="space-y-2">
+                                    <template x-for="blocked in option10BlockedIps" :key="blocked.ip_address">
+                                        <div class="flex flex-wrap justify-between items-center gap-3 bg-slate-900 border border-slate-700 rounded-lg p-3">
+                                            <div class="min-w-0"><p class="text-sm font-bold text-white break-all" x-text="blocked.ip_address"></p><p class="text-xs text-slate-400" x-text="blocked.reason || 'Blocked by Owner'"></p><p class="text-xs text-slate-500" x-text="'Blocked: ' + new Date(blocked.created_at).toLocaleString()"></p></div>
+                                            <button @click="toggleOption10Block(blocked, false)" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg">Unblock</button>
+                                        </div>
+                                    </template>
+                                </div>
                             </div>
                             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
                                 <div class="flex justify-between items-center gap-2 mb-3"><h4 class="font-bold text-white">Visitor activity</h4><span class="text-xs text-slate-400" x-text="option10Visitors.length + ' records (maximum 500 shown)'"></span></div>
@@ -1988,7 +2012,13 @@
                 option10Authenticated: false,
                 option10Phone: '',
                 option10Password: '',
+                option10ShowPassword: false,
+                option10ForgotOpen: false,
+                option10OwnerPassword: '',
+                option10NewPassword: '',
+                option10ConfirmPassword: '',
                 option10Visitors: [],
+                option10BlockedIps: [],
                 option10Totals: { visitors: 0, visits: 0 },
                 option10BlockedCount: 0,
                 option10Loading: false,
@@ -2425,7 +2455,13 @@
                         this.option10Authenticated = false;
                         this.option10Phone = '';
                         this.option10Password = '';
+                        this.option10ShowPassword = false;
+                        this.option10ForgotOpen = false;
+                        this.option10OwnerPassword = '';
+                        this.option10NewPassword = '';
+                        this.option10ConfirmPassword = '';
                         this.option10Visitors = [];
+                        this.option10BlockedIps = [];
                         this.option10Totals = { visitors: 0, visits: 0 };
                         this.option10BlockedCount = 0;
                     }
@@ -2481,12 +2517,48 @@
                     }
                 },
 
+                async resetOption10ManagerPassword() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') {
+                        alert('My ARTfive! Only the signed-in Owner can recover Manager access.');
+                        return;
+                    }
+                    if (!this.option10OwnerPassword || !this.option10NewPassword || !this.option10ConfirmPassword) {
+                        alert('My ARTfive! Complete all three password fields.');
+                        return;
+                    }
+                    if (this.option10NewPassword.length < 12) {
+                        alert('My ARTfive! The new Manager password must contain at least 12 characters.');
+                        return;
+                    }
+                    if (this.option10NewPassword !== this.option10ConfirmPassword) {
+                        alert('My ARTfive! The new Manager passwords do not match.');
+                        return;
+                    }
+                    if (!confirm('My ARTfive! Reset the Manager password? Your existing Manager phone number will remain unchanged.')) return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/manager/reset', {
+                            method: 'POST',
+                            body: { owner_password: this.option10OwnerPassword, new_password: this.option10NewPassword }
+                        });
+                        this.option10OwnerPassword = '';
+                        this.option10NewPassword = '';
+                        this.option10ConfirmPassword = '';
+                        this.option10ForgotOpen = false;
+                        this.option10Authenticated = false;
+                        this.option10Password = '';
+                        alert(result.message || 'My ARTfive! Manager password reset. Sign in to Control using your existing Manager phone number and new password.');
+                    } catch (error) {
+                        alert(error.message || 'My ARTfive! Manager password recovery failed.');
+                    }
+                },
+
                 async loadOption10Visitors() {
                     if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated) return;
                     this.option10Loading = true;
                     try {
                         const result = await this.apiRequest('/api/owner/control/visitors');
                         this.option10Visitors = result.visitors || [];
+                        this.option10BlockedIps = result.blockedIps || [];
                         this.option10Totals = result.totals || { visitors: 0, visits: 0 };
                         this.option10BlockedCount = Number(result.blockedCount || 0);
                     } catch (error) {
