@@ -1196,6 +1196,8 @@
                                                 <p><span class="text-slate-500">First visit:</span> <span x-text="new Date(visitor.first_seen).toLocaleString()"></span></p>
                                                 <p><span class="text-slate-500">Latest visit:</span> <span x-text="new Date(visitor.last_seen).toLocaleString()"></span></p>
                                                 <p class="sm:col-span-2"><span class="text-slate-500">Last page:</span> <span x-text="visitor.last_path || '/'"></span></p>
+                                                <p><span class="text-slate-500">Failed login attempts:</span> <span x-text="visitor.login_attempts || 0"></span></p>
+                                                <p class="sm:col-span-2"><span class="text-slate-500">Pages visited:</span> <span x-text="visitor.pages_visited || visitor.last_path || '/'"></span></p>
                                             </div>
                                             <div class="flex justify-end">
                                                 <button x-show="!Number(visitor.is_blocked)" @click="toggleOption10Block(visitor, true)" class="bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold px-3 py-2 rounded-lg">Block visitor</button>
