@@ -2432,7 +2432,7 @@
                         return;
                     }
                     this.uploadForm.customerId = customer.id;
-                    this.customerSearch = customer.name + ' ' + customer.phone;
+                    this.customerSearch = customer.name;
                     if (staffMode || (this.currentUser && this.currentUser.role === 'staff')) {
                         this.currentDashboard = 'staff';
                         this.activeStaffOption = 2;
@@ -2935,13 +2935,6 @@
                         alert('Please select both Starting Station and Destination Station.');
                         return;
                     }
-                    this.ticketReqForm.passengers.forEach(p => {
-                        this.savePassengerProfileForAutofill(p, {
-                            fromStation: this.ticketReqForm.fromStation,
-                            toStation: this.ticketReqForm.toStation,
-                            travelClass: this.ticketReqForm.travelClass
-                        });
-                    });
                     const requestData = {
                         passengers: JSON.parse(JSON.stringify(this.ticketReqForm.passengers)),
                         fromStation: this.ticketReqForm.fromStation,
