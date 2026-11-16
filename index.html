@@ -1613,10 +1613,6 @@
                             <input type="text" x-model="loginOwnerName" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter owner full name">
                         </div>
                         <div x-show="!hasOwnerAccount()">
-                            <label class="block text-xs font-bold text-slate-300 mb-1">Owner Phone Number (optional)</label>
-                            <input type="tel" x-model="loginPhone" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter phone number">
-                        </div>
-                        <div x-show="!hasOwnerAccount()">
                             <label class="block text-xs font-bold text-slate-300 mb-1">One-Time Cloudflare Setup Key</label>
                             <input type="password" x-model="ownerSetupKey" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter setup key">
                         </div>
@@ -2485,7 +2481,7 @@
                                         setupKey: this.ownerSetupKey,
                                         name: this.loginOwnerName.trim(),
                                         email: identifier,
-                                        phone: this.loginPhone.trim(),
+                                        
                                         password
                                     }
                                 });
