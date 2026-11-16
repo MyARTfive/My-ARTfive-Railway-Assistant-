@@ -1795,12 +1795,8 @@
                 },
 
                 hasOwnerAccount() {
-                    try {
-                        const data = JSON.parse(localStorage.getItem('artfive_owner_credentials') || 'null');
-                        return !!(data && data.email && data.password);
-                    } catch (e) {
-                        return false;
-                    }
+                    // Owner credentials are verified by the Worker against D1, never by localStorage.
+                    return true;
                 },
 
                 hasOption11Account() {
@@ -2429,62 +2425,7 @@
                 },
 
                 forgotPassword(portalType) {
-                    if (portalType === 'My Dashboard') {
-                        let savedOwner = null;
-                        try { savedOwner = JSON.parse(localStorage.getItem('artfive_owner_credentials') || 'null'); } catch (e) {}
-                        if (!savedOwner) {
-                            alert('No owner account created yet. Please create your password on the sign-in screen.');
-                            return;
-                        }
-                        const verifyEmail = prompt('Enter your registered Owner Email Address to reset password:');
-                        if (!verifyEmail) return;
-                        if (verifyEmail.trim().toLowerCase() !== savedOwner.email.toLowerCase()) {
-                            alert('Email does not match the registered My Dashboard owner account.');
-                            return;
-                        }
-                        const newPwd = prompt('Verified! Enter your new permanent password for My Dashboard:');
-                        if (newPwd && newPwd.trim()) {
-                            savedOwner.password = newPwd.trim();
-                            localStorage.setItem('artfive_owner_credentials', JSON.stringify(savedOwner));
-                            alert('My Dashboard password has been updated successfully!');
-                        }
-                    } else if (portalType === 'Option 11') {
-                        let savedOpt11 = null;
-                        try { savedOpt11 = JSON.parse(localStorage.getItem('artfive_option11_credentials') || 'null'); } catch (e) {}
-                        if (!savedOpt11) {
-                            alert('No Option 11 password created yet. Please create your password on the screen.');
-                            return;
-                        }
-                        const verifyPhone = prompt('Enter your registered Option 11 Phone Number to reset password:');
-                        if (!verifyPhone) return;
-                        if (verifyPhone.trim() !== savedOpt11.phone) {
-                            alert('Phone number does not match the registered Option 11 owner account.');
-                            return;
-                        }
-                        const newPwd = prompt('Verified! Enter your new permanent password for Option 11:');
-                        if (newPwd && newPwd.trim()) {
-                            savedOpt11.password = newPwd.trim();
-                            localStorage.setItem('artfive_option11_credentials', JSON.stringify(savedOpt11));
-                            alert('Option 11 password has been updated successfully!');
-                        }
-                    } else {
-                        const recoveryInput = prompt('Enter your registered Phone Number for password recovery:');
-                        if (!recoveryInput) return;
-                        const prefix = portalType === 'Staff' ? 'staff_' : 'cust_';
-                        const phoneKey = prefix + recoveryInput.trim();
-                        let storedPasswords = {};
-                        try { storedPasswords = JSON.parse(localStorage.getItem('artfive_registered_passwords') || '{}'); } catch (e) {}
-                        if (!storedPasswords[phoneKey]) {
-                            alert('This phone number is not registered.');
-                            return;
-                        }
-                        const newPwd = prompt('Phone verified! Enter your new password:');
-                        if (newPwd && newPwd.trim()) {
-                            storedPasswords[phoneKey] = newPwd.trim();
-                            localStorage.setItem('artfive_registered_passwords', JSON.stringify(storedPasswords));
-                            alert('Password updated successfully! You can now sign in with your new password.');
-                        }
-                    }
+                    alert('My ARTfive! Passwords are no longer stored on this device. Secure account recovery must be completed through the server by the Owner. Please contact My ARTfive! support for a reset.');
                 },
 
                 openLoginModal(role = 'customer') { 
