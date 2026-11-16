@@ -2412,11 +2412,6 @@
                 uploadForm: { customerId: '', ticketTitle: '', paymentConfirmed: false, fileData: null },
                 customerSearch: '',
 
-                getMyAssignedTickets() {
-                    if (!this.currentUser || this.currentUser.role !== 'customer') return [];
-                    return (this.assignedTickets || []).filter(ticket => String(ticket.customerId) === String(this.currentUser.id));
-                },
-
                 filteredCustomers() {
                     const query = String(this.customerSearch || '').trim().toLowerCase();
                     if (!query) return this.customers || [];
@@ -2898,11 +2893,9 @@
 
                 
 
-                                getMyAssignedTickets() {
-                    if (!this.currentUser) return [];
-                    const cid = String(this.currentUser.id);
-                    const cPhone = String(this.currentUser.phone || '');
-                    return this.assignedTickets.filter(t => String(t.customerId) === cid || (t.customerPhone && String(t.customerPhone) === cPhone));
+                getMyAssignedTickets() {
+                    if (!this.currentUser || this.currentUser.role !== 'customer') return [];
+                    return (this.assignedTickets || []).filter(ticket => String(ticket.customerId) === String(this.currentUser.id));
                 },
 
                 openFullRequestFormModal(req) {
