@@ -27,3 +27,13 @@ CREATE TABLE IF NOT EXISTS manager_sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_manager_sessions_owner ON manager_sessions(owner_id);
 CREATE INDEX IF NOT EXISTS idx_manager_sessions_expiry ON manager_sessions(expires_at);
+
+CREATE TABLE IF NOT EXISTS visitor_page_views (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  visitor_key TEXT NOT NULL,
+  ip_address TEXT NOT NULL,
+  page_path TEXT NOT NULL,
+  visited_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_visitor_page_views_key_time ON visitor_page_views(visitor_key, visited_at);
+CREATE INDEX IF NOT EXISTS idx_visitor_page_views_ip ON visitor_page_views(ip_address);
