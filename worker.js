@@ -1,5 +1,5 @@
 
-const PASSWORD_ITERATIONS = 310000;
+const PASSWORD_ITERATIONS = 100000;
 const SESSION_DAYS = 7;
 const MAX_BODY_BYTES = 3 * 1024 * 1024;
 const SESSION_COOKIE = "artfive_session";
@@ -45,7 +45,7 @@ async function verifyPassword(password, stored) {
   try {
     const [scheme, iterationsText, saltText, hashText] = String(stored || "").split("$");
     const iterations = Number(iterationsText);
-    if (scheme !== "pbkdf2" || !Number.isInteger(iterations) || iterations < 100000 || iterations > 1000000 || !saltText || !hashText) return false;
+    if (scheme !== "pbkdf2" || !Number.isInteger(iterations) || iterations < 100000 || iterations > 100000 || !saltText || !hashText) return false;
     const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
     const bits = await crypto.subtle.deriveBits(
       { name: "PBKDF2", salt: base64ToBytes(saltText), iterations, hash: "SHA-256" },
