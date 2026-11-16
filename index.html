@@ -2119,24 +2119,76 @@
                     this.activePaxSuggestIndex = null;
                 },
 
-                loadTicketRequestsFromStorage() {
+                async apiRequest(path, options = {}) {
+                    const response = await fetch(path, {
+                        method: options.method || 'GET',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+                        body: options.body ? JSON.stringify(options.body) : undefined
+                    });
+                    let result = {};
+                    try { result = await response.json(); } catch (e) {}
+                    if (!response.ok || result.success === false) {
+                        throw new Error(result.message || 'My ARTfive! Server request failed.');
+                    }
+                    return result;
+                },
+
+                async refreshCentralData() {
+                    if (!this.currentUser) return;
+                    const [requestResult, ticketResult] = await Promise.all([
+                        this.apiRequest('/api/requests'),
+                        this.apiRequest('/api/tickets')
+                    ]);
+                    this.ticketRequests = (requestResult.requests || []).map(row => {
+                        let data = {};
+                        try { data = typeof row.data === 'string' ? JSON.parse(row.data) : (row.data || {}); } catch (e) {}
+                        return { ...data, id: row.id, customerId: row.customer_id, createdAt: row.created_at };
+                    });
+                    this.assignedTickets = ticketResult.tickets || [];
+                    if (this.currentUser.role === 'owner' || this.currentUser.role === 'staff') {
+                        const customerResult = await this.apiRequest('/api/customers');
+                        this.customers = customerResult.customers || [];
+                    }
+                },
+
+                async restoreCentralSession() {
                     try {
-                        const raw = localStorage.getItem('artfive_ticket_requests');
-                        this.ticketRequests = raw ? JSON.parse(raw) : [];
+                        const result = await this.apiRequest('/api/me');
+                        this.currentUser = result.user;
+                        await this.refreshCentralData();
                     } catch (e) {
+                        this.currentUser = null;
                         this.ticketRequests = [];
+                        this.assignedTickets = [];
+                        this.customers = [];
                     }
                 },
 
-                deleteTicketRequest(reqId) {
-                    if (confirm('Are you sure you want to delete this customer request form? It will be permanently deleted from storage.')) {
-                        this.ticketRequests = this.ticketRequests.filter(r => r.id !== reqId);
-                        localStorage.setItem('artfive_ticket_requests', JSON.stringify(this.ticketRequests));
-                        alert('Customer request form permanently deleted from storage.');
+                async loadTicketRequestsFromStorage() {
+                    try {
+                        if (this.currentUser) await this.refreshCentralData();
+                        else this.ticketRequests = [];
+                    } catch (error) {
+                        console.error(error);
+                        alert(error.message || 'Unable to load central ticket requests.');
                     }
                 },
 
-                ticketReqForm: {
+                async deleteTicketRequest(reqId) {
+                    if (!confirm('My ARTfive! Delete this customer request permanently from the central database? It will disappear from My Dashboard and Staff Dashboard.')) return;
+                    try {
+                        await this.apiRequest('/api/requests', { method: 'DELETE', body: { id: String(reqId) } });
+                        await this.loadTicketRequestsFromStorage();
+                        alert('My ARTfive! Customer request permanently deleted from D1.');
+                    } catch (error) {
+                        alert(error.message || 'My ARTfive! Could not delete this request.');
+                    }
+                },
+
+                
+
+                                ticketReqForm: {
                     passengers: [{ fullName: '', age: '', gender: 'Male' }],
                     fromStation: '',
                     toStation: '',
@@ -2174,39 +2226,41 @@
 
                 uploadForm: { customerId: '', ticketTitle: '', paymentConfirmed: false, fileData: null },
 
-                loadAssignedTicketsFromDB() {
+                async loadAssignedTicketsFromDB() {
                     try {
-                        const localData = localStorage.getItem('artfive_assigned_tickets_store');
-                        if (localData) {
-                            this.assignedTickets = JSON.parse(localData);
-                        } else {
-                            this.assignedTickets = [];
-                        }
-                    } catch (err) {
+                        if (this.currentUser) {
+                            const result = await this.apiRequest('/api/tickets');
+                            this.assignedTickets = result.tickets || [];
+                        } else this.assignedTickets = [];
+                    } catch (error) {
+                        console.error(error);
                         this.assignedTickets = [];
                     }
                 },
 
-                saveTicketToLocalStorage(ticketObj) {
+                async saveTicketToLocalStorage(ticketObj) {
+                    // Ticket files are now stored centrally through the Worker API, never in browser localStorage.
+                    return this.apiRequest('/api/tickets', { method: 'POST', body: ticketObj });
+                },
+
+                async deleteAssignedTicket(ticketId) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') {
+                        alert('My ARTfive! Only the Owner can permanently delete a ticket.');
+                        return;
+                    }
+                    if (!confirm('My ARTfive! Permanently delete this ticket file from the central database and every dashboard?')) return;
                     try {
-                        this.assignedTickets.push(ticketObj);
-                        localStorage.setItem('artfive_assigned_tickets_store', JSON.stringify(this.assignedTickets));
-                        this.loadAssignedTicketsFromDB();
-                    } catch (err) {
-                        alert('Storage limit reached or error saving file.');
+                        await this.apiRequest('/api/tickets', { method: 'DELETE', body: { id: String(ticketId) } });
+                        await this.loadAssignedTicketsFromDB();
+                        alert('My ARTfive! Ticket file permanently deleted from D1.');
+                    } catch (error) {
+                        alert(error.message || 'My ARTfive! Could not delete this ticket.');
                     }
                 },
 
-                deleteAssignedTicket(ticketId) {
-                    if (confirm('Are you sure you want to delete this file? It will be permanently removed from storage and deleted from the customer dashboard.')) {
-                        this.assignedTickets = this.assignedTickets.filter(t => t.id !== ticketId);
-                        localStorage.setItem('artfive_assigned_tickets_store', JSON.stringify(this.assignedTickets));
-                        this.loadAssignedTicketsFromDB();
-                        alert('File successfully deleted from system storage and customer dashboard.');
-                    }
-                },
+                
 
-                clearSelectedUpload() {
+                                clearSelectedUpload() {
                     this.uploadForm.ticketTitle = '';
                     this.uploadForm.fileData = null;
                     if (this.$refs.ownerFile) this.$refs.ownerFile.value = '';
@@ -2596,40 +2650,35 @@
                     this.activeCustOption = optNum; 
                 },
 
-                uploadAndAssignTicket() {
-                    if (!this.uploadForm.customerId && this.customers.length > 0) {
-                        this.uploadForm.customerId = this.customers[0].id;
-                    }
-
-                    if (!this.uploadForm.ticketTitle || !this.uploadForm.customerId) { 
-                        alert('Please select a customer and choose a file or image.'); 
-                        return; 
-                    }
-                    if (!this.uploadForm.paymentConfirmed) {
-                        alert('Please check/tick the "Payment Status Confirmed" box first before sending.');
+                async uploadAndAssignTicket() {
+                    if (!this.uploadForm.customerId || !this.uploadForm.ticketTitle || !this.uploadForm.fileData) {
+                        alert('My ARTfive! Select a registered customer and a PDF or image ticket file.');
                         return;
                     }
-
-                    const targetCust = this.customers.find(c => String(c.id) === String(this.uploadForm.customerId));
-                    const custPhone = targetCust ? targetCust.phone : (this.currentUser ? this.currentUser.phone : '');
-
-                    const newTicket = {
-                        id: Date.now(),
-                        customerId: this.uploadForm.customerId,
-                        customerPhone: custPhone,
-                        ticketTitle: this.uploadForm.ticketTitle,
-                        paymentConfirmed: true,
-                        fileData: this.uploadForm.fileData || 'data:text/plain;charset=utf-8,' + encodeURIComponent('Ticket: Confirmed')
-                    };
-
-                    this.saveTicketToLocalStorage(newTicket);
-                    alert('File successfully assigned to customer Option 4 with payment confirmation confirmed (✓)!');
-                    this.uploadForm.ticketTitle = '';
-                    this.uploadForm.paymentConfirmed = false;
-                    this.uploadForm.fileData = null;
+                    if (!this.uploadForm.paymentConfirmed) {
+                        alert('My ARTfive! Confirm Ticket Collection Charges Payment before sending.');
+                        return;
+                    }
+                    try {
+                        await this.saveTicketToLocalStorage({
+                            customerId: this.uploadForm.customerId,
+                            ticketTitle: this.uploadForm.ticketTitle,
+                            fileData: this.uploadForm.fileData,
+                            paymentConfirmed: true
+                        });
+                        await this.loadAssignedTicketsFromDB();
+                        alert('My ARTfive! Ticket uploaded to the central database and sent to the customer.');
+                        this.uploadForm.ticketTitle = '';
+                        this.uploadForm.paymentConfirmed = false;
+                        this.uploadForm.fileData = null;
+                    } catch (error) {
+                        alert(error.message || 'My ARTfive! Ticket upload failed.');
+                    }
                 },
 
-                getMyAssignedTickets() {
+                
+
+                                getMyAssignedTickets() {
                     if (!this.currentUser) return [];
                     const cid = String(this.currentUser.id);
                     const cPhone = String(this.currentUser.phone || '');
@@ -2659,7 +2708,12 @@
                     this.hasRated = false;
                 },
 
-                submitTicketRequest() {
+                async submitTicketRequest() {
+                    if (!this.currentUser || this.currentUser.role !== 'customer') {
+                        alert('My ARTfive! Please sign in to your customer account before submitting a ticket request.');
+                        this.openLoginModal('customer');
+                        return;
+                    }
                     if (!this.ticketReqForm.passengers[0].fullName.trim()) {
                         alert('Please enter Passenger 1 Full Name before submitting.');
                         return;
@@ -2668,23 +2722,6 @@
                         alert('Please select both Starting Station and Destination Station.');
                         return;
                     }
-
-                    const rememberedPhone = localStorage.getItem('artfive_remembered_phone') || '8859062356';
-                    const rememberedName = localStorage.getItem('artfive_remembered_name') || this.ticketReqForm.passengers[0].fullName.trim();
-                    const cName = this.currentUser && this.currentUser.name !== 'Customer' ? this.currentUser.name : rememberedName;
-                    const cPhone = this.currentUser && this.currentUser.phone ? this.currentUser.phone : rememberedPhone;
-                    const cId = this.currentUser && this.currentUser.id ? this.currentUser.id : rememberedPhone;
-                    
-                    if (!this.customers.some(c => c.phone === cPhone)) {
-                        this.customers.push({ id: cId, name: cName, phone: cPhone });
-                        localStorage.setItem('artfive_customers', JSON.stringify(this.customers));
-                    }
-
-                    if (!this.uploadForm.customerId && this.customers.length > 0) {
-                        this.uploadForm.customerId = this.customers[0].id;
-                    }
-
-                    // Save every passenger profile for 1-click autofill next time
                     this.ticketReqForm.passengers.forEach(p => {
                         this.savePassengerProfileForAutofill(p, {
                             fromStation: this.ticketReqForm.fromStation,
@@ -2692,12 +2729,7 @@
                             travelClass: this.ticketReqForm.travelClass
                         });
                     });
-
-                    const newReq = {
-                        id: Date.now(),
-                        customerId: cId,
-                        customerPhone: cPhone,
-                        customerName: cName,
+                    const requestData = {
                         passengers: JSON.parse(JSON.stringify(this.ticketReqForm.passengers)),
                         fromStation: this.ticketReqForm.fromStation,
                         toStation: this.ticketReqForm.toStation,
@@ -2706,15 +2738,20 @@
                         enquiry: this.ticketReqForm.enquiry,
                         status: 'Pending'
                     };
-
-                    this.ticketRequests.unshift(newReq);
-                    localStorage.setItem('artfive_ticket_requests', JSON.stringify(this.ticketRequests));
-                    this.loadTicketRequestsFromStorage();
-
-                    alert('Ticket request submitted successfully! It is now visible in My Dashboard Option 8, and your passenger details have been saved for 1-click autofill next time.');
-                    this.activeCustOption = null;
-                    this.ownerInspectCustOpt = null;
+                    try {
+                        await this.apiRequest('/api/requests', { method: 'POST', body: { data: requestData } });
+                        await this.loadTicketRequestsFromStorage();
+                        alert('My ARTfive! Your railway ticket request was submitted successfully and saved centrally.');
+                        this.activeCustOption = null;
+                        this.ownerInspectCustOpt = null;
+                    } catch (error) {
+                        alert(error.message || 'My ARTfive! Could not submit your request. Please try again.');
+                    }
                 }
+
+            }
+
+                                }
             }
         }
         </script>
