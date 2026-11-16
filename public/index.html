@@ -1818,6 +1818,7 @@
                 },
 
                 hasOption11Account() {
+                    if (this.option11D1Exists) return true;
                     try {
                         const data = JSON.parse(localStorage.getItem('artfive_option11_credentials') || 'null');
                         return !!(data && data.phone && data.password);
@@ -1905,6 +1906,7 @@
                 currentUser: null,
 
                 option11Authenticated: false,
+                option11D1Exists: false,
                 option11Phone: '',
                 option11Password: '',
                 appSourceCode: localStorage.getItem('artfive_live_code') || '',
@@ -2342,6 +2344,12 @@
                         }
                     }
                     if (optNum === 11) {
+                        this.option11D1Exists = false;
+                        if (this.currentUser && this.currentUser.role === 'owner') {
+                            this.apiRequest('/api/owner/manager/status').then(result => {
+                                this.option11D1Exists = !!result.configured;
+                            }).catch(error => console.warn('Manager status check failed:', error.message));
+                        }
                         this.option11Phone = '';
                         this.option11Password = '';
                         this.showOption11Pwd = false;
@@ -2351,43 +2359,39 @@
                     }
                 },
 
-                verifyOption11Login() {
+                async verifyOption11Login() {
                     const cleanPhone = this.option11Phone.trim();
-                    const cleanPwd = this.option11Password.trim();
-
+                    const cleanPwd = this.option11Password;
+                    if (!this.currentUser || this.currentUser.role !== 'owner') {
+                        alert('Access denied. Only the signed-in Owner can unlock Manager.');
+                        return;
+                    }
                     if (!cleanPhone || !cleanPwd) {
                         alert('Please enter both phone number and password.');
                         return;
                     }
-
-                    let savedOpt11 = null;
-                    try {
-                        savedOpt11 = JSON.parse(localStorage.getItem('artfive_option11_credentials') || 'null');
-                    } catch (e) {}
-
-                    if (!savedOpt11 || !savedOpt11.phone || !savedOpt11.password) {
-                        // One-time setup: Lock Option 11 to this single owner permanently
-                        localStorage.setItem('artfive_option11_credentials', JSON.stringify({
-                            phone: cleanPhone,
-                            password: cleanPwd
-                        }));
-                        alert('Option 11 Owner Password created and locked to your phone number!');
-                        this.option11Authenticated = true;
-                    } else {
-                        // Strict verification on every subsequent access
-                        if (savedOpt11.phone !== cleanPhone) {
-                            alert('Access Denied! Phone number does not match the registered Option 11 owner.');
+                    let legacy = null;
+                    try { legacy = JSON.parse(localStorage.getItem('artfive_option11_credentials') || 'null'); } catch (e) {}
+                    if (!this.option11D1Exists && legacy && legacy.phone && legacy.password) {
+                        if (legacy.phone !== cleanPhone || legacy.password !== cleanPwd) {
+                            alert('Access denied. The details do not match the existing Manager credentials on this device.');
                             return;
                         }
-                        if (savedOpt11.password !== cleanPwd) {
-                            alert('Incorrect Option 11 password! Please try again.');
-                            return;
-                        }
-                        this.option11Authenticated = true;
                     }
-
-                    if (!this.appSourceCode) {
-                        this.appSourceCode = localStorage.getItem('artfive_live_code') || document.documentElement.outerHTML;
+                    try {
+                        const result = await this.apiRequest('/api/owner/manager/verify', {
+                            method: 'POST',
+                            body: { phone: cleanPhone, password: cleanPwd }
+                        });
+                        this.option11D1Exists = true;
+                        this.option11Authenticated = true;
+                        localStorage.removeItem('artfive_option11_credentials');
+                        if (!this.appSourceCode) {
+                            this.appSourceCode = localStorage.getItem('artfive_live_code') || document.documentElement.outerHTML;
+                        }
+                        alert(result.message || 'My ARTfive! Manager security verified.');
+                    } catch (error) {
+                        alert(error.message || 'Manager verification failed.');
                     }
                 },
 
