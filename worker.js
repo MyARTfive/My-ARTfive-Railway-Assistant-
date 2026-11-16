@@ -174,6 +174,12 @@ export default {
     }
 
     try {
+      if (path === "/api/me" && method === "GET") {
+        const user = await getSessionUser(request, env, now);
+        if (!user) return json({ success: false, message: "Not signed in." }, 401);
+        return json({ success: true, user: publicUser(user) });
+      }
+
       if (path === "/api/owner/status" && method === "GET") {
         const owner = await env.DB.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").first();
         return json({ success: true, ownerExists: !!owner });
