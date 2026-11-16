@@ -115,6 +115,9 @@ async function createSession(user, env, now) {
   const token = bytesToBase64(tokenBytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
   const tokenHash = await sha256Base64(token);
   const expiresAt = now + SESSION_DAYS * 86400 * 1000;
+  if (user.role === "owner") {
+    await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id).run();
+  }
   await env.DB.prepare(
     `INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)`
   ).bind(tokenHash, user.id, expiresAt, now).run();
@@ -209,6 +212,45 @@ export default {
         ).bind(id, name, email, passwordHash, now).run();
         await logSecurity(env, ip, "owner_setup_success", "Owner account created", now);
         return json({ success: true, message: "Owner account created securely. Please sign in." }, 201);
+      }
+
+      if (path === "/api/owner/manager/status" && method === "GET") {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the Owner can access Manager security." }, 403);
+        const row = await env.DB.prepare("SELECT owner_id FROM manager_credentials WHERE owner_id = ? LIMIT 1").bind(owner.id).first();
+        return json({ success: true, configured: !!row });
+      }
+
+      if (path === "/api/owner/manager/verify" && method === "POST") {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") {
+          await logSecurity(env, ip, "manager_access_denied", "Non-owner attempted Manager verification", now);
+          return json({ success: false, message: "Only the Owner can access Manager." }, 403);
+        }
+        const body = await readJson(request);
+        const phone = String(body.phone || "").trim();
+        const password = String(body.password || "");
+        if (!phone || !password || phone.length > 30 || password.length > 256) {
+          return json({ success: false, message: "Enter the registered phone number and password." }, 400);
+        }
+        const existing = await env.DB.prepare(
+          "SELECT phone, password_hash FROM manager_credentials WHERE owner_id = ? LIMIT 1"
+        ).bind(owner.id).first();
+        if (existing) {
+          if (!safeEqual(existing.phone, phone) || !(await verifyPassword(password, existing.password_hash))) {
+            await logSecurity(env, ip, "manager_login_failed", "Invalid Manager credentials", now);
+            return json({ success: false, message: "Phone number or password was not accepted." }, 401);
+          }
+        } else {
+          if (password.length < 12) return json({ success: false, message: "For security, your Manager password must contain at least 12 characters." }, 400);
+          const passwordHash = await hashPassword(password);
+          await env.DB.prepare(
+            "INSERT INTO manager_credentials (owner_id, phone, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+          ).bind(owner.id, phone, passwordHash, now, now).run();
+          await logSecurity(env, ip, "manager_credentials_created", "Manager credentials securely stored in D1", now);
+        }
+        await logSecurity(env, ip, "manager_login_success", "Owner verified for Manager", now);
+        return json({ success: true, message: "My ARTfive! Manager security verified." });
       }
 
       if (path === "/api/owner/login" && method === "POST") {
