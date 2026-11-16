@@ -1082,7 +1082,7 @@
                         
                         <div class="space-y-3">
                             <label class="block text-xs font-bold text-slate-400 mb-1">Choose Upload Method</label>
-                            <input type="file" x-ref="ownerFile" accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword" @change="handleFileUpload($event)" class="hidden">
+                            <input type="file" x-ref="ownerFile" accept=".pdf,application/pdf" @change="handleFileUpload($event)" class="hidden">
                             <input type="file" x-ref="ownerImage" accept="image/*" @change="handleFileUpload($event)" class="hidden">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <button @click="$refs.ownerFile.click()" type="button" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-4 text-xs text-emerald-300 font-bold flex items-center justify-center gap-2 transition shadow">
@@ -1456,6 +1456,24 @@
                         </div>
 
                         <button @click="uploadAndAssignTicket()" class="w-full bg-sky-600 text-white font-bold py-3 rounded-xl text-sm">Upload & Assign File</button>
+                    </div>
+                    <div class="border-t border-slate-700 pt-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h4 class="font-bold text-white text-sm">Tickets sent to customers</h4>
+                            <button @click="loadAssignedTicketsFromDB()" class="text-xs text-sky-300 underline">Refresh</button>
+                        </div>
+                        <template x-for="tkt in assignedTickets" :key="tkt.id">
+                            <div class="bg-slate-900 border border-slate-700 rounded-lg p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                                <div>
+                                    <span class="block text-white font-bold" x-text="tkt.ticketTitle"></span>
+                                    <span class="text-slate-400" x-text="(tkt.customerName || 'Customer') + ' · ' + (tkt.customerPhone || '')"></span>
+                                </div>
+                                <button @click="openFileViewer(tkt)" class="bg-emerald-600 text-white px-3 py-1.5 rounded font-bold">View ticket</button>
+                            </div>
+                        </template>
+                        <template x-if="assignedTickets.length === 0">
+                            <p class="text-slate-400 text-xs">No tickets have been sent yet.</p>
+                        </template>
                     </div>
                 </div>
 
