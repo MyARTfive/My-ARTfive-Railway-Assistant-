@@ -2228,12 +2228,9 @@
                 filteredSavedPax: [],
 
                 loadSavedPassengerProfiles() {
-                    try {
-                        const raw = localStorage.getItem('artfive_saved_passenger_profiles');
-                        this.savedPassengerProfiles = raw ? JSON.parse(raw) : [];
-                    } catch (e) {
-                        this.savedPassengerProfiles = [];
-                    }
+                    // Passenger filters are account data in D1, never device-local data.
+                    this.savedPassengerProfiles = [];
+                    localStorage.removeItem('artfive_saved_passenger_profiles');
                 },
 
                 savePassengerProfileForAutofill(paxObj, routeMeta) {
@@ -2253,7 +2250,6 @@
                     } else {
                         this.savedPassengerProfiles.unshift(profileRecord);
                     }
-                    localStorage.setItem('artfive_saved_passenger_profiles', JSON.stringify(this.savedPassengerProfiles));
                 },
 
                 filterSavedPassengers(paxIndex) {
@@ -2313,8 +2309,9 @@
                         try {
                             const profileResult = await this.apiRequest('/api/customer/passenger-profiles');
                             this.savedPassengerProfiles = profileResult.profiles || [];
-                            localStorage.setItem('artfive_saved_passenger_profiles', JSON.stringify(this.savedPassengerProfiles));
                         } catch (profileError) {
+                            this.savedPassengerProfiles = [];
+                            localStorage.removeItem('artfive_saved_passenger_profiles');
                             console.warn('My ARTfive! Customer filters are not yet available from D1:', profileError.message);
                         }
                     }
@@ -2759,13 +2756,9 @@
                 openLoginModal(role = 'customer') { 
                     this.loginRole = role; 
                     this.loginEmail = '';
-                    this.loginPhone = role === 'customer_verify' && this.currentUser && this.currentUser.role === 'customer'
-                        ? this.currentUser.phone
-                        : ((role === 'customer' || role === 'customer_verify') ? (localStorage.getItem('artfive_remembered_phone') || '') : '');
+                    this.loginPhone = role === 'customer_verify' ? '' : (role === 'customer' ? (localStorage.getItem('artfive_remembered_phone') || '') : '');
                     this.loginPassword = '';
-                    this.loginCustomerName = role === 'customer_verify' && this.currentUser && this.currentUser.role === 'customer'
-                        ? this.currentUser.name
-                        : ((role === 'customer' || role === 'customer_verify') ? (localStorage.getItem('artfive_remembered_name') || '') : '');
+                    this.loginCustomerName = role === 'customer_verify' ? '' : (role === 'customer' ? (localStorage.getItem('artfive_remembered_name') || '') : '');
                     this.loginStaffName = '';
                     this.showLoginPwd = false;
                     this.showLoginModal = true; 
@@ -2983,7 +2976,6 @@
                             });
                             const profileResult = await this.apiRequest('/api/customer/passenger-profiles');
                             this.savedPassengerProfiles = profileResult.profiles || [];
-                            localStorage.setItem('artfive_saved_passenger_profiles', JSON.stringify(this.savedPassengerProfiles));
                         } catch (profileError) {
                             console.warn('My ARTfive! Could not sync passenger filters to D1:', profileError.message);
                         }
