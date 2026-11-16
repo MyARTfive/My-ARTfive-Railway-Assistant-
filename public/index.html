@@ -426,8 +426,10 @@
                                     </div>
                                     <p class="text-slate-300" x-text="'Route: ' + req.fromStation + ' ➔ ' + req.toStation"></p>
                                     <div class="flex gap-2">
-                                        <button @click="openFullRequestFormModal(req)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded font-bold transition">View Full Request Form</button>
-                                        <button x-show="currentUser && currentUser.role === 'owner'" @click="deleteTicketRequest(req.id)" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded font-bold transition"><i class="fa-solid fa-trash"></i> Delete</button>
+                                        <div class="flex gap-2 flex-wrap">
+                                    <button @click="openFullRequestFormModal(req)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded font-bold transition">View Full Request Form</button>
+                                    <button @click="openTicketUploadForRequest(req, true)" class="bg-sky-700 hover:bg-sky-600 text-white px-3 py-1.5 rounded font-bold transition">Send Ticket to This Customer</button>
+                                </div>
                                     </div>
                                 </div>
                             </template>
@@ -441,10 +443,11 @@
                         <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.staffOpt2Title"></h3><button @click="ownerInspectStaffOpt = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-xs font-bold text-slate-400 mb-1">Select Customer</label>
+                                <label class="block text-xs font-bold text-slate-400 mb-1">Find Customer by Name or Phone Number</label>
+                                <input type="search" x-model="customerSearch" placeholder="Search customer name or phone..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                                 <select x-model="uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                                     <option value="">-- Choose Customer --</option>
-                                    <template x-for="cust in customers" :key="cust.id"><option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option></template>
+                                    <template x-for="cust in filteredCustomers()" :key="cust.id"><option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option></template>
                                 </select>
                             </div>
                             <label class="flex items-center gap-2.5 bg-slate-700/50 p-3 rounded-lg border border-slate-600 cursor-pointer">
@@ -467,7 +470,7 @@
                                 <div x-show="uploadForm.ticketTitle" class="bg-slate-900 p-3 rounded-lg text-xs text-emerald-400 font-bold text-center border border-emerald-500/30 flex items-center justify-between">
                                     <span>Selected: <span x-text="uploadForm.ticketTitle"></span></span>
                                     <button @click="clearSelectedUpload()" class="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded bg-red-500/10 border border-red-500/30">
-                                        <i class="fa-solid fa-trash"></i> Delete Selected File
+                                        <i class="fa-solid fa-trash"></i> Clear Selected File
                                     </button>
                                 </div>
                             </div>
@@ -678,9 +681,6 @@
                                     <div class="flex gap-2 flex-wrap items-center">
                                         <button @click="openFileViewer(tkt)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shadow">
                                             <i class="fa-solid fa-eye"></i> View
-                                        </button>
-                                        <button @click="deleteAssignedTicket(tkt.id)" class="bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shadow">
-                                            <i class="fa-solid fa-trash"></i> Delete
                                         </button>
                                     </div>
                                 </div>
@@ -1038,6 +1038,10 @@
                         <button @click="activeMenuOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <div class="space-y-3">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <button @click="deleteAllCustomerPassengerFilters()" class="bg-red-700 hover:bg-red-600 text-white text-xs font-bold px-4 py-2 rounded-lg"><i class="fa-solid fa-filter-circle-xmark mr-1"></i> Delete Customer Option 1 Saved Filters</button>
+                            <span class="text-xs text-slate-400">Clears saved passenger autofill filters only. The request form and submitted requests remain.</span>
+                        </div>
                         <template x-for="req in ticketRequests" :key="req.id">
                             <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs gap-3">
                                 <div class="space-y-1">
@@ -1050,6 +1054,7 @@
                                     <button @click="openFullRequestFormModal(req)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shadow">
                                         <i class="fa-solid fa-eye"></i> View Full Request Form
                                     </button>
+                                    <button @click="openTicketUploadForRequest(req, false)" class="bg-sky-700 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-bold transition"><i class="fa-solid fa-paper-plane mr-1"></i> Send Ticket</button>
                                     <button @click="deleteTicketRequest(req.id)" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shadow">
                                         <i class="fa-solid fa-trash"></i> Delete
                                     </button>
@@ -1072,11 +1077,13 @@
                     </div>
                     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-6 max-w-2xl mx-auto">
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1">Select Customer</label>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Find Customer by Name or Phone Number</label>
+                                <input type="search" x-model="customerSearch" placeholder="Search customer name or phone..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                             <select x-model="uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                                 <option value="">-- Choose Customer --</option>
-                                <template x-for="cust in customers" :key="cust.id"><option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option></template>
+                                <template x-for="cust in filteredCustomers()" :key="cust.id"><option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option></template>
                             </select>
+                            <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
                         </div>
                         <div>
                             <label class="flex items-center gap-2.5 bg-slate-700/50 p-3 rounded-lg border border-slate-600 cursor-pointer">
@@ -1100,7 +1107,7 @@
                             <div x-show="uploadForm.ticketTitle" class="bg-slate-900 p-3 rounded-lg text-xs text-emerald-400 font-bold flex items-center justify-between border border-emerald-500/30">
                                 <span>Selected: <span x-text="uploadForm.ticketTitle"></span></span>
                                 <button @click="clearSelectedUpload()" class="text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-1 font-bold">
-                                    <i class="fa-solid fa-trash"></i> Delete Selected File
+                                    <i class="fa-solid fa-trash"></i> Clear Selected File
                                 </button>
                             </div>
                         </div>
@@ -1117,7 +1124,7 @@
                                     <div class="bg-slate-900 border border-slate-700 p-3 rounded-xl flex items-center justify-between text-xs">
                                         <div>
                                             <span class="font-bold text-white block" x-text="tkt.ticketTitle"></span>
-                                            <span class="text-slate-400 text-[10px]" x-text="'Customer ID/Phone: ' + tkt.customerId"></span>
+                                            <span class="text-slate-400 text-[10px]" x-text="'Customer: ' + tkt.customerName + ' (' + tkt.customerPhone + ')'></span>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <button @click="openFileViewer(tkt)" class="bg-sky-600 hover:bg-sky-500 text-white px-2.5 py-1.5 rounded font-bold">
@@ -1461,6 +1468,12 @@
                         <h3 class="font-bold text-white text-lg" x-text="cms.custOpt4Title"></h3>
                         <button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
+                    <div class="bg-slate-900 border border-emerald-500/30 rounded-xl p-3 space-y-1">
+                        <p class="text-xs text-slate-400">Customer Name</p>
+                        <p class="font-bold text-white" x-text="currentUser ? currentUser.name : ''"></p>
+                        <p class="text-xs text-slate-400 mt-2">Phone Number</p>
+                        <p class="font-semibold text-emerald-300" x-text="currentUser ? currentUser.phone : ''"></p>
+                    </div>
                     <p class="text-xs text-slate-300" x-text="cms.myTicketsInstruction"></p>
                     <div class="space-y-3">
                         <template x-for="tkt in getMyAssignedTickets()" :key="tkt.id">
@@ -1521,7 +1534,10 @@
                             <div class="p-4 bg-slate-800 border border-slate-700 rounded-xl space-y-2 text-xs">
                                 <div class="flex justify-between font-bold text-sky-400"><span x-text="'Passenger: ' + req.passengers[0].fullName"></span><span class="bg-sky-500/20 px-2 py-0.5 rounded text-sky-300" x-text="req.status"></span></div>
                                 <p class="text-slate-300" x-text="'Route: ' + req.fromStation + ' ➔ ' + req.toStation"></p>
-                                <button @click="openFullRequestFormModal(req)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded font-bold transition">View Full Request Form</button>
+                                <div class="flex gap-2 flex-wrap">
+                                    <button @click="openFullRequestFormModal(req)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded font-bold transition">View Full Request Form</button>
+                                    <button @click="openTicketUploadForRequest(req, true)" class="bg-sky-700 hover:bg-sky-600 text-white px-3 py-1.5 rounded font-bold transition">Send Ticket to This Customer</button>
+                                </div>
                             </div>
                         </template>
                     </div>
@@ -1531,11 +1547,13 @@
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.staffOpt2Title"></h3><button @click="activeStaffOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1">Select Customer</label>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Find Customer by Name or Phone Number</label>
+                                <input type="search" x-model="customerSearch" placeholder="Search customer name or phone..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                             <select x-model="uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                                 <option value="">-- Choose Customer --</option>
-                                <template x-for="cust in customers" :key="cust.id"><option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option></template>
+                                <template x-for="cust in filteredCustomers()" :key="cust.id"><option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option></template>
                             </select>
+                            <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
                         </div>
                         <label class="flex items-center gap-2.5 bg-slate-700/50 p-3 rounded-lg border border-slate-600 cursor-pointer">
                             <input type="checkbox" x-model="uploadForm.paymentConfirmed" class="w-4 h-4 text-emerald-600 rounded bg-slate-900 border-slate-500">
@@ -1686,9 +1704,6 @@
                     </div>
                 </template>
                 <div class="flex gap-3">
-                    <button x-show="selectedRequestForm" @click="deleteTicketRequest(selectedRequestForm.id); showRequestFormModal = false" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-trash"></i> Delete Request Permanently
-                    </button>
                     <button @click="showRequestFormModal = false" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-xl font-bold transition">Close</button>
                 </div>
             </div>
@@ -1783,7 +1798,7 @@
                 <!-- 3. CUSTOMER LOGIN -->
                 <template x-if="loginRole === 'customer' || loginRole === 'customer_verify'">
                     <div class="space-y-4">
-                        <div><label class="block text-xs font-bold text-slate-300 mb-1">Customer Full Name</label><input type="text" x-model="loginCustomerName" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter full name"></div>
+                        <div x-show="loginRole !== 'customer_verify'"><label class="block text-xs font-bold text-slate-300 mb-1">Customer Full Name</label><input type="text" x-model="loginCustomerName" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter full name"></div>
                         <div><label class="block text-xs font-bold text-slate-300 mb-1">Phone Number</label><input type="text" x-model="loginPhone" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter phone number"></div>
                         <div class="relative">
                             <label class="block text-xs font-bold text-slate-300 mb-1">Password</label>
@@ -2294,6 +2309,15 @@
                         return { ...data, id: row.id, customerId: row.customer_id, createdAt: row.created_at };
                     });
                     this.assignedTickets = ticketResult.tickets || [];
+                    if (this.currentUser.role === 'customer') {
+                        try {
+                            const profileResult = await this.apiRequest('/api/customer/passenger-profiles');
+                            this.savedPassengerProfiles = profileResult.profiles || [];
+                            localStorage.setItem('artfive_saved_passenger_profiles', JSON.stringify(this.savedPassengerProfiles));
+                        } catch (profileError) {
+                            console.warn('My ARTfive! Customer filters are not yet available from D1:', profileError.message);
+                        }
+                    }
                     if (this.currentUser.role === 'owner' || this.currentUser.role === 'staff') {
                         const customerResult = await this.apiRequest('/api/customers');
                         this.customers = customerResult.customers || [];
@@ -2320,6 +2344,22 @@
                     } catch (error) {
                         console.error(error);
                         alert(error.message || 'Unable to load central ticket requests.');
+                    }
+                },
+
+                async deleteAllCustomerPassengerFilters() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') {
+                        alert('My ARTfive! Only the Owner can clear saved customer filters.');
+                        return;
+                    }
+                    if (!confirm('My ARTfive! Permanently delete all saved Customer Dashboard Option 1 passenger filters? This will NOT delete the request form or submitted ticket requests.')) return;
+                    try {
+                        const result = await this.apiRequest('/api/customer/passenger-profiles', { method: 'DELETE' });
+                        this.savedPassengerProfiles = [];
+                        localStorage.removeItem('artfive_saved_passenger_profiles');
+                        alert('My ARTfive! Saved customer filters permanently deleted (' + (result.deleted || 0) + ').');
+                    } catch (error) {
+                        alert(error.message || 'My ARTfive! Could not delete saved customer filters.');
                     }
                 },
 
@@ -2373,6 +2413,43 @@
                 toSuggestions: [],
 
                 uploadForm: { customerId: '', ticketTitle: '', paymentConfirmed: false, fileData: null },
+                customerSearch: '',
+
+                getMyAssignedTickets() {
+                    if (!this.currentUser || this.currentUser.role !== 'customer') return [];
+                    return (this.assignedTickets || []).filter(ticket => String(ticket.customerId) === String(this.currentUser.id));
+                },
+
+                filteredCustomers() {
+                    const query = String(this.customerSearch || '').trim().toLowerCase();
+                    if (!query) return this.customers || [];
+                    return (this.customers || []).filter(customer =>
+                        String(customer.name || '').toLowerCase().includes(query) ||
+                        String(customer.phone || '').toLowerCase().includes(query)
+                    );
+                },
+
+                openTicketUploadForRequest(request, staffMode = false) {
+                    if (!request || !request.customerId) {
+                        alert('My ARTfive! This request is not linked to a registered customer account.');
+                        return;
+                    }
+                    const customer = (this.customers || []).find(item => String(item.id) === String(request.customerId));
+                    if (!customer) {
+                        alert('My ARTfive! Customer account could not be found. Refresh the dashboard and try again.');
+                        return;
+                    }
+                    this.uploadForm.customerId = customer.id;
+                    this.customerSearch = customer.name + ' ' + customer.phone;
+                    if (staffMode || (this.currentUser && this.currentUser.role === 'staff')) {
+                        this.currentDashboard = 'staff';
+                        this.activeStaffOption = 2;
+                    } else {
+                        this.currentDashboard = 'owner';
+                        this.activeMenuOption = 9;
+                    }
+                    this.loadAssignedTicketsFromDB();
+                },
 
                 async loadAssignedTicketsFromDB() {
                     try {
@@ -2682,9 +2759,13 @@
                 openLoginModal(role = 'customer') { 
                     this.loginRole = role; 
                     this.loginEmail = '';
-                    this.loginPhone = (role === 'customer' || role === 'customer_verify') ? (localStorage.getItem('artfive_remembered_phone') || '') : '';
+                    this.loginPhone = role === 'customer_verify' && this.currentUser && this.currentUser.role === 'customer'
+                        ? this.currentUser.phone
+                        : ((role === 'customer' || role === 'customer_verify') ? (localStorage.getItem('artfive_remembered_phone') || '') : '');
                     this.loginPassword = '';
-                    this.loginCustomerName = (role === 'customer' || role === 'customer_verify') ? (localStorage.getItem('artfive_remembered_name') || '') : '';
+                    this.loginCustomerName = role === 'customer_verify' && this.currentUser && this.currentUser.role === 'customer'
+                        ? this.currentUser.name
+                        : ((role === 'customer' || role === 'customer_verify') ? (localStorage.getItem('artfive_remembered_name') || '') : '');
                     this.loginStaffName = '';
                     this.showLoginPwd = false;
                     this.showLoginModal = true; 
@@ -2886,6 +2967,26 @@
                     };
                     try {
                         await this.apiRequest('/api/requests', { method: 'POST', body: { data: requestData } });
+                        try {
+                            await this.apiRequest('/api/customer/passenger-profiles', {
+                                method: 'POST',
+                                body: {
+                                    profiles: this.ticketReqForm.passengers.map(p => ({
+                                        fullName: p.fullName,
+                                        age: p.age,
+                                        gender: p.gender,
+                                        fromStation: this.ticketReqForm.fromStation,
+                                        toStation: this.ticketReqForm.toStation,
+                                        travelClass: this.ticketReqForm.travelClass
+                                    }))
+                                }
+                            });
+                            const profileResult = await this.apiRequest('/api/customer/passenger-profiles');
+                            this.savedPassengerProfiles = profileResult.profiles || [];
+                            localStorage.setItem('artfive_saved_passenger_profiles', JSON.stringify(this.savedPassengerProfiles));
+                        } catch (profileError) {
+                            console.warn('My ARTfive! Could not sync passenger filters to D1:', profileError.message);
+                        }
                         await this.loadTicketRequestsFromStorage();
                         alert('My ARTfive! Your railway ticket request was submitted successfully and saved centrally.');
                         this.activeCustOption = null;
