@@ -206,6 +206,7 @@ export default {
           await env.DB.prepare(
             "INSERT INTO visitor_activity (visitor_key, ip_address, visitor_name, city, region, country, device, operating_system, browser, isp, first_seen, last_seen, visit_count, last_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?) ON CONFLICT(visitor_key) DO UPDATE SET ip_address = excluded.ip_address, visitor_name = CASE WHEN excluded.visitor_name != 'Unknown' THEN excluded.visitor_name ELSE visitor_activity.visitor_name END, city = excluded.city, region = excluded.region, country = excluded.country, device = excluded.device, operating_system = excluded.operating_system, browser = excluded.browser, isp = excluded.isp, last_seen = excluded.last_seen, visit_count = visitor_activity.visit_count + 1, last_path = excluded.last_path"
           ).bind(visitorKey, ip, visitorName, details.city, details.region, details.country, details.device, details.operatingSystem, details.browser, details.isp, now, now, path.slice(0, 500)).run();
+          await env.DB.prepare("INSERT INTO visitor_page_views (visitor_key, ip_address, page_path, visited_at) VALUES (?, ?, ?, ?)").bind(visitorKey, ip, path.slice(0, 500), now).run();
         } catch (error) {
           console.warn("My ARTfive! visitor activity could not be recorded:", error && error.message ? error.message : String(error));
         }
@@ -309,7 +310,7 @@ export default {
         const owner = await getManagerVerifiedOwner(request, env, now);
         if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required for Control." }, 403);
         const result = await env.DB.prepare(
-          "SELECT v.visitor_key, v.ip_address, v.visitor_name, v.city, v.region, v.country, v.device, v.operating_system, v.browser, v.isp, v.first_seen, v.last_seen, v.visit_count, v.last_path, CASE WHEN b.ip_address IS NULL THEN 0 ELSE 1 END AS is_blocked FROM visitor_activity v LEFT JOIN blocked_ips b ON b.ip_address = v.ip_address ORDER BY v.last_seen DESC LIMIT 500"
+          "SELECT v.visitor_key, v.ip_address, v.visitor_name, v.city, v.region, v.country, v.device, v.operating_system, v.browser, v.isp, v.first_seen, v.last_seen, v.visit_count, v.last_path, COALESCE(p.pages_visited, '') AS pages_visited, COALESCE(l.login_attempts, 0) AS login_attempts, CASE WHEN b.ip_address IS NULL THEN 0 ELSE 1 END AS is_blocked FROM visitor_activity v LEFT JOIN blocked_ips b ON b.ip_address = v.ip_address LEFT JOIN (SELECT visitor_key, GROUP_CONCAT(DISTINCT page_path) AS pages_visited FROM visitor_page_views GROUP BY visitor_key) p ON p.visitor_key = v.visitor_key LEFT JOIN (SELECT ip_address, COUNT(*) AS login_attempts FROM security_logs WHERE event_type LIKE '%login_failed%' GROUP BY ip_address) l ON l.ip_address = v.ip_address ORDER BY v.last_seen DESC LIMIT 500"
         ).all();
         const totals = await env.DB.prepare("SELECT COUNT(*) AS visitors, COALESCE(SUM(visit_count), 0) AS visits FROM visitor_activity").first();
         const blocked = await env.DB.prepare("SELECT COUNT(*) AS count FROM blocked_ips WHERE blocked_until IS NULL OR blocked_until > ?").bind(now).first();
