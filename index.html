@@ -1606,7 +1606,19 @@
                 <template x-if="loginRole === 'owner'">
                     <div class="space-y-4">
                         <div x-show="!hasOwnerAccount()" class="bg-emerald-950/50 border border-emerald-500/30 p-3 rounded-xl text-xs text-emerald-300">
-                            <i class="fa-solid fa-lock"></i> <strong>One-Time Owner Setup (Single Person Only):</strong> Create your permanent Email and Password. Once saved, only this account can access My Dashboard.
+                            <i class="fa-solid fa-lock"></i> <strong>One-Time Owner Setup:</strong> Create the first Owner account. The setup key must already be configured securely in the Cloudflare Worker.
+                        </div>
+                        <div x-show="!hasOwnerAccount()">
+                            <label class="block text-xs font-bold text-slate-300 mb-1">Owner Full Name</label>
+                            <input type="text" x-model="loginOwnerName" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter owner full name">
+                        </div>
+                        <div x-show="!hasOwnerAccount()">
+                            <label class="block text-xs font-bold text-slate-300 mb-1">Owner Phone Number (optional)</label>
+                            <input type="tel" x-model="loginPhone" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter phone number">
+                        </div>
+                        <div x-show="!hasOwnerAccount()">
+                            <label class="block text-xs font-bold text-slate-300 mb-1">One-Time Cloudflare Setup Key</label>
+                            <input type="password" x-model="ownerSetupKey" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter setup key">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-300 mb-1">Owner Email</label>
@@ -1788,6 +1800,7 @@
 
                     // Restore only a real server-side session; browser-stored phone numbers are not authentication.
                     this.restoreCentralSession();
+                    this.checkOwnerSetup();
 
                     if (this.customers.length > 0 && !this.uploadForm.customerId) {
                         this.uploadForm.customerId = this.customers[0].id;
@@ -1796,7 +1809,16 @@
 
                 hasOwnerAccount() {
                     // Owner credentials are verified by the Worker against D1, never by localStorage.
-                    return true;
+                    return this.ownerExists !== false;
+                },
+
+                async checkOwnerSetup() {
+                    try {
+                        const result = await this.apiRequest('/api/owner/status');
+                        this.ownerExists = !!result.ownerExists;
+                    } catch (error) {
+                        this.ownerExists = true;
+                    }
                 },
 
                 hasOption11Account() {
@@ -1874,6 +1896,9 @@
                 
                 loginRole: 'customer',
                 loginEmail: '',
+                loginOwnerName: '',
+                ownerSetupKey: '',
+                ownerExists: null,
                 loginPhone: '',
                 loginPassword: '',
                 loginCustomerName: '',
@@ -2452,6 +2477,20 @@
                             if (this.loginRole === 'staff_new') {
                                 alert('My ARTfive! Staff registration is controlled by the Owner. Ask the Owner to create your staff account first.');
                                 return;
+                            }
+                            if (this.loginRole === 'owner' && this.ownerExists === false) {
+                                await this.apiRequest('/api/owner/setup', {
+                                    method: 'POST',
+                                    body: {
+                                        setupKey: this.ownerSetupKey,
+                                        name: this.loginOwnerName.trim(),
+                                        email: identifier,
+                                        phone: this.loginPhone.trim(),
+                                        password
+                                    }
+                                });
+                                this.ownerExists = true;
+                                this.ownerSetupKey = '';
                             }
                             result = await this.apiRequest('/api/owner/login', {
                                 method: 'POST',
