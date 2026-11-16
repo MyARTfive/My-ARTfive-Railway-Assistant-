@@ -422,7 +422,7 @@
                                     <p class="text-slate-300" x-text="'Route: ' + req.fromStation + ' ➔ ' + req.toStation"></p>
                                     <div class="flex gap-2">
                                         <button @click="openFullRequestFormModal(req)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded font-bold transition">View Full Request Form</button>
-                                        <button @click="deleteTicketRequest(req.id)" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded font-bold transition"><i class="fa-solid fa-trash"></i> Delete</button>
+                                        <button x-show="currentUser && currentUser.role === 'owner'" @click="deleteTicketRequest(req.id)" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded font-bold transition"><i class="fa-solid fa-trash"></i> Delete</button>
                                     </div>
                                 </div>
                             </template>
@@ -449,7 +449,7 @@
                             
                             <div class="space-y-3">
                                 <p class="text-xs font-bold text-slate-300">Choose Upload Method:</p>
-                                <input type="file" x-ref="staffFile" accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword" @change="handleFileUpload($event)" class="hidden">
+                                <input type="file" x-ref="staffFile" accept=".pdf,application/pdf" @change="handleFileUpload($event)" class="hidden">
                                 <input type="file" x-ref="staffImage" accept="image/*" @change="handleFileUpload($event)" class="hidden">
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <button @click="$refs.staffFile.click()" type="button" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-3.5 text-xs text-emerald-300 font-bold flex items-center justify-center gap-2 transition shadow">
@@ -1867,7 +1867,7 @@
                 showLoginPwd: false,
                 showOption11Pwd: false,
 
-                currentUser: JSON.parse(localStorage.getItem('artfive_current_user') || 'null'),
+                currentUser: null,
 
                 option11Authenticated: false,
                 option11Phone: '',
@@ -2484,14 +2484,14 @@
                     const password = String(this.loginPassword || '').trim();
                     try {
                         let result;
-                        if (this.loginRole === 'owner' || this.loginRole === 'staff') {
+                        if (this.loginRole === 'owner' || this.loginRole === 'staff' || this.loginRole === 'staff_new') {
                             const identifier = this.loginRole === 'owner' ? this.loginEmail.trim() : this.loginPhone.trim();
                             if (!identifier || !password) {
                                 alert('My ARTfive! Enter your registered login ID and password.');
                                 return;
                             }
                             if (this.loginRole === 'staff_new') {
-                                alert('My ARTfive! Staff accounts must be created and authorised by the Owner before staff can sign in.');
+                                alert('My ARTfive! Staff registration is controlled by the Owner. Ask the Owner to create your staff account first.');
                                 return;
                             }
                             result = await this.apiRequest('/api/owner/login', {
