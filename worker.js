@@ -306,6 +306,40 @@ export default {
         return json({ success: true, message: "My ARTfive! Manager security verified." }, 200, { "Set-Cookie": managerSessionCookie(managerToken) });
       }
 
+      if (path === "/api/owner/manager/reset" && method === "POST") {
+        const ownerSession = await getSessionUser(request, env, now);
+        if (!ownerSession || ownerSession.role !== "owner") {
+          await logSecurity(env, ip, "manager_password_reset_denied", "Non-owner attempted Manager password recovery", now);
+          return json({ success: false, message: "Only the signed-in Owner can recover Manager access." }, 403);
+        }
+        const body = await readJson(request);
+        const ownerPassword = String(body.owner_password || "");
+        const newPassword = String(body.new_password || "");
+        if (!ownerPassword || newPassword.length < 12 || newPassword.length > 256) {
+          return json({ success: false, message: "Enter your Owner account password and a new Manager password of at least 12 characters." }, 400);
+        }
+        const ownerRecord = await env.DB.prepare(
+          "SELECT password_hash FROM users WHERE id = ? AND role = 'owner' AND active = 1 LIMIT 1"
+        ).bind(ownerSession.id).first();
+        if (!ownerRecord || !(await verifyPassword(ownerPassword, ownerRecord.password_hash))) {
+          await logSecurity(env, ip, "manager_password_reset_failed", "Owner password verification failed during Manager recovery", now);
+          return json({ success: false, message: "Owner account password was not accepted. Manager password was not changed." }, 401);
+        }
+        const managerRecord = await env.DB.prepare(
+          "SELECT owner_id FROM manager_credentials WHERE owner_id = ? LIMIT 1"
+        ).bind(ownerSession.id).first();
+        if (!managerRecord) {
+          return json({ success: false, message: "Manager credentials are not configured yet. Open Option 11 to set them up first." }, 404);
+        }
+        const passwordHash = await hashPassword(newPassword);
+        await env.DB.prepare(
+          "UPDATE manager_credentials SET password_hash = ?, updated_at = ? WHERE owner_id = ?"
+        ).bind(passwordHash, now, ownerSession.id).run();
+        await env.DB.prepare("DELETE FROM manager_sessions WHERE owner_id = ?").bind(ownerSession.id).run();
+        await logSecurity(env, ip, "manager_password_reset_success", "Owner reset Manager password after Owner password verification", now);
+        return json({ success: true, message: "My ARTfive! Manager password reset successfully. Your existing Manager phone number is unchanged. Verify again using the new password." });
+      }
+
       if (path === "/api/owner/control/visitors" && method === "GET") {
         const owner = await getManagerVerifiedOwner(request, env, now);
         if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required for Control." }, 403);
@@ -314,7 +348,8 @@ export default {
         ).all();
         const totals = await env.DB.prepare("SELECT COUNT(*) AS visitors, COALESCE(SUM(visit_count), 0) AS visits FROM visitor_activity").first();
         const blocked = await env.DB.prepare("SELECT COUNT(*) AS count FROM blocked_ips WHERE blocked_until IS NULL OR blocked_until > ?").bind(now).first();
-        return json({ success: true, visitors: result.results || [], totals: totals || { visitors: 0, visits: 0 }, blockedCount: blocked ? blocked.count : 0 });
+        const blockedIps = await env.DB.prepare("SELECT ip_address, reason, created_at, blocked_until FROM blocked_ips WHERE blocked_until IS NULL OR blocked_until > ? ORDER BY created_at DESC LIMIT 500").bind(now).all();
+        return json({ success: true, visitors: result.results || [], blockedIps: blockedIps.results || [], totals: totals || { visitors: 0, visits: 0 }, blockedCount: blocked ? blocked.count : 0 });
       }
 
       if (path === "/api/owner/control/block" && method === "POST") {
