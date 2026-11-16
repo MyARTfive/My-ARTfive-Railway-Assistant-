@@ -1,0 +1,10 @@
+{
+  "name": "my-artfive-railway-assistant",
+  "compatibility_date": "2026-11-16",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_id": "19ac26a4-4cdb-452f-915d-2aed755ab984"
+    }
+  ]
+}
