@@ -1393,12 +1393,12 @@
                 </div>
 
                 <div x-show="activeStaffOption === null" class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                    <div @click="activeStaffOption = 1" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                    <div @click="activeStaffOption = 1; loadTicketRequestsFromStorage()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-file-lines"></i></div>
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt1Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt1Desc"></p>
                     </div>
-                    <div @click="activeStaffOption = 2" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                    <div @click="activeStaffOption = 2; loadAssignedTicketsFromDB()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-cloud-arrow-up"></i></div>
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt2Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt2Desc"></p>
@@ -1757,7 +1757,6 @@
                         } catch (e) {}
                     }
 
-                    this.loadTicketRequestsFromStorage();
                     this.loadSavedPassengerProfiles();
 
                     let timer = setInterval(() => {
@@ -1769,13 +1768,8 @@
                         }
                     }, 3000);
 
-                    const rememberedPhone = localStorage.getItem('artfive_remembered_phone');
-                    const rememberedName = localStorage.getItem('artfive_remembered_name');
-                    if (rememberedPhone && !this.currentUser) {
-                        this.currentUser = { name: rememberedName || 'Customer', role: 'customer', id: rememberedPhone, phone: rememberedPhone };
-                    }
-
-                    this.loadAssignedTicketsFromDB();
+                    // Restore only a real server-side session; browser-stored phone numbers are not authentication.
+                    this.restoreCentralSession();
 
                     if (this.customers.length > 0 && !this.uploadForm.customerId) {
                         this.uploadForm.customerId = this.customers[0].id;
@@ -2305,6 +2299,9 @@
                         this.loadTicketRequestsFromStorage();
                     }
                     if (optNum === 9 || optNum === 1) {
+                        this.loadAssignedTicketsFromDB();
+                    }
+                    if (optNum === 9 || optNum === 1) {
                         if (this.customers.length > 0 && !this.uploadForm.customerId) {
                             this.uploadForm.customerId = this.customers[0].id;
                         }
@@ -2483,138 +2480,70 @@
                     this.showLoginModal = true; 
                 },
 
-                performLogin() {
-                    if (this.loginRole === 'owner') {
-                        const cleanEmail = this.loginEmail.trim();
-                        const cleanPwd = this.loginPassword.trim();
-
-                        if (!cleanEmail || !cleanPwd) { 
-                            alert('Please enter owner email and password.'); 
-                            return; 
-                        }
-
-                        let savedOwner = null;
-                        try {
-                            savedOwner = JSON.parse(localStorage.getItem('artfive_owner_credentials') || 'null');
-                        } catch (e) {}
-
-                        if (!savedOwner || !savedOwner.email || !savedOwner.password) {
-                            // One-time setup: Lock My Dashboard to this single owner permanently
-                            localStorage.setItem('artfive_owner_credentials', JSON.stringify({
-                                email: cleanEmail,
-                                password: cleanPwd
-                            }));
-                            alert('My Dashboard Owner Account created and locked permanently to ' + cleanEmail + '!');
+                async performLogin() {
+                    const password = String(this.loginPassword || '').trim();
+                    try {
+                        let result;
+                        if (this.loginRole === 'owner' || this.loginRole === 'staff') {
+                            const identifier = this.loginRole === 'owner' ? this.loginEmail.trim() : this.loginPhone.trim();
+                            if (!identifier || !password) {
+                                alert('My ARTfive! Enter your registered login ID and password.');
+                                return;
+                            }
+                            if (this.loginRole === 'staff_new') {
+                                alert('My ARTfive! Staff accounts must be created and authorised by the Owner before staff can sign in.');
+                                return;
+                            }
+                            result = await this.apiRequest('/api/owner/login', {
+                                method: 'POST',
+                                body: { identifier, password }
+                            });
                         } else {
-                            // Strict verification on every subsequent login
-                            if (savedOwner.email.toLowerCase() !== cleanEmail.toLowerCase()) {
-                                alert('Access Denied! Email does not match the registered My Dashboard owner.');
+                            const phone = this.loginPhone.trim();
+                            if (!phone || !password || (this.loginRole !== 'customer_verify' && !this.loginCustomerName.trim() && this.loginRole === 'customer_new')) {
+                                alert('My ARTfive! Enter your name (for registration), phone number and password.');
                                 return;
                             }
-                            if (savedOwner.password !== cleanPwd) {
-                                alert('Incorrect My Dashboard password! Please try again.');
-                                return;
+                            if (this.loginRole === 'customer_new') {
+                                await this.apiRequest('/api/customer/register', {
+                                    method: 'POST',
+                                    body: { name: this.loginCustomerName.trim(), phone, password }
+                                });
                             }
+                            result = await this.apiRequest('/api/customer/login', {
+                                method: 'POST',
+                                body: { phone, password }
+                            });
                         }
-
-                        this.currentUser = { name: 'My ARTfive!', role: 'owner', email: cleanEmail };
-                        this.currentDashboard = 'owner';
-                        this.loadTicketRequestsFromStorage();
-                    } else if (this.loginRole === 'staff' || this.loginRole === 'staff_new') {
-                        if (!this.loginStaffName.trim() || !this.loginPhone.trim() || !this.loginPassword.trim()) { 
-                            alert('Please fill in Staff Full Name, Phone Number, and Password.'); 
-                            return; 
-                        }
-                        const phoneKey = 'staff_' + this.loginPhone.trim();
-                        let storedPasswords = {};
-                        try {
-                            storedPasswords = JSON.parse(localStorage.getItem('artfive_registered_passwords') || '{}');
-                        } catch(e) {}
-
-                        if (this.loginRole === 'staff_new') {
-                            storedPasswords[phoneKey] = this.loginPassword.trim();
-                            localStorage.setItem('artfive_registered_passwords', JSON.stringify(storedPasswords));
-                        } else {
-                            if (!storedPasswords[phoneKey]) {
-                                alert('This phone number is not registered yet. Please click "New Sign In? Register Here".');
-                                return;
-                            }
-                            if (storedPasswords[phoneKey] !== this.loginPassword.trim()) {
-                                alert('Incorrect password! Please check your password and try again.');
-                                return;
-                            }
-                        }
-
-                        this.currentUser = { name: this.loginStaffName.trim(), role: 'staff', phone: this.loginPhone.trim() };
-                        this.currentDashboard = 'staff';
-                        this.loadTicketRequestsFromStorage();
-                    } else {
-                        if (!this.loginCustomerName.trim() || !this.loginPhone.trim() || !this.loginPassword.trim()) { 
-                            alert('Please fill in Customer Full Name, Phone Number, and Password.'); 
-                            return; 
-                        }
-                        const custPhone = this.loginPhone.trim();
-                        const custName = this.loginCustomerName.trim();
-                        const custPwd = this.loginPassword.trim();
-                        let custId = custPhone;
-                        
-                        const phoneKey = 'cust_' + custPhone;
-                        let storedPasswords = {};
-                        try {
-                            storedPasswords = JSON.parse(localStorage.getItem('artfive_registered_passwords') || '{}');
-                        } catch(e) {}
-
-                        if (this.loginRole === 'customer_new') {
-                            storedPasswords[phoneKey] = custPwd;
-                            localStorage.setItem('artfive_registered_passwords', JSON.stringify(storedPasswords));
-                        } else {
-                            if (!storedPasswords[phoneKey]) {
-                                alert('This phone number is not registered yet. Please click "New Sign In? Register Here".');
-                                return;
-                            }
-                            if (storedPasswords[phoneKey] !== custPwd) {
-                                alert('Incorrect password! Please check your password and try again.');
-                                return;
-                            }
-                        }
-
-                        this.currentUser = { name: custName, role: 'customer', id: custId, phone: custPhone };
-                        
-                        localStorage.setItem('artfive_remembered_phone', custPhone);
-                        localStorage.setItem('artfive_remembered_name', custName);
-                        localStorage.setItem('artfive_current_user', JSON.stringify(this.currentUser));
-
-                        if (!this.customers.some(c => c.phone === custPhone)) {
-                            this.customers.push({ id: custId, name: custName, phone: custPhone });
-                            localStorage.setItem('artfive_customers', JSON.stringify(this.customers));
-                        }
-
-                        if (!this.uploadForm.customerId && this.customers.length > 0) {
-                            this.uploadForm.customerId = this.customers[0].id;
-                        }
-
-                        this.currentDashboard = 'customer';
-                        if (this.loginRole === 'customer_verify') {
-                            this.activeCustOption = 4;
-                        }
+                        this.currentUser = result.user;
+                        await this.refreshCentralData();
+                        this.currentDashboard = this.currentUser.role === 'owner' ? 'owner' :
+                            (this.currentUser.role === 'staff' ? 'staff' : 'customer');
+                        if (this.loginRole === 'customer_verify') this.activeCustOption = 4;
+                        this.activeMenuOption = null;
+                        this.activeStaffOption = null;
+                        this.ownerInspectStaffOpt = null;
+                        this.ownerInspectCustOpt = null;
+                        this.showLoginModal = false;
+                        this.loginPassword = '';
+                    } catch (error) {
+                        alert(error.message || 'My ARTfive! Sign-in failed. Please check your details.');
                     }
-                    this.activeMenuOption = null; 
-                    this.activeStaffOption = null; 
-                    this.ownerInspectStaffOpt = null;
-                    this.ownerInspectCustOpt = null;
-                    this.showLoginModal = false;
                 },
 
-                logout() { 
-                    this.currentUser = null; 
-                    localStorage.removeItem('artfive_current_user');
-                    this.currentDashboard = 'public'; 
-                    this.activeMenuOption = null; 
-                    this.activeCustOption = null; 
-                    this.activeStaffOption = null; 
+                async logout() {
+                    try { await this.apiRequest('/api/logout', { method: 'POST' }); } catch (e) {}
+                    this.currentUser = null;
+                    this.ticketRequests = [];
+                    this.assignedTickets = [];
+                    this.customers = [];
+                    this.currentDashboard = 'public';
+                    this.activeMenuOption = null;
+                    this.activeCustOption = null;
+                    this.activeStaffOption = null;
                     this.ownerInspectStaffOpt = null;
                     this.ownerInspectCustOpt = null;
-                    this.option11Authenticated = false; 
+                    this.option11Authenticated = false;
                     this.option11Phone = '';
                     this.option11Password = '';
                 },
@@ -2628,26 +2557,17 @@
                     this.ownerInspectCustOpt = null;
                 },
 
-                selectCustomerOption(optNum) { 
-                    if (optNum === 4) { 
-                        this.openLoginModal('customer_verify'); 
-                        return; 
+                selectCustomerOption(optNum) {
+                    if (optNum === 4) {
+                        this.openLoginModal('customer_verify');
+                        return;
                     }
-
-                    const rememberedPhone = localStorage.getItem('artfive_remembered_phone');
-                    const rememberedName = localStorage.getItem('artfive_remembered_name');
-
-                    if (!rememberedPhone) {
+                    if (!this.currentUser || this.currentUser.role !== 'customer') {
                         this.openLoginModal('customer');
                         return;
                     }
-
-                    if (!this.currentUser) {
-                        this.currentUser = { name: rememberedName || 'Customer', role: 'customer', id: rememberedPhone, phone: rememberedPhone };
-                    }
-
-                    this.currentDashboard = 'customer'; 
-                    this.activeCustOption = optNum; 
+                    this.currentDashboard = 'customer';
+                    this.activeCustOption = optNum;
                 },
 
                 async uploadAndAssignTicket() {
@@ -2748,10 +2668,6 @@
                         alert(error.message || 'My ARTfive! Could not submit your request. Please try again.');
                     }
                 }
-
-            }
-
-                                }
             }
         }
         </script>
