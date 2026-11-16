@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "my-artfive-railway-assistant",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-16",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-artfive-railway-db",
+      "database_id": "9ccc1d01-a125-4430-8ad4-47eef289a85e"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
