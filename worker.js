@@ -3,6 +3,7 @@ const PASSWORD_ITERATIONS = 100000;
 const SESSION_DAYS = 7;
 const MAX_BODY_BYTES = 3 * 1024 * 1024;
 const SESSION_COOKIE = "artfive_session";
+const MANAGER_SESSION_COOKIE = "artfive_manager_session";
 
 const json = (data, status = 200, headers = {}) =>
   Response.json(data, { status, headers });
@@ -70,6 +71,41 @@ function cookieValue(request, name) {
 
 function sessionCookie(value, maxAge = SESSION_DAYS * 86400) {
   return `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+}
+
+function managerSessionCookie(value, maxAge = 2 * 60 * 60) {
+  return MANAGER_SESSION_COOKIE + "=" + encodeURIComponent(value) + "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=" + maxAge;
+}
+
+async function createManagerSession(owner, env, now) {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const token = bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  const tokenHash = await sha256Base64(token);
+  const expiresAt = now + 2 * 60 * 60 * 1000;
+  await env.DB.prepare("DELETE FROM manager_sessions WHERE owner_id = ? OR expires_at <= ?").bind(owner.id, now).run();
+  await env.DB.prepare("INSERT INTO manager_sessions (token_hash, owner_id, expires_at, created_at) VALUES (?, ?, ?, ?)").bind(tokenHash, owner.id, expiresAt, now).run();
+  return token;
+}
+
+async function getManagerVerifiedOwner(request, env, now) {
+  const owner = await getSessionUser(request, env, now);
+  if (!owner || owner.role !== "owner") return null;
+  const token = cookieValue(request, MANAGER_SESSION_COOKIE);
+  if (!token) return null;
+  const tokenHash = await sha256Base64(token);
+  const row = await env.DB.prepare(
+    "SELECT owner_id FROM manager_sessions WHERE token_hash = ? AND owner_id = ? AND expires_at > ? LIMIT 1"
+  ).bind(tokenHash, owner.id, now).first();
+  return row ? owner : null;
+}
+
+function visitorDetails(request) {
+  const ua = request.headers.get("User-Agent") || "";
+  const cf = request.cf || {};
+  const device = /ipad|tablet/i.test(ua) ? "Tablet" : /mobile|iphone|android/i.test(ua) ? "Mobile" : "Desktop";
+  const operatingSystem = /windows/i.test(ua) ? "Windows" : /android/i.test(ua) ? "Android" : /iphone|ipad|ios/i.test(ua) ? "iOS" : /mac os|macintosh/i.test(ua) ? "macOS" : /linux/i.test(ua) ? "Linux" : "Unknown";
+  const browser = /edg\//i.test(ua) ? "Edge" : /opr\//i.test(ua) ? "Opera" : /chrome\//i.test(ua) && !/edg\//i.test(ua) ? "Chrome" : /firefox\//i.test(ua) ? "Firefox" : /safari\//i.test(ua) && !/chrome\//i.test(ua) ? "Safari" : "Unknown";
+  return { ua, device, operatingSystem, browser, city: cf.city || null, region: cf.region || cf.regionCode || null, country: cf.country || null, isp: cf.asOrganization || null };
 }
 
 function publicUser(user) {
@@ -160,7 +196,22 @@ export default {
       }
     }
 
-    if (!path.startsWith("/api/")) return env.ASSETS.fetch(request);
+    if (!path.startsWith("/api/")) {
+      if (method === "GET" && ip !== "unknown" && !/\.[a-z0-9]{1,8}$/i.test(path)) {
+        try {
+          const details = visitorDetails(request);
+          const visitorKey = await sha256Base64(ip + "|" + details.ua);
+          const signedIn = await getSessionUser(request, env, now);
+          const visitorName = signedIn ? String(signedIn.name || "Unknown").slice(0, 100) : "Unknown";
+          await env.DB.prepare(
+            "INSERT INTO visitor_activity (visitor_key, ip_address, visitor_name, city, region, country, device, operating_system, browser, isp, first_seen, last_seen, visit_count, last_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?) ON CONFLICT(visitor_key) DO UPDATE SET ip_address = excluded.ip_address, visitor_name = CASE WHEN excluded.visitor_name != 'Unknown' THEN excluded.visitor_name ELSE visitor_activity.visitor_name END, city = excluded.city, region = excluded.region, country = excluded.country, device = excluded.device, operating_system = excluded.operating_system, browser = excluded.browser, isp = excluded.isp, last_seen = excluded.last_seen, visit_count = visitor_activity.visit_count + 1, last_path = excluded.last_path"
+          ).bind(visitorKey, ip, visitorName, details.city, details.region, details.country, details.device, details.operatingSystem, details.browser, details.isp, now, now, path.slice(0, 500)).run();
+        } catch (error) {
+          console.warn("My ARTfive! visitor activity could not be recorded:", error && error.message ? error.message : String(error));
+        }
+      }
+      return env.ASSETS.fetch(request);
+    }
 
     try {
       if (ip !== "unknown") {
@@ -250,7 +301,43 @@ export default {
           await logSecurity(env, ip, "manager_credentials_created", "Manager credentials securely stored in D1", now);
         }
         await logSecurity(env, ip, "manager_login_success", "Owner verified for Manager", now);
-        return json({ success: true, message: "My ARTfive! Manager security verified." });
+        const managerToken = await createManagerSession(owner, env, now);
+        return json({ success: true, message: "My ARTfive! Manager security verified." }, 200, { "Set-Cookie": managerSessionCookie(managerToken) });
+      }
+
+      if (path === "/api/owner/control/visitors" && method === "GET") {
+        const owner = await getManagerVerifiedOwner(request, env, now);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required for Control." }, 403);
+        const result = await env.DB.prepare(
+          "SELECT v.visitor_key, v.ip_address, v.visitor_name, v.city, v.region, v.country, v.device, v.operating_system, v.browser, v.isp, v.first_seen, v.last_seen, v.visit_count, v.last_path, CASE WHEN b.ip_address IS NULL THEN 0 ELSE 1 END AS is_blocked FROM visitor_activity v LEFT JOIN blocked_ips b ON b.ip_address = v.ip_address ORDER BY v.last_seen DESC LIMIT 500"
+        ).all();
+        const totals = await env.DB.prepare("SELECT COUNT(*) AS visitors, COALESCE(SUM(visit_count), 0) AS visits FROM visitor_activity").first();
+        const blocked = await env.DB.prepare("SELECT COUNT(*) AS count FROM blocked_ips WHERE blocked_until IS NULL OR blocked_until > ?").bind(now).first();
+        return json({ success: true, visitors: result.results || [], totals: totals || { visitors: 0, visits: 0 }, blockedCount: blocked ? blocked.count : 0 });
+      }
+
+      if (path === "/api/owner/control/block" && method === "POST") {
+        const owner = await getManagerVerifiedOwner(request, env, now);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required for Control." }, 403);
+        const body = await readJson(request);
+        const targetIp = String(body.ip_address || "").trim();
+        const reason = String(body.reason || "Blocked by My ARTfive! Owner").trim().slice(0, 250);
+        if (!targetIp || targetIp === "unknown" || targetIp.length > 64) return json({ success: false, message: "A valid visitor IP address is required." }, 400);
+        if (targetIp === ip) return json({ success: false, message: "You cannot block your current connection." }, 400);
+        await env.DB.prepare("INSERT INTO blocked_ips (ip_address, blocked_until, reason, created_at) VALUES (?, NULL, ?, ?) ON CONFLICT(ip_address) DO UPDATE SET blocked_until = NULL, reason = excluded.reason, created_at = excluded.created_at").bind(targetIp, reason, now).run();
+        await logSecurity(env, ip, "visitor_ip_blocked", "Owner blocked visitor IP " + targetIp, now);
+        return json({ success: true, message: "My ARTfive! Visitor access blocked." });
+      }
+
+      if (path === "/api/owner/control/unblock" && method === "POST") {
+        const owner = await getManagerVerifiedOwner(request, env, now);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required for Control." }, 403);
+        const body = await readJson(request);
+        const targetIp = String(body.ip_address || "").trim();
+        if (!targetIp || targetIp.length > 64) return json({ success: false, message: "A valid visitor IP address is required." }, 400);
+        await env.DB.prepare("DELETE FROM blocked_ips WHERE ip_address = ?").bind(targetIp).run();
+        await logSecurity(env, ip, "visitor_ip_unblocked", "Owner unblocked visitor IP " + targetIp, now);
+        return json({ success: true, message: "My ARTfive! Visitor access unblocked." });
       }
 
       if (path === "/api/owner/login" && method === "POST") {
