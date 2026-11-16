@@ -196,18 +196,17 @@ export default {
         if (existing) return json({ success: false, message: "An owner account already exists. A second Owner cannot be created." }, 409);
         const name = String(body.name || "").trim();
         const email = String(body.email || "").trim().toLowerCase();
-        const phone = String(body.phone || "").trim();
         const password = String(body.password || "");
         if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 12) {
           return json({ success: false, message: "Enter a valid email, name and a password of at least 12 characters." }, 400);
         }
-        if (name.length > 100 || email.length > 254 || phone.length > 30) return json({ success: false, message: "Some details are too long." }, 400);
+        if (name.length > 100 || email.length > 254) return json({ success: false, message: "Some details are too long." }, 400);
         const id = crypto.randomUUID();
         const passwordHash = await hashPassword(password);
         await env.DB.prepare(
           `INSERT INTO users (id, name, email, phone, role, password_hash, active, created_at)
-           VALUES (?, ?, ?, ?, 'owner', ?, 1, ?)`
-        ).bind(id, name, email, phone || null, passwordHash, now).run();
+           VALUES (?, ?, ?, NULL, 'owner', ?, 1, ?)`
+        ).bind(id, name, email, passwordHash, now).run();
         await logSecurity(env, ip, "owner_setup_success", "Owner account created", now);
         return json({ success: true, message: "Owner account created securely. Please sign in." }, 201);
       }
@@ -216,15 +215,16 @@ export default {
         const body = await readJson(request);
         const identifier = String(body.identifier || "").trim();
         const password = String(body.password || "");
-        if (!identifier || !password) return json({ success: false, message: "Enter your email or phone number and password." }, 400);
+        if (!identifier || !password) return json({ success: false, message: "Enter your email and password." }, 400);
         const user = await env.DB.prepare(
           `SELECT id, name, email, phone, role, password_hash, active FROM users
-           WHERE (lower(email) = lower(?) OR phone = ?) AND role IN ('owner', 'staff')
+           WHERE (role = 'owner' AND lower(email) = lower(?))
+              OR (role = 'staff' AND (lower(email) = lower(?) OR phone = ?))
            ORDER BY CASE WHEN role = 'owner' THEN 0 ELSE 1 END LIMIT 1`
-        ).bind(identifier, identifier).first();
+        ).bind(identifier, identifier, identifier).first();
         if (!user || user.active !== 1 || !(await verifyPassword(password, user.password_hash))) {
           await logSecurity(env, ip, "staff_owner_login_failed", "Invalid Owner/Staff sign-in", now);
-          return json({ success: false, message: "Email/phone number or password was not accepted." }, 401);
+          return json({ success: false, message: "Email or password was not accepted." }, 401);
         }
         const token = await createSession(user, env, now);
         await logSecurity(env, ip, "staff_owner_login_success", `${user.role} signed in`, now);
@@ -390,6 +390,11 @@ export default {
 
       return json({ success: false, message: "API endpoint not found." }, 404);
     } catch (error) {
+      console.error("My ARTfive! API request failed:", {
+        path,
+        message: error && error.message ? error.message : String(error),
+        stack: error && error.stack ? error.stack : null
+      });
       if (error && error.message === "Request too large.") return json({ success: false, message: error.message }, 413);
       if (error && error.message === "Invalid JSON request.") return json({ success: false, message: error.message }, 400);
       return json({ success: false, message: "My ARTfive! Server could not complete this request. Please try again." }, 500);
