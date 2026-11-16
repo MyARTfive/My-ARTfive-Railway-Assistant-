@@ -219,7 +219,8 @@ export default {
         if (!identifier || !password) return json({ success: false, message: "Enter your email or phone number and password." }, 400);
         const user = await env.DB.prepare(
           `SELECT id, name, email, phone, role, password_hash, active FROM users
-           WHERE (lower(email) = lower(?) OR phone = ?) AND role IN ('owner', 'staff') LIMIT 1`
+           WHERE (lower(email) = lower(?) OR phone = ?) AND role IN ('owner', 'staff')
+           ORDER BY CASE WHEN role = 'owner' THEN 0 ELSE 1 END LIMIT 1`
         ).bind(identifier, identifier).first();
         if (!user || user.active !== 1 || !(await verifyPassword(password, user.password_hash))) {
           await logSecurity(env, ip, "staff_owner_login_failed", "Invalid Owner/Staff sign-in", now);
