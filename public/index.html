@@ -654,7 +654,7 @@
                             <template x-if="cms.bookingQrImage"><img :src="cms.bookingQrImage" alt="Booking QR Code" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
                             <template x-if="!cms.bookingQrImage"><i class="fa-solid fa-qrcode text-emerald-400 text-5xl"></i></template>
                         </div>
-                        <button @click="alert('Booking payment confirmed!')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt2ConfirmBtn"></button>
+                        <button @click="showAppNotice('My ARTfive! Please complete the booking request payment. We will confirm your payment after verification.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt2ConfirmBtn"></button>
                     </div>
 
                     <!-- Customer Option 3 in Owner View -->
@@ -669,7 +669,7 @@
                             <template x-if="cms.collectionQrImage"><img :src="cms.collectionQrImage" alt="Collection QR Code" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
                             <template x-if="!cms.collectionQrImage"><i class="fa-solid fa-qrcode text-emerald-400 text-5xl"></i></template>
                         </div>
-                        <button @click="alert('Collection payment confirmed!')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt3ConfirmBtn"></button>
+                        <button @click="showAppNotice('My ARTfive! Please complete the ticket collection charges payment. We will confirm it after verification.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt3ConfirmBtn"></button>
                     </div>
 
                     <!-- Customer Option 4 in Owner View -->
@@ -2808,7 +2808,7 @@
                         } else {
                             const phone = this.loginPhone.trim();
                             if (!phone || !password || (this.loginRole !== 'customer_verify' && !this.loginCustomerName.trim() && this.loginRole === 'customer_new')) {
-                                alert('My ARTfive! Enter your name (for registration), phone number and password.');
+                                this.showAppNotice('My ARTfive! Please enter your name, phone number and password to create your account.');
                                 return;
                             }
                             if (this.loginRole === 'customer_new') {
@@ -2948,16 +2948,16 @@
 
                 async submitTicketRequest() {
                     if (!this.currentUser || this.currentUser.role !== 'customer') {
-                        alert('My ARTfive! Please sign in to your customer account before submitting a ticket request.');
+                        this.showAppNotice('My ARTfive! Please sign in to your customer account to continue.');
                         this.openLoginModal('customer');
                         return;
                     }
                     if (!this.ticketReqForm.passengers[0].fullName.trim()) {
-                        alert('Please enter Passenger 1 Full Name before submitting.');
+                        this.showAppNotice('My ARTfive! Please enter the first passenger’s name to continue.');
                         return;
                     }
                     if (!this.ticketReqForm.fromStation.trim() || !this.ticketReqForm.toStation.trim()) {
-                        alert('Please select both Starting Station and Destination Station.');
+                        this.showAppNotice('My ARTfive! Please choose both your starting station and destination.');
                         return;
                     }
                     const requestData = {
