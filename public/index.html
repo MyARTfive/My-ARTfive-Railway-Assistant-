@@ -693,7 +693,7 @@
                                 <div class="bg-slate-700/50 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs gap-3">
                                     <div>
                                         <span class="font-bold text-white text-sm block" x-text="tkt.ticketTitle"></span>
-                                        <span class="text-emerald-400 font-bold" x-text="tkt.paymentConfirmed ? '✓ Payment Status Confirmed' : 'Pending Payment'"></span>
+                                        <span class="text-emerald-400 font-bold">✓ Ticket ready to view and download</span>
                                     </div>
                                     <div class="flex gap-2 flex-wrap items-center">
                                         <button @click="openFileViewer(tkt)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg font-bold transition flex items-center gap-1.5 shadow">
@@ -1164,12 +1164,7 @@
                             </select>
                             <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
                         </div>
-                        <div>
-                            <label class="flex items-center gap-2.5 bg-slate-700/50 p-3 rounded-lg border border-slate-600 cursor-pointer">
-                                <input type="checkbox" x-model="uploadForm.paymentConfirmed" class="w-4 h-4 text-emerald-600 rounded bg-slate-900 border-slate-500">
-                                <span class="text-xs font-bold text-emerald-400"><i class="fa-solid fa-circle-check"></i> 1st Check: Payment Status Confirmed (✓)</span>
-                            </label>
-                        </div>
+                        <p class="text-xs text-emerald-300">Ticket upload is enabled only after My ARTfive! have verified this request's Option 3 — Ticket Collection Charges Payment.</p>
                         
                         <div class="space-y-3">
                             <label class="block text-xs font-bold text-slate-400 mb-1">Choose Upload Method</label>
@@ -1597,12 +1592,6 @@
                         <h3 class="font-bold text-white text-lg" x-text="cms.custOpt4Title"></h3>
                         <button @click="activeCustOption = null; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
-                    <div class="bg-slate-900 border border-emerald-500/30 rounded-xl p-3 space-y-1">
-                        <p class="text-xs text-slate-400">Customer Name</p>
-                        <p class="font-bold text-white" x-text="currentUser ? currentUser.name : ''"></p>
-                        <p class="text-xs text-slate-400 mt-2">Phone Number</p>
-                        <p class="font-semibold text-emerald-300" x-text="currentUser ? currentUser.phone : ''"></p>
-                    </div>
                     <p class="text-xs text-slate-300" x-text="cms.myTicketsInstruction"></p>
                     <div class="space-y-3">
                         <template x-for="tkt in getMyAssignedTickets()" :key="tkt.id">
@@ -1947,7 +1936,7 @@
                         </div>
                         <div class="flex justify-between items-center text-xs">
                             <a href="#" @click.prevent="forgotPassword('Customer')" class="text-emerald-400 hover:underline">Forgot password?</a>
-                            <a href="#" @click.prevent="loginRole = 'customer_new'" class="text-sky-400 hover:underline">New Sign In? Register Here</a>
+                            <a x-show="loginRole !== 'customer_verify'" href="#" @click.prevent="loginRole = 'customer_new'" class="text-sky-400 hover:underline">New Sign In? Register Here</a>
                         </div>
                     </div>
                 </template>
@@ -2246,30 +2235,65 @@
                 appSourceCode: localStorage.getItem('artfive_live_code') || '',
 
                 showFileModal: false,
-                activeFileModal: { title: '', data: '' },
+                activeFileModal: { title: '', data: '', mimeType: '' },
+                activeTicketObjectUrl: '',
+
+                async prepareTicketObjectUrl() {
+                    if (this.activeTicketObjectUrl) URL.revokeObjectURL(this.activeTicketObjectUrl);
+                    this.activeTicketObjectUrl = '';
+                    if (!this.activeFileModal.data) throw new Error('My ARTfive! Ticket file data is missing. Please contact our team.');
+                    const response = await fetch(this.activeFileModal.data);
+                    if (!response.ok) throw new Error('My ARTfive! Could not read the ticket file. Please try downloading it again.');
+                    const blob = await response.blob();
+                    this.activeTicketObjectUrl = URL.createObjectURL(blob);
+                    return this.activeTicketObjectUrl;
+                },
 
                 openFileViewer(tkt) {
                     this.activeFileModal = {
-                        title: tkt.ticketTitle || 'Assigned Document',
-                        data: tkt.fileData
+                        title: tkt.ticketTitle || 'Railway_Ticket',
+                        data: tkt.fileData || '',
+                        mimeType: tkt.mimeType || ''
                     };
                     this.showFileModal = true;
                 },
 
-                openPdfInNewTab() {
+                async openPdfInNewTab() {
                     if (!this.activeFileModal.data) return;
-                    window.location.href = this.activeFileModal.data;
+                    const popup = window.open('about:blank', '_blank');
+                    try {
+                        const url = await this.prepareTicketObjectUrl();
+                        if (popup) popup.location.href = url;
+                        else await this.downloadPdfFile();
+                    } catch (error) {
+                        if (popup) popup.close();
+                        this.showAppNotice(error.message || 'My ARTfive! Could not open this ticket. Please download it instead.');
+                    }
                 },
 
-                downloadPdfFile() {
+                async downloadPdfFile() {
                     if (!this.activeFileModal.data) return;
-                    const a = document.createElement('a');
-                    a.href = this.activeFileModal.data;
-                    a.download = this.activeFileModal.title || 'Railway_Ticket.pdf';
-                    a.setAttribute('target', '_blank');
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
+                    try {
+                        const url = await this.prepareTicketObjectUrl();
+                        const mime = this.activeFileModal.mimeType || '';
+                        const extension = mime === 'application/pdf' ? '.pdf'
+                            : mime === 'application/msword' ? '.doc'
+                            : mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? '.docx'
+                            : mime === 'image/png' ? '.png'
+                            : mime === 'image/jpeg' ? '.jpg'
+                            : mime === 'image/webp' ? '.webp' : '';
+                        let filename = String(this.activeFileModal.title || 'Railway_Ticket').replace(/[\\/:*?"<>|]/g, '_');
+                        if (extension && !filename.toLowerCase().endsWith(extension)) filename += extension;
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        this.showAppNotice('My ARTfive! have prepared your ticket download. Open it from your phone Downloads folder.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not download this ticket. Please try again.');
+                    }
                 },
 
                 stats: { subscribers: 0, ratings: 0, users: 0, downloads: 0 },
@@ -2690,7 +2714,7 @@
                 fromSuggestions: [],
                 toSuggestions: [],
 
-                uploadForm: { customerId: '', requestId: '', ticketTitle: '', paymentConfirmed: false, fileData: null },
+                uploadForm: { customerId: '', requestId: '', ticketTitle: '', fileData: null },
                 customerSearch: '',
 
                 filteredCustomers() {
@@ -3434,23 +3458,17 @@
                         alert('My ARTfive! Select the registered customer, their exact ticket request and the ticket file.');
                         return;
                     }
-                    if (!this.uploadForm.paymentConfirmed) {
-                        alert('My ARTfive! Confirm Ticket Collection Charges Payment before sending.');
-                        return;
-                    }
                     try {
                         await this.saveTicketToLocalStorage({
                             customerId: this.uploadForm.customerId,
                             requestId: this.uploadForm.requestId,
                             ticketTitle: this.uploadForm.ticketTitle,
                             fileData: this.uploadForm.fileData,
-                            paymentConfirmed: true
                         });
                         await this.loadAssignedTicketsFromDB();
-                        alert('My ARTfive! Ticket uploaded to the central database and sent to the customer.');
+                        this.showAppNotice('My ARTfive! have uploaded your ticket successfully. It is now available in 🎫 Option 4 — GET MY TICKET! The customer can sign in with the same phone number and password used at sign-up.');
                         this.uploadForm.requestId = '';
                         this.uploadForm.ticketTitle = '';
-                        this.uploadForm.paymentConfirmed = false;
                         this.uploadForm.fileData = null;
                     } catch (error) {
                         alert(error.message || 'My ARTfive! Ticket upload failed.');
