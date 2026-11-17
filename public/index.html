@@ -2113,9 +2113,7 @@
                     this.restoreCentralSession();
                     this.checkOwnerSetup();
 
-                    if (this.customers.length > 0 && !this.uploadForm.customerId) {
-                        this.uploadForm.customerId = this.customers[0].id;
-                    }
+                    // Keep customer selection empty until the Owner chooses by search or filter.
                 },
 
                 hasOwnerAccount() {
@@ -2861,9 +2859,7 @@
                     reader.onload = (e) => { this.uploadForm.fileData = e.target.result; };
                     reader.onerror = () => this.showAppNotice('My ARTfive! The selected ticket file could not be read. Please try again.');
                     reader.readAsDataURL(file);
-                    if (!this.uploadForm.customerId && this.customers.length > 0) {
-                        this.uploadForm.customerId = this.customers[0].id;
-                    }
+                    // Do not auto-select a customer while choosing a file.
                 },
 
                 filterStations(type) {
