@@ -680,6 +680,9 @@
                     <div x-show="ownerInspectCustOpt === 3" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                         <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="ownerInspectCustOpt = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
                         <p class="text-xs text-slate-300" x-text="cms.payOpt3Instruction"></p>
+                    <template x-for="note in customerNotifications.filter(n => n.message === 'My ARTfive! have uploaded your railway ticket successfully. It is now available in 🎫 Option 4 — GET MY TICKET! Please sign in with the same phone number and password used when you created your customer account.')" :key="'option3-ticket-note-'+note.id">
+                        <div class="rounded-xl border border-sky-500/40 bg-slate-900 p-4 text-sm text-sky-200 whitespace-pre-wrap" x-text="note.message"></div>
+                    </template>
                         <div @click="copyToClipboard(cms.collectionUpiNumber)" class="bg-slate-900 border border-emerald-500/40 p-4 rounded-xl flex items-center justify-between cursor-pointer">
                             <span class="text-emerald-400 font-mono font-bold text-lg" x-text="cms.collectionUpiNumber"></span>
                             <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded">Tap to Copy</span>
@@ -698,6 +701,9 @@
                             <button @click="ownerInspectCustOpt = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                         </div>
                         <p class="text-xs text-slate-300" x-text="cms.myTicketsInstruction"></p>
+                    <template x-for="note in customerNotifications.filter(n => n.message === 'My ARTfive! Thank you for choosing us! Your confirmed railway ticket is ready. You can now view and download your ticket. You\'re always most welcome to visit us again. Have a safe and happy journey! ❤️')" :key="'option4-ticket-note-'+note.id">
+                        <div class="rounded-xl border border-emerald-500/40 bg-slate-900 p-4 text-sm text-emerald-200 whitespace-pre-wrap" x-text="note.message"></div>
+                    </template>
                     <div x-show="customerNotifications.length > 0" class="rounded-xl border border-emerald-500/30 bg-slate-900 p-4 space-y-3">
                         <div class="flex items-center justify-between"><h4 class="text-sm font-bold text-emerald-300">My ARTfive! Notifications</h4><button @click="loadCustomerNotifications()" class="text-xs text-slate-400">Refresh</button></div>
                         <template x-for="note in customerNotifications.slice(0,5)" :key="'cust-opt4-note-'+note.id">
@@ -3564,6 +3570,7 @@
                         this.loginPassword = '';
 
                         if (this.loginRole === 'customer_verify') {
+                            await this.loadCustomerNotifications();
                             // Open Option 4 immediately after valid credentials. Do not let unrelated
                             // dashboard refresh requests prevent the ticket page from appearing.
                             this.assignedTickets = [];
@@ -3647,6 +3654,7 @@
                     }
                     this.currentDashboard = 'customer';
                     if (optNum === 1) this.loadCustomerEnquiryChat();
+                    if (optNum === 3) this.loadCustomerNotifications();
                     if (optNum === 2 || optNum === 3) {
                         const ownRequests = this.customerPaymentRequests();
                         if (!this.customerPaymentRequestId || !ownRequests.some(req => String(req.id) === String(this.customerPaymentRequestId))) this.customerPaymentRequestId = ownRequests.length ? ownRequests[0].id : '';
