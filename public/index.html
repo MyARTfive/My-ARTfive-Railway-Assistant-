@@ -467,11 +467,8 @@
                                     </template>
                                 </select>
                             </div>
-                            <label class="flex items-center gap-2.5 bg-slate-700/50 p-3 rounded-lg border border-slate-600 cursor-pointer">
-                                <input type="checkbox" x-model="uploadForm.paymentConfirmed" class="w-4 h-4 text-emerald-600 rounded bg-slate-900 border-slate-500">
-                                <span class="text-xs font-bold text-emerald-400"><i class="fa-solid fa-circle-check"></i> Payment Status Confirmed (✓)</span>
-                            </label>
-                            
+                            <p class="text-xs text-emerald-300">Upload is allowed only after the Owner verifies Option 3 payment.</p>
+
                             <div class="space-y-3">
                                 <p class="text-xs font-bold text-slate-300">Choose Upload Method:</p>
                                 <input type="file" x-ref="staffFile" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" @change="handleFileUpload($event)" class="hidden">
@@ -1680,11 +1677,8 @@
                             </select>
                             <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
                         </div>
-                        <label class="flex items-center gap-2.5 bg-slate-700/50 p-3 rounded-lg border border-slate-600 cursor-pointer">
-                            <input type="checkbox" x-model="uploadForm.paymentConfirmed" class="w-4 h-4 text-emerald-600 rounded bg-slate-900 border-slate-500">
-                            <span class="text-xs font-bold text-emerald-400"><i class="fa-solid fa-circle-check"></i> Payment Status Confirmed (✓)</span>
-                        </label>
-                        
+                            <p class="text-xs text-emerald-300">Upload is allowed only after the Owner verifies Option 3 payment.</p>
+
                         <div class="space-y-3">
                             <label class="block text-xs font-bold text-slate-400 mb-1">Choose Upload Method</label>
                             <input type="file" x-ref="staffDashFile" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" @change="handleFileUpload($event)" class="hidden">
