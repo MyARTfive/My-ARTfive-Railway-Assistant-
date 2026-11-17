@@ -422,6 +422,15 @@ export default {
         const user = await getSessionUser(request, env, now);
         if (!user || !["owner", "customer"].includes(user.role)) return json({ success: false, message: "Only the Owner and the signed-in customer can use this enquiry conversation." }, 403);
         await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS customer_chat_settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            enabled INTEGER NOT NULL DEFAULT 1,
+            updated_by TEXT,
+            updated_at INTEGER NOT NULL
+          )
+        `).run();
+        await env.DB.prepare("INSERT INTO customer_chat_settings (id, enabled, updated_at) VALUES (1, 1, ?) ON CONFLICT(id) DO NOTHING").bind(now).run();
+        await env.DB.prepare(`
           CREATE TABLE IF NOT EXISTS customer_enquiry_messages (
             id TEXT PRIMARY KEY,
             customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
