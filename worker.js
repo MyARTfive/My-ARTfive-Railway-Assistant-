@@ -499,6 +499,65 @@ export default {
         return json({ success: true, id, message: "My ARTfive! Staff message saved." }, 201);
       }
 
+      if (path === "/api/notifications" && (method === "GET" || method === "POST")) {
+        const user = await getSessionUser(request, env, now);
+        if (!user) return json({ success: false, message: "Please sign in to view My ARTfive! notifications." }, 401);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS customer_notifications (
+            id TEXT PRIMARY KEY,
+            customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            sender_id TEXT NOT NULL REFERENCES users(id),
+            message TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            read_at INTEGER
+          )
+        `).run();
+        if (method === "GET") {
+          if (user.role === "customer") {
+            const rows = await env.DB.prepare(
+              "SELECT id, message, created_at AS createdAt, read_at AS readAt FROM customer_notifications WHERE customer_id = ? ORDER BY created_at DESC LIMIT 100"
+            ).bind(user.id).all();
+            return json({ success: true, notifications: rows.results || [] });
+          }
+          if (user.role === "owner") {
+            const rows = await env.DB.prepare(
+              "SELECT n.id, n.customer_id AS customerId, u.name AS customerName, u.phone AS customerPhone, n.message, n.created_at AS createdAt, n.read_at AS readAt FROM customer_notifications n JOIN users u ON u.id = n.customer_id ORDER BY n.created_at DESC LIMIT 300"
+            ).all();
+            return json({ success: true, notifications: rows.results || [] });
+          }
+          return json({ success: false, message: "Access denied." }, 403);
+        }
+        if (user.role !== "owner") return json({ success: false, message: "Only the Owner can send customer notifications." }, 403);
+        const body = await readJson(request);
+        let message = String(body.message || "").trim();
+        const customerId = String(body.customerId || "").trim();
+        const category = String(body.category || "All");
+        if (!message || message.length > 2000) return json({ success: false, message: "Enter a notification message up to 2,000 characters." }, 400);
+        if (!/^My ARTfive!/i.test(message)) message = "My ARTfive! " + message;
+        let recipients;
+        if (customerId) {
+          recipients = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND role = 'customer' AND active = 1 LIMIT 1").bind(customerId).all();
+        } else if (category === "Subscribers") {
+          await ensureEngagementTables(env);
+          recipients = await env.DB.prepare("SELECT DISTINCT u.id FROM users u JOIN customer_engagement e ON e.customer_id = u.id WHERE u.role = 'customer' AND u.active = 1 AND e.action = 'subscribe'").all();
+        } else if (category === "Pending") {
+          recipients = await env.DB.prepare(
+            "SELECT DISTINCT u.id FROM users u JOIN requests r ON r.customer_id = u.id WHERE u.role = 'customer' AND u.active = 1 AND NOT EXISTS (SELECT 1 FROM customer_payment_instructions p WHERE p.request_id = r.id AND p.option_no = 3 AND p.payment_status = 'verified')"
+          ).all();
+        } else {
+          recipients = await env.DB.prepare("SELECT id FROM users WHERE role = 'customer' AND active = 1").all();
+        }
+        const recipientRows = recipients.results || [];
+        if (!recipientRows.length) return json({ success: true, sent: 0, message: "My ARTfive! There are no customers in the selected notification group." });
+        if (recipientRows.length > 1000) return json({ success: false, message: "The selected notification group is too large. Please send to a smaller group." }, 413);
+        for (const recipient of recipientRows) {
+          await env.DB.prepare(
+            "INSERT INTO customer_notifications (id, customer_id, sender_id, message, created_at) VALUES (?, ?, ?, ?, ?)"
+          ).bind(crypto.randomUUID(), recipient.id, user.id, message, now).run();
+        }
+        return json({ success: true, sent: recipientRows.length, message: "My ARTfive! Notification saved for " + recipientRows.length + " customer(s)." }, 201);
+      }
+
       if (path === "/api/me" && method === "GET") {
         const user = await getSessionUser(request, env, now);
         if (!user) return json({ success: false, message: "Not signed in." }, 401);
