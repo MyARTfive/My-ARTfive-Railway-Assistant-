@@ -455,12 +455,12 @@
                             <div>
                                 <label class="block text-xs font-bold text-slate-400 mb-1">Find Customer by Name or Phone Number</label>
                                 <input type="search" x-model="customerSearch" placeholder="Search customer name or phone..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
-                                <select x-model="uploadForm.customerId" @change="uploadForm.requestId = ''" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                                <select x-model="uploadForm.customerId" @change="uploadForm.requestId = ''; refreshOwnerPaymentInstructions()" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                                     <option value="">-- Choose Customer --</option>
                                     <template x-for="cust in filteredCustomers()" :key="cust.id"><option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option></template>
                                 </select>
                                 <label class="block text-xs font-bold text-slate-400 mt-3 mb-1">Select the exact ticket request</label>
-                                <select x-model="uploadForm.requestId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                                <select x-model="uploadForm.requestId" @change="refreshOwnerPaymentInstructions()" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                                     <option value="">-- Choose Ticket Request --</option>
                                     <template x-for="req in ticketRequests.filter(item => String(item.customerId) === String(uploadForm.customerId))" :key="'uploadreq-'+req.id">
                                         <option :value="req.id" x-text="paymentRequestLabel(req)"></option>
@@ -1185,7 +1185,7 @@
                             </select>
                             <p x-show="uploadForm.customerId && uploadRequestsForSelectedCustomer().length === 0" class="text-xs text-amber-300 mt-2">No ticket requests are currently linked to this customer. Tap “Refresh requests” to check the latest saved requests.</p>
                             <p x-show="!uploadForm.customerId" class="text-xs text-slate-400 mt-2">Choose a customer above to load their ticket requests.</p>
-                            <div class="rounded-lg border border-slate-700 bg-slate-900 p-3 mt-4 space-y-2">
+                            <div class="rounded-lg border border-slate-700 bg-slate-900 p-3 mt-4 space-y-2" aria-label="Option 3 ticket collection payment confirmation">
                                 <div class="flex items-center justify-between gap-2">
                                     <p class="text-xs font-bold text-slate-200">Option 3 — Ticket Collection Charges Payment</p>
                                     <button type="button" @click="apiRequest('/api/customer-payments').then(result => { paymentInstructions = result.instructions || []; showAppNotice('My ARTfive! Payment status refreshed.'); }).catch(error => showAppNotice(error.message || 'My ARTfive! Could not refresh payment status.'))" class="text-xs text-sky-300 underline">Refresh payments</button>
@@ -2973,7 +2973,7 @@
                     this.activeMenuOption = optNum;
                     if (optNum === 3) this.loadOwnerAnalysis();
                     // Option 9 must reload the central uploaded-ticket list whenever the Owner opens it.
-                    if (optNum === 9) this.loadAssignedTicketsFromDB();
+                    if (optNum === 9) { this.loadAssignedTicketsFromDB(); this.refreshOwnerPaymentInstructions(); }
                     if (optNum === 'custChat') this.loadCustomerChatSettings();
                     if (optNum === 'staffChat') this.loadStaffChat();
                     if (optNum === 10) {
@@ -3254,6 +3254,18 @@
                         this.paymentInstructions = result.instructions || [];
                         this.showAppNotice('My ARTfive! Your payment amount and message have been sent to the selected customer dashboard option.');
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not send the payment instructions.'); }
+                },
+                async refreshOwnerPaymentInstructions() {
+                    // Reload payment instructions whenever Option 9 opens or its customer/request selection changes.
+                    // This keeps the Option 3 confirmation panel visible and current without requiring a manual refresh.
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    try {
+                        const result = await this.apiRequest('/api/customer-payments');
+                        this.paymentInstructions = result.instructions || [];
+                    } catch (error) {
+                        this.paymentInstructions = [];
+                        console.warn('My ARTfive! Owner payment instructions could not be refreshed:', error.message);
+                    }
                 },
                 async verifyCustomerPaymentInstruction(instruction) {
                     if (!this.currentUser || !['owner', 'staff'].includes(this.currentUser.role) || !instruction) return;
