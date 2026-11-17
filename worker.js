@@ -645,16 +645,21 @@ export default {
           )
         `).run();
         await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_customer_payment_instructions_customer ON customer_payment_instructions(customer_id, option_no, updated_at DESC)").run();
+        const paymentColumnsResult = await env.DB.prepare("PRAGMA table_info(customer_payment_instructions)").all();
+        const paymentColumns = new Set((paymentColumnsResult.results || []).map(column => column.name));
+        if (!paymentColumns.has("payment_status")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'pending'").run();
+        if (!paymentColumns.has("verified_by")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN verified_by TEXT").run();
+        if (!paymentColumns.has("verified_at")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN verified_at INTEGER").run();
 
         if (method === "GET") {
           let result;
           if (user.role === "customer") {
             result = await env.DB.prepare(
-              "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, updated_at AS updatedAt FROM customer_payment_instructions WHERE customer_id = ? ORDER BY updated_at DESC"
+              "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, payment_status AS paymentStatus, verified_at AS verifiedAt, updated_at AS updatedAt FROM customer_payment_instructions WHERE customer_id = ? ORDER BY updated_at DESC"
             ).bind(user.id).all();
           } else if (user.role === "owner" || user.role === "staff") {
             result = await env.DB.prepare(
-              "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, updated_at AS updatedAt FROM customer_payment_instructions ORDER BY updated_at DESC"
+              "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, payment_status AS paymentStatus, verified_at AS verifiedAt, updated_at AS updatedAt FROM customer_payment_instructions ORDER BY updated_at DESC"
             ).all();
           } else return json({ success: false, message: "Access denied." }, 403);
           return json({ success: true, instructions: result.results || [] });
@@ -669,6 +674,33 @@ export default {
         ).bind(requestId).first();
         if (!requestRow) return json({ success: false, message: "The selected ticket request was not found." }, 404);
 
+        if (body.action === "verify") {
+          const optionNo = Number(body.optionNo);
+          if (![2, 3].includes(optionNo)) return json({ success: false, message: "Choose Customer Option 2 or 3." }, 400);
+          const instruction = await env.DB.prepare(
+            "SELECT id, payment_status AS paymentStatus FROM customer_payment_instructions WHERE request_id = ? AND option_no = ? LIMIT 1"
+          ).bind(requestId, optionNo).first();
+          if (!instruction) return json({ success: false, message: "Send the payment amount and instructions before verifying payment." }, 404);
+          if (optionNo === 3) {
+            const bookingPayment = await env.DB.prepare(
+              "SELECT payment_status FROM customer_payment_instructions WHERE request_id = ? AND option_no = 2 LIMIT 1"
+            ).bind(requestId).first();
+            if (!bookingPayment || bookingPayment.payment_status !== "verified") {
+              return json({ success: false, message: "Verify Customer Option 2 booking-request payment before verifying Option 3." }, 409);
+            }
+          }
+          const verifiedMessage = optionNo === 2
+            ? "My ARTfive! have successfully received your Railway Ticket Booking Request Payment. Our team will now process your ticket booking."
+            : "My ARTfive! have successfully received your ticket payment. Please visit: 🎫 Option 4 — GET MY TICKET! to collect and download your ticket after our team uploads it.";
+          await env.DB.prepare(
+            "UPDATE customer_payment_instructions SET payment_status = 'verified', verified_by = ?, verified_at = ?, message = ?, updated_at = ? WHERE request_id = ? AND option_no = ?"
+          ).bind(user.id, now, verifiedMessage, now, requestId, optionNo).run();
+          const verified = await env.DB.prepare(
+            "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, payment_status AS paymentStatus, verified_at AS verifiedAt, updated_at AS updatedAt FROM customer_payment_instructions WHERE request_id = ? AND option_no = ? LIMIT 1"
+          ).bind(requestId, optionNo).first();
+          return json({ success: true, instruction: verified, message: "My ARTfive! Payment marked as manually verified." });
+        }
+
         if (method === "DELETE") {
           const optionNo = Number(body.optionNo);
           if (![2, 3].includes(optionNo)) return json({ success: false, message: "Choose Customer Option 2 or 3." }, 400);
@@ -679,6 +711,14 @@ export default {
         }
 
         const optionNo = Number(body.optionNo);
+        if (optionNo === 3) {
+          const bookingPayment = await env.DB.prepare(
+            "SELECT payment_status FROM customer_payment_instructions WHERE request_id = ? AND option_no = 2 LIMIT 1"
+          ).bind(requestId).first();
+          if (!bookingPayment || bookingPayment.payment_status !== "verified") {
+            return json({ success: false, message: "Complete and verify Customer Option 2 booking-request payment before sending Option 3 ticket charges." }, 409);
+          }
+        }
         const amount = Number(body.amount);
         const amountPaise = Math.round(amount * 100);
         let message = String(body.message || "").trim();
@@ -696,12 +736,21 @@ export default {
             amount_paise = excluded.amount_paise,
             message = excluded.message,
             updated_by = excluded.updated_by,
+            payment_status = 'pending',
+            verified_by = NULL,
+            verified_at = NULL,
             updated_at = excluded.updated_at
         `).bind(id, requestId, requestRow.customer_id, optionNo, amountPaise, message, user.id, now, now).run();
         const saved = await env.DB.prepare(
-          "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, updated_at AS updatedAt FROM customer_payment_instructions WHERE request_id = ? AND option_no = ? LIMIT 1"
+          "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, payment_status AS paymentStatus, verified_at AS verifiedAt, updated_at AS updatedAt FROM customer_payment_instructions WHERE request_id = ? AND option_no = ? LIMIT 1"
         ).bind(requestId, optionNo).first();
         return json({ success: true, instruction: saved, message: "My ARTfive! Payment amount and message were sent to the selected customer's dashboard option." }, 201);
+      }
+
+      if (path === "/api/tickets" && (method === "GET" || method === "POST")) {
+        const ticketColumnsResult = await env.DB.prepare("PRAGMA table_info(tickets)").all();
+        const ticketColumns = new Set((ticketColumnsResult.results || []).map(column => column.name));
+        if (!ticketColumns.has("request_id")) await env.DB.prepare("ALTER TABLE tickets ADD COLUMN request_id TEXT").run();
       }
 
       if (path === "/api/tickets" && method === "GET") {
@@ -710,11 +759,11 @@ export default {
         let result;
         if (user.role === "owner" || user.role === "staff") {
           result = await env.DB.prepare(
-            "SELECT id, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets ORDER BY created_at DESC"
+            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets ORDER BY created_at DESC"
           ).all();
         } else if (user.role === "customer") {
           result = await env.DB.prepare(
-            "SELECT id, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets WHERE customer_id = ? ORDER BY created_at DESC"
+            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets WHERE customer_id = ? ORDER BY created_at DESC"
           ).bind(user.id).all();
         } else {
           return json({ success: false, message: "Access denied." }, 403);
@@ -729,24 +778,35 @@ export default {
         }
         const body = await readJson(request);
         const customerId = String(body.customerId || "").trim();
+        const requestId = String(body.requestId || "").trim();
         const ticketTitle = String(body.ticketTitle || "").trim();
         const fileData = String(body.fileData || "");
-        if (!customerId || !ticketTitle || !fileData || body.paymentConfirmed !== true) {
-          return json({ success: false, message: "Select a customer, ticket file and confirm collection payment before sending." }, 400);
+        if (!customerId || !requestId || !ticketTitle || !fileData) {
+          return json({ success: false, message: "Select the customer's ticket request and ticket file before sending." }, 400);
         }
         if (ticketTitle.length > 180 || fileData.length > 1400000) {
           return json({ success: false, message: "Ticket file is too large. Please use a file smaller than about 1 MB." }, 413);
         }
-        const match = fileData.match(/^data:(application\/pdf|image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
-        if (!match) return json({ success: false, message: "Only PDF, PNG, JPEG or WEBP ticket files are accepted." }, 400);
+        const match = fileData.match(/^data:(application\/pdf|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document|application\/msword|image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
+        if (!match) return json({ success: false, message: "Accepted ticket files: PDF, DOC, DOCX, PNG, JPEG or WEBP." }, 400);
         const customer = await env.DB.prepare(
           "SELECT id, name, phone FROM users WHERE id = ? AND role = 'customer' AND active = 1 LIMIT 1"
         ).bind(customerId).first();
         if (!customer) return json({ success: false, message: "The selected customer account was not found." }, 404);
+        const requestRow = await env.DB.prepare(
+          "SELECT id FROM requests WHERE id = ? AND customer_id = ? LIMIT 1"
+        ).bind(requestId, customerId).first();
+        if (!requestRow) return json({ success: false, message: "The selected request does not belong to this customer." }, 404);
+        const collectionPayment = await env.DB.prepare(
+          "SELECT payment_status FROM customer_payment_instructions WHERE request_id = ? AND customer_id = ? AND option_no = 3 LIMIT 1"
+        ).bind(requestId, customerId).first();
+        if (!collectionPayment || collectionPayment.payment_status !== "verified") {
+          return json({ success: false, message: "Ticket upload is locked until the Owner verifies this request's Option 3 Ticket Collection Charges Payment." }, 409);
+        }
         const id = crypto.randomUUID();
         await env.DB.prepare(
-          "INSERT INTO tickets (id, customer_id, customer_name, customer_phone, ticket_title, mime_type, file_data, payment_confirmed, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
-        ).bind(id, customer.id, customer.name, customer.phone, ticketTitle, match[1], fileData, user.id, now).run();
+          "INSERT INTO tickets (id, request_id, customer_id, customer_name, customer_phone, ticket_title, mime_type, file_data, payment_confirmed, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
+        ).bind(id, requestId, customer.id, customer.name, customer.phone, ticketTitle, match[1], fileData, user.id, now).run();
         return json({ success: true, id, message: "My ARTfive! Ticket sent successfully." }, 201);
       }
 
