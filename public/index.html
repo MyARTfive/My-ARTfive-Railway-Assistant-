@@ -2612,11 +2612,11 @@
                 },
 
                 async deleteTicketRequest(reqId) {
-                    if (!confirm('My ARTfive! Delete this customer request permanently from the central database? It will disappear from My Dashboard and Staff Dashboard.')) return;
+                    if (!confirm('My ARTfive! Permanently delete this request, its linked ticket records and any associated R2 ticket files? This cannot be undone.')) return;
                     try {
                         await this.apiRequest('/api/requests', { method: 'DELETE', body: { id: String(reqId) } });
                         await this.loadTicketRequestsFromStorage();
-                        alert('My ARTfive! Customer request permanently deleted from D1.');
+                        alert('My ARTfive! Customer request, linked ticket records and any associated R2 files have been permanently deleted.');
                     } catch (error) {
                         alert(error.message || 'My ARTfive! Could not delete this request.');
                     }
@@ -2717,11 +2717,11 @@
                         alert('My ARTfive! Only the Owner can permanently delete a ticket.');
                         return;
                     }
-                    if (!confirm('My ARTfive! Permanently delete this ticket file from the central database and every dashboard?')) return;
+                    if (!confirm('My ARTfive! Permanently delete this ticket file from D1 and its associated R2 object (if stored there)? This cannot be undone.')) return;
                     try {
                         await this.apiRequest('/api/tickets', { method: 'DELETE', body: { id: String(ticketId) } });
                         await this.loadAssignedTicketsFromDB();
-                        alert('My ARTfive! Ticket file permanently deleted from D1.');
+                        alert('My ARTfive! Ticket file and its D1 record have been deleted; any associated R2 object has also been deleted.');
                     } catch (error) {
                         alert(error.message || 'My ARTfive! Could not delete this ticket.');
                     }
