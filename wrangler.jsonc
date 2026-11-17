@@ -16,12 +16,6 @@
       "database_id": "9ccc1d01-a125-4430-8ad4-47eef289a85e"
     }
   ],
-  "r2_buckets": [
-    {
-      "binding": "TICKETS_R2",
-      "bucket_name": "my-artfive-railway-tickets"
-    }
-  ],
   "observability": {
     "enabled": true
   }
