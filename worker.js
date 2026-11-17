@@ -499,6 +499,34 @@ export default {
         return json({ success: true, id, message: "My ARTfive! Staff message saved." }, 201);
       }
 
+      if (path === "/api/public/cms" && method === "GET") {
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, setting_json TEXT NOT NULL, updated_by TEXT, updated_at INTEGER NOT NULL)").run();
+        const row = await env.DB.prepare("SELECT setting_json FROM app_settings WHERE setting_key = 'master_cms' LIMIT 1").first();
+        if (!row) return json({ success: true, settings: null });
+        try { return json({ success: true, settings: JSON.parse(row.setting_json) }); }
+        catch { return json({ success: true, settings: null }); }
+      }
+
+      if (path === "/api/owner/cms" && (method === "GET" || method === "POST")) {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the Owner can manage Master CMS settings." }, 403);
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, setting_json TEXT NOT NULL, updated_by TEXT, updated_at INTEGER NOT NULL)").run();
+        if (method === "GET") {
+          const row = await env.DB.prepare("SELECT setting_json FROM app_settings WHERE setting_key = 'master_cms' LIMIT 1").first();
+          if (!row) return json({ success: true, settings: null });
+          try { return json({ success: true, settings: JSON.parse(row.setting_json) }); }
+          catch { return json({ success: false, message: "Saved Master CMS data could not be read." }, 500); }
+        }
+        const body = await readJson(request);
+        if (!body.settings || typeof body.settings !== "object" || Array.isArray(body.settings)) return json({ success: false, message: "Master CMS settings are missing." }, 400);
+        const settingJson = JSON.stringify(body.settings);
+        if (settingJson.length > 2500000) return json({ success: false, message: "Master CMS data is too large. Reduce image sizes and try again." }, 413);
+        await env.DB.prepare(
+          "INSERT INTO app_settings (setting_key, setting_json, updated_by, updated_at) VALUES ('master_cms', ?, ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_json = excluded.setting_json, updated_by = excluded.updated_by, updated_at = excluded.updated_at"
+        ).bind(settingJson, owner.id, now).run();
+        return json({ success: true, message: "My ARTfive! Master CMS changes have been saved centrally for all devices." });
+      }
+
       if (path === "/api/app-updates" && (method === "GET" || method === "POST")) {
         await env.DB.prepare(`
           CREATE TABLE IF NOT EXISTS app_updates (
