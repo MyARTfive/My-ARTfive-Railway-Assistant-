@@ -721,6 +721,21 @@
                         <button @click="activeMenuOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-5">
+                        <div class="rounded-xl border border-emerald-500/40 bg-slate-900 p-5 space-y-4">
+                            <div><h4 class="text-base font-extrabold text-emerald-400"><i class="fa-solid fa-money-bill-transfer"></i> Individual Customer Payment Messages</h4><p class="text-xs text-slate-300 mt-1">Choose one registered customer, ticket request and Customer Option 2 or 3. Set their own amount, edit the message and send it manually.</p></div>
+                            <div><label class="block text-xs font-bold text-slate-300 mb-1">1. Select customer — signup name and phone</label>
+                                <input type="search" x-model="customerSearch" placeholder="Search customer name or phone..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                                <select x-model="paymentForm.customerId" @change="paymentForm.requestId = ''; paymentForm.amount = ''; paymentForm.message = ''" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white"><option value="">-- Select customer --</option><template x-for="cust in filteredCustomers()" :key="'paycust-'+cust.id"><option :value="cust.id" x-text="cust.name + ' (' + (cust.phone || 'No phone') + ') — ' + cust.id"></option></template></select>
+                            </div>
+                            <div><label class="block text-xs font-bold text-slate-300 mb-1">2. Select ticket request</label>
+                                <select x-model="paymentForm.requestId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white"><option value="">-- Select ticket request --</option><template x-for="req in paymentRequestsForCustomer()" :key="'payreq-'+req.id"><option :value="req.id" x-text="paymentRequestLabel(req)"></option></template></select>
+                            </div>
+                            <div><label class="block text-xs font-bold text-slate-300 mb-1">3. Send to customer dashboard option</label><select x-model="paymentForm.optionNo" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white"><option value="2">Customer Option 2 — Booking Request Payment</option><option value="3">Customer Option 3 — Ticket Collection Charges</option></select></div>
+                            <div><label class="block text-xs font-bold text-slate-300 mb-1">4. Individual payment amount (₹)</label><input type="number" min="0.01" step="0.01" x-model="paymentForm.amount" placeholder="Enter this customer's amount" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-white"></div>
+                            <div><label class="block text-xs font-bold text-slate-300 mb-1">5. Choose a useful message or edit it</label><select @change="applyPaymentMessageTemplate($event.target.value)" class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white"><option value="">-- Choose ready-made message --</option><template x-for="(tmpl, idx) in paymentMessageTemplates" :key="'paytmpl-'+idx"><option :value="idx" x-text="(idx + 1) + '. ' + tmpl"></option></template></select><textarea x-model="paymentForm.message" rows="4" placeholder="Write or edit the message for this customer..." class="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white"></textarea></div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2"><button @click="sendCustomerPaymentInstruction()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-3 rounded-lg text-sm"><i class="fa-solid fa-paper-plane"></i> Send / Update Amount & Message</button><button @click="deleteCustomerPaymentInstruction()" class="bg-red-700 hover:bg-red-600 text-white font-bold px-4 py-3 rounded-lg text-sm"><i class="fa-solid fa-trash"></i> Delete Selected Option's Amount & Message</button></div>
+                            <p class="text-[11px] text-slate-400">You manually check your UPI app. Sending a message does not automatically verify or receive money.</p>
+                        </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-slate-400 mb-1">Target Category Filter</label>
@@ -1446,6 +1461,10 @@
                 <div x-show="activeCustOption === 2" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
                     <p class="text-xs text-slate-300" x-text="cms.payOpt2Instruction"></p>
+                    <div class="rounded-xl border border-emerald-500/30 bg-slate-900 p-4 space-y-2"><label class="block text-xs font-bold text-emerald-300">Select your ticket request</label><select x-model="customerPaymentRequestId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white"><option value="">-- Select your request --</option><template x-for="req in customerPaymentRequests()" :key="'custpay2-'+req.id"><option :value="req.id" x-text="paymentRequestLabel(req)"></option></template></select>
+                        <template x-if="selectedCustomerPaymentInstruction(2)"><div class="space-y-2"><p class="text-xs text-slate-400">Your individual booking-request payment amount</p><p class="text-2xl font-extrabold text-emerald-300" x-text="formatPaymentAmount(selectedCustomerPaymentInstruction(2).amountPaise)"></p><p class="text-sm text-white whitespace-pre-wrap" x-text="selectedCustomerPaymentInstruction(2).message"></p></div></template>
+                        <template x-if="!selectedCustomerPaymentInstruction(2)"><p class="text-xs text-amber-300">My ARTfive! Your booking-request amount and payment instructions are not available yet. Please wait for a personal update.</p></template></div>
+                    <template x-if="selectedCustomerPaymentInstruction(2)">
                     <div @click="copyToClipboard(cms.upiNumber)" class="bg-slate-900 border border-emerald-500/40 p-4 rounded-xl flex items-center justify-between cursor-pointer">
                         <span class="text-emerald-400 font-mono font-bold text-lg" x-text="cms.upiNumber"></span>
                         <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded">Tap to Copy</span>
@@ -1454,14 +1473,19 @@
                         <template x-if="cms.bookingQrImage"><img :src="cms.bookingQrImage" alt="Booking QR" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
                         <template x-if="!cms.bookingQrImage"><i class="fa-solid fa-qrcode text-emerald-400 text-5xl"></i></template>
                     </div>
-                    <button @click="showAppNotice('My ARTfive! please complete the booking request payment using the UPI number or QR code above. Our team will verify your payment and update you.')"
+                    <button @click="showAppNotice('My ARTfive! Please complete the payment shown above. Our team will check the payment manually and send you an update.')"
                             class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt2ConfirmBtn"></button>
+                    </template>
                 </div>
 
                 <!-- Customer Option 3: Collection -->
                 <div x-show="activeCustOption === 3" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
                     <p class="text-xs text-slate-300" x-text="cms.payOpt3Instruction"></p>
+                    <div class="rounded-xl border border-emerald-500/30 bg-slate-900 p-4 space-y-2"><label class="block text-xs font-bold text-emerald-300">Select your ticket request</label><select x-model="customerPaymentRequestId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white"><option value="">-- Select your request --</option><template x-for="req in customerPaymentRequests()" :key="'custpay3-'+req.id"><option :value="req.id" x-text="paymentRequestLabel(req)"></option></template></select>
+                        <template x-if="selectedCustomerPaymentInstruction(3)"><div class="space-y-2"><p class="text-xs text-slate-400">Your individual ticket collection charges</p><p class="text-2xl font-extrabold text-emerald-300" x-text="formatPaymentAmount(selectedCustomerPaymentInstruction(3).amountPaise)"></p><p class="text-sm text-white whitespace-pre-wrap" x-text="selectedCustomerPaymentInstruction(3).message"></p></div></template>
+                        <template x-if="!selectedCustomerPaymentInstruction(3)"><p class="text-xs text-amber-300">My ARTfive! Your ticket charges and payment instructions are not available yet. Please wait for a personal update.</p></template></div>
+                    <template x-if="selectedCustomerPaymentInstruction(3)">
                     <div @click="copyToClipboard(cms.collectionUpiNumber)" class="bg-slate-900 border border-emerald-500/40 p-4 rounded-xl flex items-center justify-between cursor-pointer">
                         <span class="text-emerald-400 font-mono font-bold text-lg" x-text="cms.collectionUpiNumber"></span>
                         <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded">Tap to Copy</span>
@@ -1470,8 +1494,9 @@
                         <template x-if="cms.collectionQrImage"><img :src="cms.collectionQrImage" alt="Collection QR" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
                         <template x-if="!cms.collectionQrImage"><i class="fa-solid fa-qrcode text-emerald-400 text-5xl"></i></template>
                     </div>
-                    <button @click="showAppNotice('My ARTfive! have displayed the ticket collection payment details above. Please complete your Ticket Collection Charges Payment. Our team will verify it and prepare your ticket.')"
+                    <button @click="showAppNotice('My ARTfive! Please complete the payment shown above. Our team will check the payment manually and send you an update.')"
                             class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt3ConfirmBtn"></button>
+                    </template>
                 </div>
 
                 <!-- Customer Option 4: My Tickets -->
@@ -2259,6 +2284,9 @@
                 customers: JSON.parse(localStorage.getItem('artfive_customers') || '[]'),
                 ticketRequests: [],
                 assignedTickets: [],
+                paymentInstructions: [],
+                paymentForm: { customerId: '', requestId: '', optionNo: '2', amount: '', message: '' },
+                customerPaymentRequestId: '',
 
                 savedPassengerProfiles: [],
                 activePaxSuggestIndex: null,
@@ -2342,6 +2370,13 @@
                         return { ...data, id: row.id, customerId: row.customer_id, createdAt: row.created_at };
                     });
                     this.assignedTickets = ticketResult.tickets || [];
+                    try {
+                        const paymentResult = await this.apiRequest('/api/customer-payments');
+                        this.paymentInstructions = paymentResult.instructions || [];
+                    } catch (paymentError) {
+                        this.paymentInstructions = [];
+                        console.warn('My ARTfive! Payment instructions are not yet available:', paymentError.message);
+                    }
                     if (this.currentUser.role === 'customer') {
                         try {
                             const profileResult = await this.apiRequest('/api/customer/passenger-profiles');
@@ -2740,6 +2775,54 @@
                     window.location.href = window.location.pathname;
                 },
 
+                paymentMessageTemplates: [
+                    'Please complete your Railway Ticket Booking Request Payment. Your individual booking-request amount is shown above.',
+                    'This is a reminder to complete your booking-request payment using the UPI number or QR code shown above.',
+                    'Your ticket booking is complete. Please pay the individual Ticket Collection Charges amount shown above.',
+                    'This is a reminder to complete your ticket collection payment. Your amount is shown above.',
+                    'My ARTfive! have received and manually verified your payment. Thank you.'
+                ],
+
+                paymentRequestsForCustomer() {
+                    return (this.ticketRequests || []).filter(req => String(req.customerId) === String(this.paymentForm.customerId));
+                },
+                selectedCustomerPaymentInstruction(optionNo) {
+                    return (this.paymentInstructions || []).find(item => String(item.requestId) === String(this.customerPaymentRequestId) && Number(item.optionNo) === Number(optionNo)) || null;
+                },
+                customerPaymentRequests() {
+                    return (this.ticketRequests || []).filter(req => String(req.customerId) === String(this.currentUser && this.currentUser.id));
+                },
+                formatPaymentAmount(paise) {
+                    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(paise || 0) / 100);
+                },
+                paymentRequestLabel(req) {
+                    const first = req && req.passengers && req.passengers[0] ? req.passengers[0].fullName : 'Passenger';
+                    return first + ' — ' + (req.fromStation || '') + ' to ' + (req.toStation || '') + ' — ' + (req.journeyDate || 'Date not set');
+                },
+                applyPaymentMessageTemplate(value) {
+                    const index = Number(value);
+                    if (Number.isInteger(index) && this.paymentMessageTemplates[index]) this.paymentForm.message = this.paymentMessageTemplates[index];
+                },
+                async sendCustomerPaymentInstruction() {
+                    if (!this.paymentForm.customerId || !this.paymentForm.requestId) return this.showAppNotice('My ARTfive! Please select the customer and ticket request.');
+                    if (!this.paymentForm.amount || Number(this.paymentForm.amount) <= 0 || !String(this.paymentForm.message || '').trim()) return this.showAppNotice('My ARTfive! Enter the individual amount and message.');
+                    try {
+                        await this.apiRequest('/api/customer-payments', { method: 'POST', body: { requestId: this.paymentForm.requestId, optionNo: Number(this.paymentForm.optionNo), amount: Number(this.paymentForm.amount), message: this.paymentForm.message } });
+                        const result = await this.apiRequest('/api/customer-payments');
+                        this.paymentInstructions = result.instructions || [];
+                        this.showAppNotice('My ARTfive! Your payment amount and message have been sent to the selected customer dashboard option.');
+                    } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not send the payment instructions.'); }
+                },
+                async deleteCustomerPaymentInstruction() {
+                    if (!this.paymentForm.requestId || !confirm('My ARTfive! Delete the saved amount and message for this request and option?')) return;
+                    try {
+                        await this.apiRequest('/api/customer-payments', { method: 'DELETE', body: { requestId: this.paymentForm.requestId, optionNo: Number(this.paymentForm.optionNo) } });
+                        const result = await this.apiRequest('/api/customer-payments');
+                        this.paymentInstructions = result.instructions || [];
+                        this.showAppNotice('My ARTfive! The selected payment amount and message have been deleted.');
+                    } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not delete the payment instructions.'); }
+                },
+
                 applyNotificationTemplate(tmpl) { if (tmpl) { this.notifForm.message = tmpl; } },
 
                 sendNotificationMessage() {
@@ -2908,6 +2991,11 @@
                         return;
                     }
                     this.currentDashboard = 'customer';
+                    if (optNum === 2 || optNum === 3) {
+                        const ownRequests = this.customerPaymentRequests();
+                        if (!this.customerPaymentRequestId || !ownRequests.some(req => String(req.id) === String(this.customerPaymentRequestId))) this.customerPaymentRequestId = ownRequests.length ? ownRequests[0].id : '';
+                        this.apiRequest('/api/customer-payments').then(result => { this.paymentInstructions = result.instructions || []; }).catch(() => {});
+                    }
                     this.activeCustOption = optNum;
                 },
 
