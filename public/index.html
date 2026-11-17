@@ -715,6 +715,16 @@
                         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold" x-text="cms.counter2Title"></label><p class="text-3xl font-extrabold text-white" x-text="stats.ratings">0</p></div>
                         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold">APK Downloads</label><p class="text-3xl font-extrabold text-white" x-text="stats.downloads">0</p><button @click="copyToClipboard(window.location.origin + '/download/app')" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg">Copy Tracked APK Download Link</button><p class="text-[10px] text-slate-500">Counts successful downloads through this link, not APK installations or WhatsApp file attachments.</p></div>
                     </div>
+                    <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-3">
+                        <h4 class="text-sm font-bold text-white">APK Download Link Setup</h4>
+                        <p class="text-xs text-slate-400">Paste a direct HTTPS download URL for your APK from an existing file host. No R2 bucket is used. The tracked My ARTfive! link counts successful downloads routed through this app.</p>
+                        <input type="url" x-model="apkDownloadUrlInput" placeholder="https://... direct APK download URL" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-sm text-white">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button @click="saveApkDownloadUrl()" class="bg-emerald-600 text-white font-bold px-4 py-2.5 rounded-lg text-xs">Save APK Source Link</button>
+                            <button @click="copyToClipboard(window.location.origin + '/download/app')" class="bg-sky-700 text-white font-bold px-4 py-2.5 rounded-lg text-xs">Copy My ARTfive! Download Link</button>
+                        </div>
+                        <p class="text-[11px] text-slate-500" x-text="apkDownloadUrl ? 'APK source link is configured. Share the tracked link through WhatsApp.' : 'APK source link is not configured yet. The tracked link will not download until you save a direct file URL.'"></p>
+                    </div>
                 </div>
 
                 <!-- Owner Option 4: Notifications -->
@@ -2159,6 +2169,8 @@
                 },
 
                 stats: { subscribers: 0, ratings: 0, users: 0, downloads: 0 },
+                apkDownloadUrl: '',
+                apkDownloadUrlInput: '',
                 isSubscribed: false,
                 hasRated: false,
 
@@ -3196,6 +3208,13 @@
                         this.stats.subscribers = Number(result.subscribers || 0);
                         this.stats.ratings = Number(result.ratings || 0);
                         this.stats.downloads = Number(result.downloads || 0);
+                        try {
+                            const apkSettings = await this.apiRequest('/api/owner/apk-download-settings');
+                            this.apkDownloadUrl = apkSettings.downloadUrl || '';
+                            this.apkDownloadUrlInput = this.apkDownloadUrl;
+                        } catch (settingsError) {
+                            console.warn('My ARTfive! APK download settings could not be loaded:', settingsError.message);
+                        }
                     } catch (error) {
                         console.warn('My ARTfive! Owner analysis could not be refreshed:', error.message);
                     }
@@ -3240,6 +3259,21 @@
                     } catch (error) {
                         this.hasRated = false;
                         this.showAppNotice(error.message || 'My ARTfive! We could not record your rating. Please try again.');
+                    }
+                },
+
+                async saveApkDownloadUrl() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/apk-download-settings', {
+                            method: 'POST',
+                            body: { downloadUrl: String(this.apkDownloadUrlInput || '').trim() }
+                        });
+                        this.apkDownloadUrl = result.downloadUrl || '';
+                        this.apkDownloadUrlInput = this.apkDownloadUrl;
+                        this.showAppNotice(result.message || 'My ARTfive! APK download link saved.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not save the APK download link.');
                     }
                 },
 
