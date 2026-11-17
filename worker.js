@@ -1166,10 +1166,8 @@ export default {
             UNIQUE (request_id, option_no)
           )
         `).run();
-        const ticketColumnsResult = await env.DB.prepare("PRAGMA table_info(tickets)").all();
-        const ticketColumns = new Set((ticketColumnsResult.results || []).map(column => column.name));
-        if (!ticketColumns.has("request_id")) await env.DB.prepare("ALTER TABLE tickets ADD COLUMN request_id TEXT").run();
-        await env.DB.prepare("DELETE FROM tickets WHERE request_id = ?").bind(id).run();
+        // Request deletion is independent from ticket delivery. Sent tickets remain in D1
+        // and in the customer's Option 4 until the Owner deletes them through /api/tickets.
         await env.DB.prepare("DELETE FROM customer_payment_instructions WHERE request_id = ?").bind(id).run();
         const result = await env.DB.prepare("DELETE FROM requests WHERE id = ?").bind(id).run();
         if (!result.meta || result.meta.changes === 0) return json({ success: false, message: "Ticket request was not found." }, 404);
