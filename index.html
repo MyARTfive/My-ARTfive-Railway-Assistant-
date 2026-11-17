@@ -436,11 +436,6 @@
                         <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.staffOpt2Title"></h3><button @click="ownerInspectStaffOpt = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-xs font-bold text-slate-400 mb-1">Select Ticket Request</label>
-                                <select x-model="uploadForm.requestId" @change="syncUploadRequestCustomer()" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white mb-2">
-                                    <option value="">-- Choose Ticket Request --</option>
-                                    <template x-for="req in ticketRequests" :key="req.id"><option :value="req.id" x-text="(req.customerName || 'Customer') + ' · ' + (req.fromStation || '') + ' → ' + (req.toStation || '') + ' · ' + (req.journeyDate || 'Date not set')"></option></template>
-                                </select>
                                 <label class="block text-xs font-bold text-slate-400 mb-1">Select Customer</label>
                                 <select x-model="uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                                     <option value="">-- Choose Customer --</option>
@@ -1072,12 +1067,7 @@
                     </div>
                     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-6 max-w-2xl mx-auto">
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1">Select Ticket Request</label>
-                                <select x-model="uploadForm.requestId" @change="syncUploadRequestCustomer()" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white mb-2">
-                                    <option value="">-- Choose Ticket Request --</option>
-                                    <template x-for="req in ticketRequests" :key="req.id"><option :value="req.id" x-text="(req.customerName || 'Customer') + ' · ' + (req.fromStation || '') + ' → ' + (req.toStation || '') + ' · ' + (req.journeyDate || 'Date not set')"></option></template>
-                                </select>
-                                <label class="block text-xs font-bold text-slate-400 mb-1">Select Customer</label>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Select Customer</label>
                             <select x-model="uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                                 <option value="">-- Choose Customer --</option>
                                 <template x-for="cust in customers" :key="cust.id"><option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option></template>
@@ -1437,12 +1427,7 @@
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.staffOpt2Title"></h3><button @click="activeStaffOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-1">Select Ticket Request</label>
-                                <select x-model="uploadForm.requestId" @change="syncUploadRequestCustomer()" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white mb-2">
-                                    <option value="">-- Choose Ticket Request --</option>
-                                    <template x-for="req in ticketRequests" :key="req.id"><option :value="req.id" x-text="(req.customerName || 'Customer') + ' · ' + (req.fromStation || '') + ' → ' + (req.toStation || '') + ' · ' + (req.journeyDate || 'Date not set')"></option></template>
-                                </select>
-                                <label class="block text-xs font-bold text-slate-400 mb-1">Select Customer</label>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Select Customer</label>
                             <select x-model="uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                                 <option value="">-- Choose Customer --</option>
                                 <template x-for="cust in customers" :key="cust.id"><option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option></template>
@@ -2268,7 +2253,7 @@
                 fromSuggestions: [],
                 toSuggestions: [],
 
-                uploadForm: { customerId: '', requestId: '', ticketTitle: '', paymentConfirmed: false, fileData: null },
+                uploadForm: { customerId: '', ticketTitle: '', paymentConfirmed: false, fileData: null },
 
                 async loadAssignedTicketsFromDB() {
                     try {
@@ -2306,7 +2291,6 @@
 
                                 clearSelectedUpload() {
                     this.uploadForm.ticketTitle = '';
-                    this.uploadForm.requestId = '';
                     this.uploadForm.fileData = null;
                     if (this.$refs.ownerFile) this.$refs.ownerFile.value = '';
                     if (this.$refs.ownerImage) this.$refs.ownerImage.value = '';
@@ -2580,14 +2564,9 @@
                     this.activeCustOption = optNum;
                 },
 
-                syncUploadRequestCustomer() {
-                    const selectedRequest = this.ticketRequests.find(req => String(req.id) === String(this.uploadForm.requestId));
-                    this.uploadForm.customerId = selectedRequest ? String(selectedRequest.customerId || '') : '';
-                },
-
                 async uploadAndAssignTicket() {
-                    if (!this.uploadForm.customerId || !this.uploadForm.requestId || !this.uploadForm.ticketTitle || !this.uploadForm.fileData) {
-                        alert('My ARTfive! Select the correct ticket request and a PDF or image ticket file.');
+                    if (!this.uploadForm.customerId || !this.uploadForm.ticketTitle || !this.uploadForm.fileData) {
+                        alert('My ARTfive! Select a registered customer and a PDF or image ticket file.');
                         return;
                     }
                     if (!this.uploadForm.paymentConfirmed) {
@@ -2597,7 +2576,6 @@
                     try {
                         await this.saveTicketToLocalStorage({
                             customerId: this.uploadForm.customerId,
-                            requestId: this.uploadForm.requestId,
                             ticketTitle: this.uploadForm.ticketTitle,
                             fileData: this.uploadForm.fileData,
                             paymentConfirmed: true
