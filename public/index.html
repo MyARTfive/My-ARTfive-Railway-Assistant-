@@ -2614,6 +2614,9 @@
                     if (optNum === 9 || optNum === 1) {
                         this.loadAssignedTicketsFromDB();
                     }
+                    if (optNum === 4 || optNum === 9) {
+                        this.refreshCentralData().catch(error => console.warn('My ARTfive! Could not refresh customer and request filters:', error.message));
+                    }
                     if (optNum === 9 || optNum === 1) {
                         if (this.customers.length > 0 && !this.uploadForm.customerId) {
                             this.uploadForm.customerId = this.customers[0].id;
@@ -2863,7 +2866,7 @@
                 },
 
                 forgotPassword(portalType) {
-                    alert('My ARTfive! Passwords are no longer stored on this device. Secure account recovery must be completed through the server by the Owner. Please contact My ARTfive! support for a reset.');
+                    this.showAppNotice('My ARTfive! Secure password recovery is not available automatically yet. Please contact the My ARTfive! Owner for help resetting your account password.');
                 },
 
                 openLoginModal(role = 'customer') { 
@@ -2939,7 +2942,10 @@
                         this.showLoginModal = false;
                         this.loginPassword = '';
                         if (this.currentUser && this.currentUser.role === 'customer') {
-                            if (this.loginRole === 'customer_verify') this.showAppNotice('My ARTfive! have verified your details. You can now view and download your tickets below.');
+                            if (this.loginRole === 'customer_verify') {
+                                if (this.getMyAssignedTickets().length > 0) this.showAppNotice('My ARTfive! have uploaded your ticket successfully. You can view and download your ticket below.');
+                                else this.showAppNotice('My ARTfive! have verified your details. Your ticket will appear here after our team uploads it.');
+                            }
                             else if (createdCustomerAccount) this.showAppNotice('My ARTfive! have created your account successfully. Welcome! Please visit Option 1 🚆 — Request A Railway Ticket to send your first request.');
                             else this.showAppNotice('My ARTfive! have welcomed you back. Please choose the next service from your Customer Dashboard options.');
                         }
