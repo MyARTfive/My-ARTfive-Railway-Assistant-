@@ -3676,6 +3676,9 @@
                             fileData: this.uploadForm.fileData,
                             confirmOption3Payment: true
                         });
+                        // The Worker consumes the one-time confirmation only after the
+                        // ticket is saved successfully. Refresh the visible status now.
+                        await this.refreshOwnerTicketPaymentVerification();
                         this.uploadForm.confirmOption3Payment = false;
                         this.uploadForm.requestId = '';
                         this.uploadForm.ticketTitle = '';
