@@ -1416,9 +1416,17 @@ export default {
           return json({ success: false, message: "My ARTfive! Ticket upload is locked until the Owner manually marks the payment received (✅)." }, 409);
         }
         const id = crypto.randomUUID();
-        await env.DB.prepare(
-          "INSERT INTO tickets (id, request_id, customer_id, customer_name, customer_phone, ticket_title, mime_type, file_data, payment_confirmed, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
-        ).bind(id, requestId, customer.id, customer.name, customer.phone, ticketTitle, match[1], fileData, user.id, now).run();
+        // Consume this request's one-time payment confirmation in the same D1 batch
+        // as the ticket insert. A successful ticket send therefore requires a fresh
+        // Owner confirmation before another ticket can be sent for this request.
+        await env.DB.batch([
+          env.DB.prepare(
+            "INSERT INTO tickets (id, request_id, customer_id, customer_name, customer_phone, ticket_title, mime_type, file_data, payment_confirmed, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
+          ).bind(id, requestId, customer.id, customer.name, customer.phone, ticketTitle, match[1], fileData, user.id, now),
+          env.DB.prepare(
+            "DELETE FROM ticket_payment_verifications WHERE request_id = ? AND customer_id = ?"
+          ).bind(requestId, customerId)
+        ]);
         await env.DB.prepare(`
           CREATE TABLE IF NOT EXISTS customer_notifications (
             id TEXT PRIMARY KEY,
