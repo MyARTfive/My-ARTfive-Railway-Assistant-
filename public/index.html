@@ -2929,6 +2929,8 @@
                     }
                     this.activeMenuOption = optNum;
                     if (optNum === 3) this.loadOwnerAnalysis();
+                    // Option 9 must reload the central uploaded-ticket list whenever the Owner opens it.
+                    if (optNum === 9) this.loadAssignedTicketsFromDB();
                     if (optNum === 'custChat') this.loadCustomerChatSettings();
                     if (optNum === 'staffChat') this.loadStaffChat();
                     if (optNum === 10) {
