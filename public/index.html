@@ -1370,11 +1370,12 @@
                                 <button @click="appSourceCode = ''" class="bg-red-600/30 hover:bg-red-600/50 text-red-300 font-bold px-4 py-2.5 rounded-xl text-xs transition border border-red-500/40">
                                     <i class="fa-solid fa-trash"></i> Delete Old Code
                                 </button>
+                                <button @click="loadManagerCodeDraft()" class="bg-slate-600 hover:bg-slate-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow flex items-center gap-2"><i class="fa-solid fa-folder-open"></i> Load Saved Draft</button>
                                 <button @click="copyCodeToClipboard()" class="bg-sky-600 hover:bg-sky-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow flex items-center gap-2">
                                     <i class="fa-solid fa-copy"></i> Copy Code (1-Click)
                                 </button>
-                                <button @click="deployNewCode()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow flex items-center justify-center gap-2">
-                                    <i class="fa-solid fa-cloud-arrow-up"></i> Save & Deploy New Code Instantly
+                                <button @click="saveManagerCodeDraft()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-floppy-disk"></i> Save Protected Code Draft
                                 </button>
                             </div>
                         </div>
@@ -2952,11 +2953,28 @@
                     alert('Code copied to clipboard successfully!');
                 },
 
-                deployNewCode() {
-                    if (!this.appSourceCode.trim()) { alert('Code area is empty!'); return; }
-                    localStorage.setItem('artfive_live_code', this.appSourceCode);
-                    alert('My ARTfive! Manager successfully deployed your new code! The app will now reload.');
-                    window.location.href = window.location.pathname;
+                async loadManagerCodeDraft() {
+                    try {
+                        const result = await this.apiRequest('/api/owner/manager/code-draft');
+                        if (result.sourceCode) this.appSourceCode = result.sourceCode;
+                        this.showAppNotice(result.sourceCode ? 'My ARTfive! Saved Manager code draft loaded.' : 'My ARTfive! No saved Manager code draft was found.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not load the Manager code draft.');
+                    }
+                },
+
+                async saveManagerCodeDraft() {
+                    if (!this.appSourceCode.trim()) { this.showAppNotice('My ARTfive! The code editor is empty.'); return; }
+                    try {
+                        const result = await this.apiRequest('/api/owner/manager/code-draft', {
+                            method: 'POST',
+                            body: { sourceCode: this.appSourceCode }
+                        });
+                        localStorage.setItem('artfive_live_code', this.appSourceCode);
+                        this.showAppNotice(result.message || 'My ARTfive! Code draft saved.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not save the protected code draft.');
+                    }
                 },
 
                 paymentMessageTemplates: [
