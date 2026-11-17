@@ -654,7 +654,7 @@
                             <template x-if="cms.bookingQrImage"><img :src="cms.bookingQrImage" alt="Booking QR Code" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
                             <template x-if="!cms.bookingQrImage"><i class="fa-solid fa-qrcode text-emerald-400 text-5xl"></i></template>
                         </div>
-                        <button @click="showAppNotice('My ARTfive! please complete your Railway Ticket Booking Request Payment in Option 2 💳. Our team will verify your payment.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt2ConfirmBtn"></button>
+                        <button @click="showAppNotice('My ARTfive! have displayed the booking payment details above. Please complete your Railway Ticket Booking Request Payment in Option 2 💳. Our team will verify it.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt2ConfirmBtn"></button>
                     </div>
 
                     <!-- Customer Option 3 in Owner View -->
@@ -669,7 +669,7 @@
                             <template x-if="cms.collectionQrImage"><img :src="cms.collectionQrImage" alt="Collection QR Code" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
                             <template x-if="!cms.collectionQrImage"><i class="fa-solid fa-qrcode text-emerald-400 text-5xl"></i></template>
                         </div>
-                        <button @click="showAppNotice('My ARTfive! please complete your Ticket Collection Charges Payment in Option 3 💰. Our team will verify your payment.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt3ConfirmBtn"></button>
+                        <button @click="showAppNotice('My ARTfive! have displayed the ticket collection payment details above. Please complete your Ticket Collection Charges Payment in Option 3 💰. Our team will verify it.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt3ConfirmBtn"></button>
                     </div>
 
                     <!-- Customer Option 4 in Owner View -->
@@ -2860,7 +2860,7 @@
                         }
                     } catch (error) {
                         if (this.loginRole === 'customer' || this.loginRole === 'customer_new' || this.loginRole === 'customer_verify') {
-                            this.showAppNotice('My ARTfive! We couldn't sign you in with those details. Please check your phone number and password, then try again. We're here if you need help.');
+                            this.showAppNotice('My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
                         } else {
                             alert(error.message || 'My ARTfive! Sign-in failed. Please check your details.');
                         }
@@ -3015,7 +3015,7 @@
                         this.ownerInspectCustOpt = null;
                     } catch (error) {
                         console.error('My ARTfive! Ticket request submission failed:', error);
-                        this.showAppNotice('My ARTfive! could not receive your railway ticket request just now. Please try again. Our team is here to help.');
+                        this.showAppNotice('My ARTfive! have not received your railway ticket request yet. Please try again. Our team is here to help.');
                     }
                 }
             }
