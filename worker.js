@@ -117,15 +117,22 @@ async function deleteTicketObjectsFromR2(env, ticketRows) {
 }
 
 async function hydrateTicketFiles(env, rows) {
+  // Keep every D1 ticket record visible even if an optional R2 object cannot be read.
+  // One unavailable R2 object must never hide other saved ticket records.
   return Promise.all((rows || []).map(async row => {
     if (!row.storage_key) return row;
-    if (!env.TICKETS_R2 || typeof env.TICKETS_R2.get !== "function") {
-      throw new Error("Ticket storage is temporarily unavailable. Please contact My ARTfive! support.");
+    try {
+      if (!env.TICKETS_R2 || typeof env.TICKETS_R2.get !== "function") {
+        return { ...row, fileUnavailable: true, fileError: "Optional ticket file storage is not connected." };
+      }
+      const object = await env.TICKETS_R2.get(row.storage_key);
+      if (!object) return { ...row, fileUnavailable: true, fileError: "The saved file object could not be found." };
+      const bytes = new Uint8Array(await object.arrayBuffer());
+      return { ...row, fileData: `data:${row.mimeType};base64,${bytesToBase64(bytes)}`, fileUnavailable: false };
+    } catch (error) {
+      console.error("My ARTfive! Could not load ticket file", row.id, error);
+      return { ...row, fileUnavailable: true, fileError: "The saved file could not be loaded." };
     }
-    const object = await env.TICKETS_R2.get(row.storage_key);
-    if (!object) throw new Error("A stored ticket file is missing from R2. Please contact My ARTfive! support.");
-    const bytes = new Uint8Array(await object.arrayBuffer());
-    return { ...row, fileData: `data:${row.mimeType};base64,${bytesToBase64(bytes)}` };
   }));
 }
 
