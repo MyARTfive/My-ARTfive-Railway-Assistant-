@@ -1436,7 +1436,26 @@ export default {
         await env.DB.prepare(
           "INSERT INTO tickets (id, request_id, customer_id, customer_name, customer_phone, ticket_title, mime_type, file_data, storage_key, payment_confirmed, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
         ).bind(id, requestId, customer.id, customer.name, customer.phone, ticketTitle, match[1], storedFileData, storageKey, user.id, now).run();
-        return json({ success: true, id, message: "My ARTfive! Ticket sent successfully." }, 201);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS customer_notifications (
+            id TEXT PRIMARY KEY,
+            customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            sender_id TEXT NOT NULL REFERENCES users(id),
+            message TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            read_at INTEGER
+          )
+        `).run();
+        await env.DB.prepare(
+          "INSERT INTO customer_notifications (id, customer_id, sender_id, message, created_at) VALUES (?, ?, ?, ?, ?)"
+        ).bind(
+          crypto.randomUUID(),
+          customer.id,
+          user.id,
+          "My ARTfive! have uploaded your railway ticket successfully. It is now available in 🎫 Option 4 — GET MY TICKET! Please sign in with the same phone number and password used when you created your customer account.",
+          now
+        ).run();
+        return json({ success: true, id, message: "My ARTfive! Ticket uploaded and made available in Customer Option 4." }, 201);
       }
 
       if (path === "/api/tickets" && method === "DELETE") {
