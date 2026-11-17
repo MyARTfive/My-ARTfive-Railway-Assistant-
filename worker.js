@@ -170,6 +170,18 @@ async function logSecurity(env, ip, event, details, now) {
   } catch { /* Security logging must not expose database details to visitors. */ }
 }
 
+async function loginRateLimited(env, ip, eventPrefix, now) {
+  try {
+    const row = await env.DB.prepare(
+      "SELECT COUNT(*) AS total FROM security_logs WHERE ip_address = ? AND event_type = ? AND created_at > ?"
+    ).bind(ip, eventPrefix, now - 15 * 60 * 1000).first();
+    return Number(row?.total || 0) >= 10;
+  } catch {
+    // Fail closed if the security log store cannot be checked.
+    return true;
+  }
+}
+
 async function getSessionUser(request, env, now) {
   const token = cookieValue(request, SESSION_COOKIE);
   if (!token) return null;
@@ -821,6 +833,7 @@ export default {
       }
 
       if (path === "/api/owner/login" && method === "POST") {
+        if (await loginRateLimited(env, ip, "staff_owner_login_failed", now)) return json({ success: false, message: "Too many sign-in attempts. Please wait 15 minutes and try again." }, 429);
         const body = await readJson(request);
         const identifier = String(body.identifier || "").trim();
         const password = String(body.password || "");
@@ -846,6 +859,7 @@ export default {
       }
 
       if (path === "/api/customer/register" && method === "POST") {
+        if (await loginRateLimited(env, ip, "customer_register_failed", now)) return json({ success: false, message: "Too many sign-up attempts. Please wait 15 minutes and try again." }, 429);
         const body = await readJson(request);
         const name = String(body.name || "").trim();
         const phone = String(body.phone || "").trim();
@@ -853,7 +867,10 @@ export default {
         if (!name || !phone || password.length < 8) return json({ success: false, message: "Enter your name, phone number and a password of at least 8 characters." }, 400);
         if (name.length > 100 || phone.length > 30) return json({ success: false, message: "Some details are too long." }, 400);
         const existing = await env.DB.prepare("SELECT id FROM users WHERE phone = ? LIMIT 1").bind(phone).first();
-        if (existing) return json({ success: false, message: "This phone number is already registered. Please sign in." }, 409);
+        if (existing) {
+          await logSecurity(env, ip, "customer_register_failed", "Duplicate customer phone registration attempt", now);
+          return json({ success: false, message: "This phone number is already registered. Please sign in." }, 409);
+        }
         const id = crypto.randomUUID();
         const passwordHash = await hashPassword(password);
         await env.DB.prepare(
@@ -864,6 +881,7 @@ export default {
       }
 
       if (path === "/api/customer/login" && method === "POST") {
+        if (await loginRateLimited(env, ip, "customer_login_failed", now)) return json({ success: false, message: "Too many sign-in attempts. Please wait 15 minutes and try again." }, 429);
         const body = await readJson(request);
         const phone = String(body.phone || "").trim();
         const password = String(body.password || "");
