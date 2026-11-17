@@ -1150,11 +1150,17 @@
                     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-6 max-w-2xl mx-auto">
                         <div>
                             <label class="block text-xs font-bold text-slate-400 mb-1">Find Customer by Name or Phone Number</label>
-                                <input type="search" x-model="customerSearch" placeholder="Search customer name or phone..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
-                            <select x-model="uploadForm.customerId" @change="uploadForm.requestId = ''" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
-                                <option value="">-- Choose Customer --</option>
-                                <template x-for="cust in filteredCustomers()" :key="cust.id"><option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option></template>
-                            </select>
+                            <input type="search" x-model="customerSearch" placeholder="Type customer name or phone number..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                            <div x-show="customerSearch.trim().length > 0" class="max-h-40 overflow-y-auto rounded-lg border border-slate-600 bg-slate-900">
+                                <template x-for="cust in filteredCustomers()" :key="'upload-customer-'+cust.id">
+                                    <button type="button" @click="uploadForm.customerId = cust.id; uploadForm.requestId = ''; customerSearch = cust.name" class="w-full text-left px-3 py-2.5 text-sm text-white hover:bg-slate-700 border-b border-slate-800 last:border-0" x-text="cust.name + ' (' + cust.phone + ')'"></button>
+                                </template>
+                                <div x-show="filteredCustomers().length === 0" class="px-3 py-3 text-xs text-slate-400">No matching customer found.</div>
+                            </div>
+                            <div x-show="uploadForm.customerId" class="flex items-center justify-between gap-2 rounded-lg bg-slate-900 border border-slate-700 p-3">
+                                <span class="text-sm text-emerald-300" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? c.name + ' (' + c.phone + ')' : 'Customer selected'; })()"></span>
+                                <button type="button" @click="uploadForm.customerId = ''; uploadForm.requestId = ''; customerSearch = ''" class="text-xs text-slate-300 underline">Change</button>
+                            </div>
                             <label class="block text-xs font-bold text-slate-400 mt-3 mb-1">Select the exact ticket request</label>
                             <select x-model="uploadForm.requestId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                                 <option value="">-- Choose Ticket Request --</option>
@@ -1164,7 +1170,10 @@
                             </select>
                             <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
                         </div>
-                        <p class="text-xs text-emerald-300">Ticket upload is enabled only after My ARTfive! have verified this request's Option 3 — Ticket Collection Charges Payment.</p>
+                        <label class="flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+                            <input type="checkbox" x-model="uploadForm.confirmOption3Payment" class="h-5 w-5 accent-emerald-500">
+                            <span>✓ Option 3 payment received</span>
+                        </label>
                         
                         <div class="space-y-3">
                             <label class="block text-xs font-bold text-slate-400 mb-1">Choose Upload Method</label>
@@ -1189,10 +1198,14 @@
                         <button @click="uploadAndAssignTicket()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm transition shadow">Upload & Assign to Customer Option 4</button>
 
                         <div class="border-t border-slate-700 pt-5 space-y-3">
-                            <h4 class="font-bold text-white text-sm flex items-center justify-between">
+                            <h4 class="font-bold text-white text-sm flex items-center justify-between gap-2">
                                 <span>Currently Assigned Files & Storage Manager</span>
                                 <span class="text-xs text-slate-400 font-normal" x-text="assignedTickets.length + ' item(s) stored'"></span>
                             </h4>
+                            <div class="flex justify-end">
+                                <button type="button" @click="loadAssignedTicketsFromDB()" class="rounded-lg bg-slate-700 px-3 py-2 text-xs font-bold text-white">Refresh files</button>
+                            </div>
+                            <p x-show="ticketLoadError" x-text="'My ARTfive! ' + ticketLoadError" class="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300"></p>
                             <div class="space-y-2 max-h-56 overflow-y-auto">
                                 <template x-for="tkt in assignedTickets" :key="tkt.id">
                                     <div class="bg-slate-900 border border-slate-700 p-3 rounded-xl flex items-center justify-between text-xs">
@@ -2729,8 +2742,9 @@
                 fromSuggestions: [],
                 toSuggestions: [],
 
-                uploadForm: { customerId: '', requestId: '', ticketTitle: '', fileData: null },
+                uploadForm: { customerId: '', requestId: '', ticketTitle: '', fileData: null, confirmOption3Payment: false },
                 customerSearch: '',
+                ticketLoadError: '',
 
                 filteredCustomers() {
                     const query = String(this.customerSearch || '').trim().toLowerCase();
@@ -2765,14 +2779,19 @@
                 },
 
                 async loadAssignedTicketsFromDB() {
+                    this.ticketLoadError = '';
                     try {
                         if (this.currentUser) {
                             const result = await this.apiRequest('/api/tickets');
                             this.assignedTickets = result.tickets || [];
-                        } else this.assignedTickets = [];
+                        } else {
+                            this.assignedTickets = [];
+                        }
+                        return true;
                     } catch (error) {
-                        console.error(error);
-                        this.assignedTickets = [];
+                        console.error('My ARTfive! Ticket list could not be loaded:', error);
+                        this.ticketLoadError = error.message || 'Could not load uploaded ticket files. Please tap Refresh files.';
+                        return false;
                     }
                 },
 
@@ -3497,7 +3516,11 @@
 
                 async uploadAndAssignTicket() {
                     if (!this.uploadForm.customerId || !this.uploadForm.requestId || !this.uploadForm.ticketTitle || !this.uploadForm.fileData) {
-                        alert('My ARTfive! Select the registered customer, their exact ticket request and the ticket file.');
+                        alert('My ARTfive! Select the customer, exact ticket request and ticket file.');
+                        return;
+                    }
+                    if (!this.uploadForm.confirmOption3Payment) {
+                        alert('My ARTfive! Please tick the Option 3 payment-received box before uploading.');
                         return;
                     }
                     try {
@@ -3506,12 +3529,18 @@
                             requestId: this.uploadForm.requestId,
                             ticketTitle: this.uploadForm.ticketTitle,
                             fileData: this.uploadForm.fileData,
+                            confirmOption3Payment: true
                         });
-                        await this.loadAssignedTicketsFromDB();
-                        this.showAppNotice('My ARTfive! have uploaded your ticket successfully. It is now available in 🎫 Option 4 — GET MY TICKET! The customer can sign in with the same phone number and password used at sign-up.');
+                        this.uploadForm.confirmOption3Payment = false;
                         this.uploadForm.requestId = '';
                         this.uploadForm.ticketTitle = '';
                         this.uploadForm.fileData = null;
+                        const refreshed = await this.loadAssignedTicketsFromDB();
+                        if (refreshed) {
+                            this.showAppNotice('My ARTfive! have uploaded your ticket successfully. The customer can now open 🎫 Option 4 — GET MY TICKET! to view and download it.');
+                        } else {
+                            this.showAppNotice('My ARTfive! have saved the ticket. The file list could not refresh; tap Refresh files to check it.');
+                        }
                     } catch (error) {
                         alert(error.message || 'My ARTfive! Ticket upload failed.');
                     }
