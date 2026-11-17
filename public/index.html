@@ -2560,7 +2560,6 @@
                 async restoreCentralSession() {
                     try {
                         const result = await this.apiRequest('/api/me');
-                        if (this.loginRole === 'customer_verify') this.ticketAccessToken = String(result.ticketAccessToken || '');
                         this.currentUser = result.user;
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
                         this.offlineMode = false;
@@ -3224,6 +3223,7 @@
                                 body: { phone, password, ticketAccess: this.loginRole === 'customer_verify' }
                             });
                         }
+                        if (this.loginRole === 'customer_verify') this.ticketAccessToken = String(result.ticketAccessToken || '');
                         this.currentUser = result.user;
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
                         this.offlineMode = false;
