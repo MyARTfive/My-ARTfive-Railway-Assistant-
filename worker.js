@@ -234,13 +234,21 @@ export default {
       let target;
       try {
         target = new URL(configuredUrl);
-        if (target.protocol !== "https:") throw new Error("HTTPS required");
+        const host = target.hostname.toLowerCase();
+        const privateHost = host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal") ||
+          host === "127.0.0.1" || host === "::1" || /^10\\./.test(host) || /^192\\.168\\./.test(host) ||
+          /^172\\.(1[6-9]|2[0-9]|3[01])\\./.test(host);
+        if (target.protocol !== "https:" || privateHost) throw new Error("Public HTTPS host required");
       } catch {
         return new Response("My ARTfive! APK download link is not configured correctly.", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
       }
       try {
         const upstream = await fetch(target.toString(), { redirect: "follow" });
-        if (!upstream.ok || !upstream.body) return new Response("My ARTfive! APK file is temporarily unavailable. Please try again later.", { status: 502, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+        const upstreamType = String(upstream.headers.get("Content-Type") || "").toLowerCase();
+        const upstreamLength = Number(upstream.headers.get("Content-Length") || 0);
+        if (!upstream.ok || !upstream.body || upstreamType.includes("text/html") || (upstreamLength && upstreamLength > 150 * 1024 * 1024)) {
+          return new Response("My ARTfive! The configured link did not return a valid APK file. Please use a direct HTTPS APK download URL.", { status: 502, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+        }
         await env.DB.prepare(`
           CREATE TABLE IF NOT EXISTS apk_downloads (
             id TEXT PRIMARY KEY,
