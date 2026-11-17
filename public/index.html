@@ -163,7 +163,7 @@
         <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
 
             <!-- ================= PUBLIC FIRST SCREEN ================= -->
-            <div x-show="currentDashboard === 'public'" x-init="loadAppUpdates()" class="space-y-8">
+            <div x-show="currentDashboard === 'public'" x-init="loadAppUpdates(); loadPublicCms()" class="space-y-8">
                 <div x-show="appUpdates.length > 0" class="bg-slate-800 border border-emerald-500/30 rounded-2xl p-5 space-y-3">
                     <h3 class="text-sm font-bold text-emerald-300">My ARTfive! Latest App Updates</h3>
                     <template x-for="item in appUpdates.slice(0,4)" :key="'public-update-'+item.id">
@@ -1061,7 +1061,7 @@
                             </div>
                         </div>
 
-                        <button @click="saveAllCmsChanges(); activeMenuOption = null" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl text-sm transition shadow">Save & Apply All Master Changes</button>
+                        <button @click="saveAllCmsChanges()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl text-sm transition shadow">Save & Apply All Master Changes</button>
                     </div>
                 </div>
 
@@ -2082,12 +2082,23 @@
                     }
                 },
 
-                saveAllCmsChanges() {
-                    localStorage.setItem('artfive_master_cms', JSON.stringify(this.cms));
-                    localStorage.setItem('artfive_notif_templates', JSON.stringify(this.notificationTemplates));
-                    localStorage.setItem('artfive_stations_list', JSON.stringify(this.availableStations));
-                    localStorage.setItem('artfive_customer_enquiry_chat', JSON.stringify(this.customerEnquiryMessages));
-                    alert('All Master CMS changes, train stations, labels, UPI details, QR codes, and messages have been saved!');
+                async saveAllCmsChanges() {
+                    const settings = {
+                        cms: this.cms,
+                        availableStations: this.availableStations,
+                        notificationTemplates: this.notificationTemplates
+                    };
+                    try {
+                        await this.apiRequest('/api/owner/cms', { method: 'POST', body: { settings } });
+                        localStorage.setItem('artfive_master_cms', JSON.stringify(this.cms));
+                        localStorage.setItem('artfive_notif_templates', JSON.stringify(this.notificationTemplates));
+                        localStorage.setItem('artfive_stations_list', JSON.stringify(this.availableStations));
+                        localStorage.removeItem('artfive_master_cms_draft');
+                        this.showAppNotice('My ARTfive! Master CMS changes have been saved centrally for all devices.');
+                    } catch (error) {
+                        localStorage.setItem('artfive_master_cms_draft', JSON.stringify(settings));
+                        this.showAppNotice('My ARTfive! Your CMS changes are only a draft on this device. They have NOT been saved centrally. Reconnect and tap Save All again.');
+                    }
                 },
 
                 newStationInput: '',
@@ -3005,6 +3016,20 @@
                 },
 
                 applyNotificationTemplate(tmpl) { if (tmpl) { this.notifForm.message = tmpl; } },
+
+                async loadPublicCms() {
+                    try {
+                        const result = await this.apiRequest('/api/public/cms');
+                        const settings = result.settings;
+                        if (settings && typeof settings === 'object') {
+                            if (settings.cms && typeof settings.cms === 'object') this.cms = { ...this.cms, ...settings.cms };
+                            if (Array.isArray(settings.availableStations)) this.availableStations = settings.availableStations;
+                            if (Array.isArray(settings.notificationTemplates)) this.notificationTemplates = settings.notificationTemplates;
+                        }
+                    } catch (error) {
+                        console.warn('My ARTfive! Public settings could not be refreshed:', error.message);
+                    }
+                },
 
                 async loadAppUpdates() {
                     try {
