@@ -1468,7 +1468,7 @@
                         <template x-if="cms.collectionQrImage"><img :src="cms.collectionQrImage" alt="Collection QR" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
                         <template x-if="!cms.collectionQrImage"><i class="fa-solid fa-qrcode text-emerald-400 text-5xl"></i></template>
                     </div>
-                    <button @click="showAppNotice('My ARTfive! please complete the ticket collection charges payment using the UPI number or QR code above. Our team will verify your payment and prepare your ticket.')"
+                    <button @click="showAppNotice('My ARTfive! have displayed the ticket collection payment details above. Please complete your Ticket Collection Charges Payment. Our team will verify it and prepare your ticket.')"
                             class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt3ConfirmBtn"></button>
                 </div>
 
@@ -2155,7 +2155,8 @@
                     'My ARTfive! have received your railway ticket request successfully. Now, please visit Option 2 💳 — Railway Ticket Booking Request Payment.',
                     'My ARTfive! have received your booking payment confirmation. Our team will verify it and continue with your ticket booking. Please wait for our update.',
                     'My ARTfive! have booked your tickets. Now, please visit Option 3 💰 — Ticket Collection Charges Payment.',
-                    'My ARTfive! have noted your Tatkal journey. Please review your passenger details in Option 1 🚆 — Request A Railway Ticket.'
+                    'My ARTfive! have noted your Tatkal journey. Please review your passenger details in Option 1 🚆 — Request A Railway Ticket.',
+                    'My ARTfive! have uploaded your confirmed ticket. Please visit Option 4 🎫 — GET MY TICKET! to view and download it.'
                 ],
 
                 updateForm: { title: '', desc: '' },
