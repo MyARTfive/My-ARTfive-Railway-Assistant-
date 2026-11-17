@@ -220,6 +220,12 @@ export default {
     const ip = request.headers.get("CF-Connecting-IP") || "unknown";
 
     if (path === "/download/app" && method === "GET") {
+      try {
+        const blockedDownload = await env.DB.prepare("SELECT ip_address FROM blocked_ips WHERE ip_address = ? AND (blocked_until IS NULL OR blocked_until > ?)").bind(ip, now).first();
+        if (blockedDownload) return new Response("Access denied.", { status: 403, headers: { "Cache-Control": "no-store" } });
+      } catch {
+        return new Response("My ARTfive! Download security is temporarily unavailable.", { status: 503, headers: { "Cache-Control": "no-store" } });
+      }
       await env.DB.prepare(`
         CREATE TABLE IF NOT EXISTS apk_download_settings (
           id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -235,9 +241,11 @@ export default {
       try {
         target = new URL(configuredUrl);
         const host = target.hostname.toLowerCase();
+        const octets = host.split(".").map(Number);
+        const validIpv4 = octets.length === 4 && octets.every(value => Number.isInteger(value) && value >= 0 && value <= 255);
+        const privateIpv4 = validIpv4 && (octets[0] === 10 || (octets[0] === 192 && octets[1] === 168) || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31));
         const privateHost = host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal") ||
-          host === "127.0.0.1" || host === "::1" || /^10\\./.test(host) || /^192\\.168\\./.test(host) ||
-          /^172\\.(1[6-9]|2[0-9]|3[01])\\./.test(host);
+          host === "127.0.0.1" || host === "::1" || privateIpv4;
         if (target.protocol !== "https:" || privateHost) throw new Error("Public HTTPS host required");
       } catch {
         return new Response("My ARTfive! APK download link is not configured correctly.", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
