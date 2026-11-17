@@ -1150,17 +1150,21 @@
                     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-6 max-w-2xl mx-auto">
                         <div>
                             <label class="block text-xs font-bold text-slate-400 mb-1">Find Customer by Name or Phone Number</label>
-                            <input type="search" x-model="customerSearch" placeholder="Type customer name or phone number..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
-                            <div x-show="customerSearch.trim().length > 0" class="max-h-40 overflow-y-auto rounded-lg border border-slate-600 bg-slate-900">
+                            <input type="search" x-model="customerSearch" placeholder="Type to search customers..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                            <div x-show="customerSearch.trim().length > 0" class="max-h-40 overflow-y-auto rounded-lg border border-slate-600 bg-slate-900 mb-3">
                                 <template x-for="cust in filteredCustomers()" :key="'upload-customer-'+cust.id">
                                     <button type="button" @click="uploadForm.customerId = cust.id; uploadForm.requestId = ''; customerSearch = cust.name" class="w-full text-left px-3 py-2.5 text-sm text-white hover:bg-slate-700 border-b border-slate-800 last:border-0" x-text="cust.name + ' (' + cust.phone + ')'"></button>
                                 </template>
                                 <div x-show="filteredCustomers().length === 0" class="px-3 py-3 text-xs text-slate-400">No matching customer found.</div>
                             </div>
-                            <div x-show="uploadForm.customerId" class="flex items-center justify-between gap-2 rounded-lg bg-slate-900 border border-slate-700 p-3">
-                                <span class="text-sm text-emerald-300" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? c.name + ' (' + c.phone + ')' : 'Customer selected'; })()"></span>
-                                <button type="button" @click="uploadForm.customerId = ''; uploadForm.requestId = ''; customerSearch = ''" class="text-xs text-slate-300 underline">Change</button>
-                            </div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Or choose a customer from the filter</label>
+                            <select x-model="uploadForm.customerId" @change="uploadForm.requestId = ''; customerSearch = ''" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                                <option value="">-- Filter / Choose Customer --</option>
+                                <template x-for="cust in customers" :key="'upload-filter-customer-'+cust.id">
+                                    <option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option>
+                                </template>
+                            </select>
+                            <p x-show="uploadForm.customerId" class="text-sm text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Selected customer: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
                             <label class="block text-xs font-bold text-slate-400 mt-3 mb-1">Select the exact ticket request</label>
                             <select x-model="uploadForm.requestId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                                 <option value="">-- Choose Ticket Request --</option>
@@ -2278,9 +2282,13 @@
                 },
 
                 openFileViewer(tkt) {
+                    if (!tkt || !tkt.fileData) {
+                        this.showAppNotice('My ARTfive! This ticket record is saved, but its file is unavailable in the current storage. Please contact support; do not upload a duplicate yet.');
+                        return;
+                    }
                     this.activeFileModal = {
                         title: tkt.ticketTitle || 'Railway_Ticket',
-                        data: tkt.fileData || '',
+                        data: tkt.fileData,
                         mimeType: tkt.mimeType || ''
                     };
                     this.showFileModal = true;
@@ -2912,9 +2920,7 @@
                         this.refreshCentralData().catch(error => console.warn('My ARTfive! Could not refresh customer and request filters:', error.message));
                     }
                     if (optNum === 9 || optNum === 1) {
-                        if (this.customers.length > 0 && !this.uploadForm.customerId) {
-                            this.uploadForm.customerId = this.customers[0].id;
-                        }
+                        // Do not preselect anyone. The Owner chooses by typing or using the filter.
                     }
                     if (optNum === 11) {
                         this.option11D1Exists = false;
