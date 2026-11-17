@@ -499,6 +499,32 @@ export default {
         return json({ success: true, id, message: "My ARTfive! Staff message saved." }, 201);
       }
 
+      if (path === "/api/app-updates" && (method === "GET" || method === "POST")) {
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS app_updates (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            created_by TEXT NOT NULL REFERENCES users(id),
+            created_at INTEGER NOT NULL
+          )
+        `).run();
+        if (method === "GET") {
+          const rows = await env.DB.prepare("SELECT id, title, description, created_at AS createdAt FROM app_updates ORDER BY created_at DESC LIMIT 100").all();
+          return json({ success: true, updates: rows.results || [] });
+        }
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the Owner can publish app updates." }, 403);
+        const body = await readJson(request);
+        const title = String(body.title || "").trim();
+        let description = String(body.description || "").trim();
+        if (!title || !description || title.length > 160 || description.length > 2000) return json({ success: false, message: "Enter a title and description within the allowed length." }, 400);
+        if (!/^My ARTfive!/i.test(description)) description = "My ARTfive! " + description;
+        const id = crypto.randomUUID();
+        await env.DB.prepare("INSERT INTO app_updates (id, title, description, created_by, created_at) VALUES (?, ?, ?, ?, ?)").bind(id, title, description, owner.id, now).run();
+        return json({ success: true, id, message: "My ARTfive! App update published successfully." }, 201);
+      }
+
       if (path === "/api/notifications" && (method === "GET" || method === "POST")) {
         const user = await getSessionUser(request, env, now);
         if (!user) return json({ success: false, message: "Please sign in to view My ARTfive! notifications." }, 401);
