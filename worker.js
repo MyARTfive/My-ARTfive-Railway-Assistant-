@@ -1435,7 +1435,7 @@ export default {
           crypto.randomUUID(),
           customer.id,
           user.id,
-          "My ARTfive! have uploaded your railway ticket successfully. It is now available in 🎫 Option 4 — GET MY TICKET! Please sign in with the same phone number and password used when you created your customer account.",
+          "My ARTfive! Thank you for choosing us! Your confirmed railway ticket is ready. You can now view and download your ticket. You're always most welcome to visit us again. Have a safe and happy journey! ❤️",
           now
         ).run();
         return json({ success: true, id, message: "My ARTfive! Ticket uploaded and made available in Customer Option 4." }, 201);
