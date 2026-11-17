@@ -1185,19 +1185,17 @@
                             </select>
                             <p x-show="uploadForm.customerId && uploadRequestsForSelectedCustomer().length === 0" class="text-xs text-amber-300 mt-2">No ticket requests are currently linked to this customer. Tap “Refresh requests” to check the latest saved requests.</p>
                             <p x-show="!uploadForm.customerId" class="text-xs text-slate-400 mt-2">Choose a customer above to load their ticket requests.</p>
-                            <div class="rounded-lg border border-slate-700 bg-slate-900 p-3 mt-4 space-y-2" aria-label="Option 3 ticket collection payment confirmation">
+                            <div class="rounded-lg border border-slate-700 bg-slate-900 p-3 mt-4 space-y-2" aria-label="Owner manual ticket payment confirmation">
                                 <div class="flex items-center justify-between gap-2">
-                                    <p class="text-xs font-bold text-slate-200">Option 3 — Ticket Collection Charges Payment</p>
-                                    <button type="button" @click="apiRequest('/api/customer-payments').then(result => { paymentInstructions = result.instructions || []; showAppNotice('My ARTfive! Payment status refreshed.'); }).catch(error => showAppNotice(error.message || 'My ARTfive! Could not refresh payment status.'))" class="text-xs text-sky-300 underline">Refresh payments</button>
+                                    <p class="text-xs font-bold text-slate-200">Owner Payment Confirmation</p>
+                                    <button type="button" @click="refreshOwnerTicketPaymentVerification()" class="text-xs text-sky-300 underline">Refresh status</button>
                                 </div>
-                                <template x-for="instruction in paymentInstructions.filter(item => String(item.customerId) === String(uploadForm.customerId) && String(item.requestId) === String(uploadForm.requestId) && Number(item.optionNo) === 3)" :key="'owner-verify-'+instruction.id">
-                                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
-                                        <span :class="instruction.paymentStatus === 'verified' ? 'text-emerald-300' : 'text-amber-300'" x-text="instruction.paymentStatus === 'verified' ? 'Option 3 payment verified ✅' : 'Option 3 payment pending — ticket locked'"></span>
-                                        <button x-show="instruction.paymentStatus !== 'verified'" type="button" @click="verifyCustomerPaymentInstruction(instruction)" class="rounded bg-emerald-700 px-3 py-1.5 font-bold text-white">Mark received ✅</button>
-                                    </div>
-                                </template>
-                                <p x-show="uploadForm.customerId && uploadForm.requestId && !paymentInstructions.some(item => String(item.customerId) === String(uploadForm.customerId) && String(item.requestId) === String(uploadForm.requestId) && Number(item.optionNo) === 3)" class="text-xs text-amber-300">No Option 3 payment instruction found for this request. Ticket upload stays locked.</p>
-                                <p class="text-[11px] text-slate-400">Check the actual UPI payment yourself before tapping Mark received. Ticket upload is allowed only after this confirmation is saved.</p>
+                                <p class="text-xs text-slate-300">Personally check the customer's actual payment. No Option 3 payment instruction or manual linking is required.</p>
+                                <div x-show="uploadForm.customerId && uploadForm.requestId" class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                                    <span :class="isOwnerTicketPaymentVerified() ? 'text-emerald-300' : 'text-amber-300'" x-text="isOwnerTicketPaymentVerified() ? 'Payment received and saved ✅' : 'Payment not yet confirmed'"></span>
+                                    <button x-show="!isOwnerTicketPaymentVerified()" type="button" @click="markOwnerTicketPaymentReceived()" class="rounded bg-emerald-700 px-3 py-1.5 font-bold text-white">Mark received ✅</button>
+                                </div>
+                                <p x-show="!uploadForm.customerId || !uploadForm.requestId" class="text-xs text-amber-300">Select the customer and exact ticket request to enable your confirmation.</p>
                             </div>
                             <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
                         </div>
@@ -2558,6 +2556,7 @@
                 ticketFilesRefreshing: false,
                 ticketFilesRefreshMessage: '',
                 paymentInstructions: [],
+                ticketPaymentVerifications: [],
                 paymentForm: { customerId: '', requestId: '', optionNo: '2', amount: '', message: '' },
                 customerPaymentRequestId: '',
 
@@ -3257,15 +3256,42 @@
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not send the payment instructions.'); }
                 },
                 async refreshOwnerPaymentInstructions() {
-                    // Reload payment instructions whenever Option 9 opens or its customer/request selection changes.
-                    // This keeps the Option 3 confirmation panel visible and current without requiring a manual refresh.
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    await this.refreshOwnerTicketPaymentVerification();
+                },
+                async refreshOwnerTicketPaymentVerification() {
                     if (!this.currentUser || this.currentUser.role !== 'owner') return;
                     try {
-                        const result = await this.apiRequest('/api/customer-payments');
-                        this.paymentInstructions = result.instructions || [];
+                        const result = await this.apiRequest('/api/ticket-payment-verification');
+                        this.ticketPaymentVerifications = result.verifications || [];
                     } catch (error) {
-                        this.paymentInstructions = [];
-                        console.warn('My ARTfive! Owner payment instructions could not be refreshed:', error.message);
+                        this.ticketPaymentVerifications = [];
+                        console.warn('My ARTfive! Owner payment confirmation could not be refreshed:', error.message);
+                    }
+                },
+                isOwnerTicketPaymentVerified() {
+                    return (this.ticketPaymentVerifications || []).some(item =>
+                        String(item.customerId) === String(this.uploadForm.customerId) &&
+                        String(item.requestId) === String(this.uploadForm.requestId) &&
+                        Number(item.verified) === 1
+                    );
+                },
+                async markOwnerTicketPaymentReceived() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    if (!this.uploadForm.customerId || !this.uploadForm.requestId) {
+                        this.showAppNotice('My ARTfive! Select the customer and exact ticket request first.');
+                        return;
+                    }
+                    if (!confirm('My ARTfive! Have you personally checked and received this customer payment?')) return;
+                    try {
+                        await this.apiRequest('/api/ticket-payment-verification', {
+                            method: 'POST',
+                            body: { customerId: this.uploadForm.customerId, requestId: this.uploadForm.requestId }
+                        });
+                        await this.refreshOwnerTicketPaymentVerification();
+                        this.showAppNotice('My ARTfive! Payment confirmation saved. Ticket upload is now unlocked.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not save payment confirmation.');
                     }
                 },
                 async verifyCustomerPaymentInstruction(instruction) {
