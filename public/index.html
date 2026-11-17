@@ -1049,15 +1049,15 @@
                                 </button>
                             </div>
 
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-700">
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-300 mb-1">Customer Enquiry Box Welcome Message</label>
-                                    <input type="text" x-model="customerEnquiryMessages[0].text" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2 text-xs text-white">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-300 mb-1">Staff Chat Box Default Message</label>
-                                    <input type="text" x-model="staffChatMessages[0].text" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2 text-xs text-white">
-                                </div>
+                            <div class="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-3">
+                                <h4 class="text-sm font-bold text-emerald-300">Dynamic Master CMS Text Editor</h4>
+                                <p class="text-[11px] text-slate-400">Every text setting in the CMS object appears here automatically, including new text fields added in future updates.</p>
+                                <template x-for="(value, key) in cms" :key="'dynamic-cms-'+key">
+                                    <div x-show="typeof value === 'string'" class="space-y-1">
+                                        <label class="block text-[11px] font-bold text-slate-300" x-text="key"></label>
+                                        <textarea x-model="cms[key]" rows="2" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2 text-xs text-white"></textarea>
+                                    </div>
+                                </template>
                             </div>
                         </div>
 
