@@ -1452,7 +1452,8 @@
                         <template x-if="cms.bookingQrImage"><img :src="cms.bookingQrImage" alt="Booking QR" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
                         <template x-if="!cms.bookingQrImage"><i class="fa-solid fa-qrcode text-emerald-400 text-5xl"></i></template>
                     </div>
-                    <button @click="alert('Booking payment confirmed!')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt2ConfirmBtn"></button>
+                    <button @click="showAppNotice('My ARTfive! please complete the booking request payment using the UPI number or QR code above. Our team will verify your payment and update you.')"
+                            class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt2ConfirmBtn"></button>
                 </div>
 
                 <!-- Customer Option 3: Collection -->
@@ -1467,7 +1468,8 @@
                         <template x-if="cms.collectionQrImage"><img :src="cms.collectionQrImage" alt="Collection QR" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
                         <template x-if="!cms.collectionQrImage"><i class="fa-solid fa-qrcode text-emerald-400 text-5xl"></i></template>
                     </div>
-                    <button @click="alert('Collection payment confirmed!')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt3ConfirmBtn"></button>
+                    <button @click="showAppNotice('My ARTfive! please complete the ticket collection charges payment using the UPI number or QR code above. Our team will verify your payment and prepare your ticket.')"
+                            class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt3ConfirmBtn"></button>
                 </div>
 
                 <!-- Customer Option 4: My Tickets -->
