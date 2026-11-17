@@ -867,7 +867,7 @@ export default {
           )
         `).run();
         const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
-        const token = bytesToBase64(tokenBytes).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+        const token = bytesToBase64(tokenBytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
         const tokenHash = await sha256Base64(token);
         const passwordHash = await hashPassword(newPassword);
         if (account) {
