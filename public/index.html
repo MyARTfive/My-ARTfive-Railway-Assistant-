@@ -1212,8 +1212,12 @@
                                 <span class="text-xs text-slate-400 font-normal" x-text="assignedTickets.length + ' item(s) stored'"></span>
                             </h4>
                             <div class="flex justify-end">
-                                <button type="button" @click="loadAssignedTicketsFromDB()" class="rounded-lg bg-slate-700 px-3 py-2 text-xs font-bold text-white">Refresh files</button>
+                                <button type="button" @click="refreshAssignedTicketFiles()" :disabled="ticketFilesRefreshing" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50 disabled:cursor-wait">
+                                    <i class="fa-solid" :class="ticketFilesRefreshing ? 'fa-spinner fa-spin' : 'fa-rotate'"></i>
+                                    <span x-text="ticketFilesRefreshing ? 'Refreshing files...' : 'Refresh Uploaded Ticket Files'"></span>
+                                </button>
                             </div>
+                            <p x-show="ticketFilesRefreshMessage" x-text="ticketFilesRefreshMessage" class="rounded-lg border border-sky-500/30 bg-sky-500/10 p-3 text-xs text-sky-200"></p>
                             <p x-show="ticketLoadError" x-text="'My ARTfive! ' + ticketLoadError" class="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300"></p>
                             <div class="space-y-2 max-h-56 overflow-y-auto">
                                 <template x-for="tkt in assignedTickets" :key="tkt.id">
@@ -2533,6 +2537,8 @@
                 customers: JSON.parse(localStorage.getItem('artfive_customers') || '[]'),
                 ticketRequests: [],
                 assignedTickets: [],
+                ticketFilesRefreshing: false,
+                ticketFilesRefreshMessage: '',
                 paymentInstructions: [],
                 paymentForm: { customerId: '', requestId: '', optionNo: '2', amount: '', message: '' },
                 customerPaymentRequestId: '',
@@ -2846,6 +2852,27 @@
                         console.error('My ARTfive! Ticket list could not be loaded:', error);
                         this.ticketLoadError = error.message || 'Could not load uploaded ticket files. Please tap Refresh files.';
                         return false;
+                    }
+                },
+
+                async refreshAssignedTicketFiles() {
+                    if (this.ticketFilesRefreshing) return;
+                    this.ticketFilesRefreshing = true;
+                    this.ticketFilesRefreshMessage = 'My ARTfive! Checking uploaded ticket files...';
+                    try {
+                        const loaded = await this.loadAssignedTicketsFromDB();
+                        if (!loaded) {
+                            this.ticketFilesRefreshMessage = 'My ARTfive! Could not refresh the uploaded ticket files. ' + (this.ticketLoadError || 'Please try again.');
+                            return;
+                        }
+                        const count = (this.assignedTickets || []).length;
+                        this.ticketFilesRefreshMessage = count > 0
+                            ? 'My ARTfive! Refresh complete. ' + count + ' uploaded ticket file(s) found.'
+                            : 'My ARTfive! Refresh completed. No uploaded ticket files were found.';
+                    } catch (error) {
+                        this.ticketFilesRefreshMessage = 'My ARTfive! Could not refresh uploaded ticket files. ' + (error.message || 'Please try again.');
+                    } finally {
+                        this.ticketFilesRefreshing = false;
                     }
                 },
 
