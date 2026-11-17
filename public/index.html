@@ -1467,6 +1467,10 @@
                                 <textarea x-model="ticketReqForm.enquiry" rows="2" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Type any specific enquiries or train preferences to attach with your ticket form..."></textarea>
                             </div>
                         </div>
+                        <div x-show="offlineTicketDraft" class="rounded-xl border border-amber-500/40 bg-amber-950/30 p-3 space-y-2">
+                            <p class="text-xs text-amber-200">My ARTfive! A saved request draft is waiting on this device. It has not been sent.</p>
+                            <button @click="retryTicketRequestDraft()" class="w-full bg-amber-600 text-white font-bold py-2.5 rounded-lg text-xs">Send Saved Request (Internet Required)</button>
+                        </div>
                         <button @click="submitTicketRequest()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl text-sm transition shadow" x-text="cms.formSubmitBtn"></button>
                     </div>
                 </div>
@@ -2103,6 +2107,8 @@
                 showOption11Pwd: false,
 
                 currentUser: null,
+                offlineMode: false,
+                offlineTicketDraft: !!localStorage.getItem('artfive_ticket_request_draft'),
                 appNotice: { open: false, message: '' },
                 appNoticeTimer: null,
 
@@ -2441,12 +2447,27 @@
                     try {
                         const result = await this.apiRequest('/api/me');
                         this.currentUser = result.user;
+                        localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
+                        this.offlineMode = false;
                         await this.refreshCentralData();
                     } catch (e) {
-                        this.currentUser = null;
                         this.ticketRequests = [];
                         this.assignedTickets = [];
                         this.customers = [];
+                        if (!navigator.onLine) {
+                            try {
+                                const cachedProfile = JSON.parse(localStorage.getItem('artfive_last_signed_in_profile') || 'null');
+                                if (cachedProfile && ['owner', 'staff', 'customer'].includes(cachedProfile.role)) {
+                                    this.currentUser = cachedProfile;
+                                    this.currentDashboard = cachedProfile.role;
+                                    this.offlineMode = true;
+                                    this.showAppNotice('My ARTfive! You are offline. Dashboard options are available, but requests, messages, payments and ticket downloads cannot be sent or verified until you reconnect.');
+                                    return;
+                                }
+                            } catch (profileError) {}
+                        }
+                        this.currentUser = null;
+                        this.offlineMode = false;
                     }
                 },
 
@@ -2991,6 +3012,8 @@
                             });
                         }
                         this.currentUser = result.user;
+                        localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
+                        this.offlineMode = false;
                         await this.refreshCentralData();
                         this.currentDashboard = this.currentUser.role === 'owner' ? 'owner' :
                             (this.currentUser.role === 'staff' ? 'staff' : 'customer');
@@ -3021,6 +3044,8 @@
                 async logout() {
                     try { await this.apiRequest('/api/logout', { method: 'POST' }); } catch (e) {}
                     this.currentUser = null;
+                    localStorage.removeItem('artfive_last_signed_in_profile');
+                    this.offlineMode = false;
                     this.ticketRequests = [];
                     this.assignedTickets = [];
                     this.customers = [];
@@ -3223,6 +3248,8 @@
                     };
                     try {
                         await this.apiRequest('/api/requests', { method: 'POST', body: { data: requestData } });
+                        localStorage.removeItem('artfive_ticket_request_draft');
+                        this.offlineTicketDraft = false;
                         try {
                             await this.apiRequest('/api/customer/passenger-profiles', {
                                 method: 'POST',
@@ -3248,7 +3275,33 @@
                         this.ownerInspectCustOpt = null;
                     } catch (error) {
                         console.error('My ARTfive! Ticket request submission failed:', error);
-                        this.showAppNotice('My ARTfive! have not received your railway ticket request yet. Please try again. Our team is here to help.');
+                        if (!navigator.onLine || error instanceof TypeError) {
+                            localStorage.setItem('artfive_ticket_request_draft', JSON.stringify(requestData));
+                            this.offlineTicketDraft = true;
+                            this.showAppNotice('My ARTfive! Your ticket request has been saved as a draft on this device only. It has NOT been sent to our team. Reconnect to the internet and tap Send Saved Request when ready.');
+                        } else {
+                            this.showAppNotice('My ARTfive! have not received your railway ticket request yet. Please try again. Our team is here to help.');
+                        }
+                    }
+                },
+
+                async retryTicketRequestDraft() {
+                    if (!navigator.onLine) {
+                        this.showAppNotice('My ARTfive! Please reconnect to the internet before sending your saved request.');
+                        return;
+                    }
+                    try {
+                        const draft = JSON.parse(localStorage.getItem('artfive_ticket_request_draft') || 'null');
+                        if (!draft) { this.offlineTicketDraft = false; return; }
+                        this.ticketReqForm.passengers = draft.passengers || this.ticketReqForm.passengers;
+                        this.ticketReqForm.fromStation = draft.fromStation || '';
+                        this.ticketReqForm.toStation = draft.toStation || '';
+                        this.ticketReqForm.journeyDate = draft.journeyDate || '';
+                        this.ticketReqForm.travelClass = draft.travelClass || 'SL';
+                        this.ticketReqForm.enquiry = draft.enquiry || '';
+                        await this.submitTicketRequest();
+                    } catch (error) {
+                        this.showAppNotice('My ARTfive! Your saved request is still on this device. Please review it and try again.');
                     }
                 }
             }
