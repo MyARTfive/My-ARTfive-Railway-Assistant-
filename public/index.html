@@ -2497,8 +2497,12 @@
                         const customerResult = await this.apiRequest('/api/customers');
                         this.customers = customerResult.customers || [];
                     }
-                    if (this.currentUser.role === 'owner') await this.loadOwnerAnalysis();
-                    else await this.loadPublicStats();
+                    if (this.currentUser.role === 'owner') {
+                        await this.loadOwnerAnalysis();
+                        await this.loadCustomerNotifications();
+                    } else {
+                        await this.loadPublicStats();
+                    }
                 },
 
                 async restoreCentralSession() {
