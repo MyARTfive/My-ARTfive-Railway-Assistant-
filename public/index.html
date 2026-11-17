@@ -2185,6 +2185,8 @@
                             this.cms.collectionQrImage = e.target.result;
                         }
                         localStorage.setItem('artfive_master_cms', JSON.stringify(this.cms));
+                        // Publish QR image centrally so customer devices can load it too.
+                        this.saveAllCmsChanges();
                     };
                     reader.readAsDataURL(file);
                 },
