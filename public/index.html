@@ -2839,6 +2839,7 @@
                         return;
                     }
                     this.activeMenuOption = optNum;
+                    if (optNum === 3) this.loadOwnerAnalysis();
                     if (optNum === 'custChat') this.loadCustomerChatSettings();
                     if (optNum === 'staffChat') this.loadStaffChat();
                     if (optNum === 10) {
