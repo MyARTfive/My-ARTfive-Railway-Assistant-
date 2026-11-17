@@ -710,7 +710,10 @@
                 <div x-show="activeMenuOption === 3" class="space-y-6">
                     <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
                         <h3 class="text-lg font-bold text-white" x-text="cms.ownerOpt3Name"></h3>
-                        <button @click="activeMenuOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
+                        <div class="flex gap-2">
+                            <button @click="loadOwnerAnalysis()" class="bg-sky-700 hover:bg-sky-600 text-white text-xs px-3 py-1.5 rounded-lg">Refresh Counts</button>
+                            <button @click="activeMenuOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
+                        </div>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold" x-text="cms.counter3Title"></label><p class="text-3xl font-extrabold text-white" x-text="stats.users">0</p></div>
@@ -3397,7 +3400,10 @@
                             else this.showAppNotice('My ARTfive! have welcomed you back. Please choose the next service from your Customer Dashboard options.');
                         }
                     } catch (error) {
-                        if (this.loginRole === 'customer' || this.loginRole === 'customer_new' || this.loginRole === 'customer_verify') {
+                        if (this.loginRole === 'customer_verify') {
+                            const safeMessage = String(error && error.message || '').trim();
+                            this.showAppNotice(safeMessage ? 'My ARTfive! ' + safeMessage : 'My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
+                        } else if (this.loginRole === 'customer' || this.loginRole === 'customer_new') {
                             this.showAppNotice('My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
                         } else {
                             alert(error.message || 'My ARTfive! Sign-in failed. Please check your details.');
