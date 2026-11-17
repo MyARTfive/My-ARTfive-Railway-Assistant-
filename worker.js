@@ -305,6 +305,74 @@ export default {
         });
       }
 
+      if (path === "/api/customer-enquiry" && (method === "GET" || method === "POST")) {
+        const user = await getSessionUser(request, env, now);
+        if (!user) return json({ success: false, message: "Please sign in to use My ARTfive! Enquiry." }, 401);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS customer_enquiry_messages (
+            id TEXT PRIMARY KEY,
+            customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            sender_id TEXT NOT NULL REFERENCES users(id),
+            sender_role TEXT NOT NULL CHECK (sender_role IN ('owner','staff','customer')),
+            sender_name TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+          )
+        `).run();
+        const body = method === "POST" ? await readJson(request) : {};
+        const targetCustomerId = user.role === "customer" ? user.id : String(body.customerId || url.searchParams.get("customerId") || "").trim();
+        if (!targetCustomerId) return json({ success: false, message: "Select the customer enquiry conversation." }, 400);
+        const target = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND role = 'customer' AND active = 1 LIMIT 1").bind(targetCustomerId).first();
+        if (!target) return json({ success: false, message: "Customer account was not found." }, 404);
+        if (method === "GET") {
+          const rows = await env.DB.prepare(
+            "SELECT id, sender_role AS senderRole, sender_name AS sender, message AS text, created_at AS createdAt FROM customer_enquiry_messages WHERE customer_id = ? ORDER BY created_at ASC LIMIT 300"
+          ).bind(targetCustomerId).all();
+          return json({ success: true, messages: rows.results || [] });
+        }
+        const messageText = String(body.message || "").trim();
+        if (!messageText || messageText.length > 2000) return json({ success: false, message: "Enter a message up to 2,000 characters." }, 400);
+        if (user.role === "customer" && !messageText) return json({ success: false, message: "Enter your enquiry." }, 400);
+        const senderName = user.role === "customer" ? user.name : "My ARTfive!";
+        const finalMessage = user.role === "customer" ? messageText : (/^My ARTfive!/i.test(messageText) ? messageText : "My ARTfive! " + messageText);
+        const id = crypto.randomUUID();
+        await env.DB.prepare(
+          "INSERT INTO customer_enquiry_messages (id, customer_id, sender_id, sender_role, sender_name, message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        ).bind(id, targetCustomerId, user.id, user.role, senderName, finalMessage, now).run();
+        return json({ success: true, id, message: "My ARTfive! Enquiry message saved." }, 201);
+      }
+
+      if (path === "/api/staff-chat" && (method === "GET" || method === "POST")) {
+        const user = await getSessionUser(request, env, now);
+        if (!user || !["owner", "staff"].includes(user.role)) return json({ success: false, message: "Only Owner and Staff can access Staff Chat." }, 403);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS staff_chat_messages (
+            id TEXT PRIMARY KEY,
+            sender_id TEXT NOT NULL REFERENCES users(id),
+            sender_role TEXT NOT NULL CHECK (sender_role IN ('owner','staff')),
+            sender_name TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+          )
+        `).run();
+        if (method === "GET") {
+          const rows = await env.DB.prepare(
+            "SELECT id, sender_role AS senderRole, sender_name AS sender, message AS text, created_at AS createdAt FROM staff_chat_messages ORDER BY created_at ASC LIMIT 300"
+          ).all();
+          return json({ success: true, messages: rows.results || [] });
+        }
+        const body = await readJson(request);
+        const messageText = String(body.message || "").trim();
+        if (!messageText || messageText.length > 2000) return json({ success: false, message: "Enter a message up to 2,000 characters." }, 400);
+        const senderName = user.role === "owner" ? "My ARTfive!" : user.name;
+        const finalMessage = user.role === "owner" && !/^My ARTfive!/i.test(messageText) ? "My ARTfive! " + messageText : messageText;
+        const id = crypto.randomUUID();
+        await env.DB.prepare(
+          "INSERT INTO staff_chat_messages (id, sender_id, sender_role, sender_name, message, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+        ).bind(id, user.id, user.role, senderName, finalMessage, now).run();
+        return json({ success: true, id, message: "My ARTfive! Staff message saved." }, 201);
+      }
+
       if (path === "/api/me" && method === "GET") {
         const user = await getSessionUser(request, env, now);
         if (!user) return json({ success: false, message: "Not signed in." }, 401);
