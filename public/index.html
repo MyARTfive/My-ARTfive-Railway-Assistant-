@@ -1317,6 +1317,27 @@
                                     </template>
                                 </div>
                             </div>
+                            <div class="bg-slate-800 border border-amber-500/30 rounded-xl p-4 space-y-3">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div><h4 class="font-bold text-white">Customer / Staff Password Change Requests</h4><p class="text-xs text-slate-400">Review new password requests. The new password itself is never displayed.</p></div>
+                                    <button @click="loadOption10PasswordRequests()" class="bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold px-3 py-2 rounded-lg">Refresh requests</button>
+                                </div>
+                                <template x-if="option10PasswordRequests.length === 0"><p class="text-sm text-slate-400 py-2">No pending password change requests.</p></template>
+                                <div class="space-y-2">
+                                    <template x-for="requestItem in option10PasswordRequests" :key="requestItem.id">
+                                        <div class="bg-slate-900 border border-slate-700 rounded-lg p-3 space-y-2">
+                                            <div class="flex flex-wrap justify-between gap-2">
+                                                <div><p class="font-bold text-white" x-text="requestItem.name || 'Account'"></p><p class="text-xs text-slate-300" x-text="requestItem.role === 'staff' ? 'Staff account' : 'Customer account'"></p><p class="text-xs text-slate-400" x-text="'Phone: ' + requestItem.phone"></p><p class="text-xs text-slate-500" x-text="'Requested: ' + new Date(requestItem.createdAt).toLocaleString()"></p></div>
+                                                <span class="text-xs font-bold text-amber-300">PENDING</span>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button @click="decidePasswordChangeRequest(requestItem, 'approve')" class="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg">Approve</button>
+                                                <button @click="decidePasswordChangeRequest(requestItem, 'reject')" class="flex-1 bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold px-3 py-2 rounded-lg">Reject</button>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
                             <p class="text-xs text-slate-500">Privacy note: names are shown only when the visitor is signed in. Location is approximate and depends on Cloudflare availability; a website cannot identify a visitor's real name or exact home address automatically. Blocking is by IP address, so shared networks may affect multiple people.</p>
                         </div>
                     </template>
@@ -2209,6 +2230,15 @@
                 option10Totals: { visitors: 0, visits: 0 },
                 option10BlockedCount: 0,
                 option10Loading: false,
+                option10PasswordRequests: [],
+                passwordRecoveryOpen: false,
+                passwordRecoveryRole: 'customer',
+                passwordRecoveryPhone: '',
+                passwordRecoveryNewPassword: '',
+                passwordRecoveryConfirmPassword: '',
+                passwordRecoveryToken: '',
+                passwordRecoveryStatus: '',
+                passwordRecoveryBusy: false,
                 option11Authenticated: false,
                 option11D1Exists: false,
                 option11Phone: '',
@@ -2894,6 +2924,30 @@
                     }
                 },
 
+                async loadOption10PasswordRequests() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated) return;
+                    const result = await this.apiRequest('/api/owner/control/password-requests');
+                    this.option10PasswordRequests = result.requests || [];
+                },
+
+                async decidePasswordChangeRequest(requestItem, decision) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated) return;
+                    const actionLabel = decision === 'approve' ? 'approve' : 'reject';
+                    if (!confirm('My ARTfive! ' + actionLabel + ' this password change request for ' + requestItem.name + '?')) return;
+                    try {
+                        await this.apiRequest('/api/owner/control/password-requests/decision', {
+                            method: 'POST',
+                            body: { requestId: requestItem.id, decision }
+                        });
+                        await this.loadOption10PasswordRequests();
+                        this.showAppNotice(decision === 'approve'
+                            ? 'My ARTfive! Password change approved successfully.'
+                            : 'My ARTfive! Request decision saved.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not update this password change request.');
+                    }
+                },
+
                 async loadOption10Visitors() {
                     if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated) return;
                     this.option10Loading = true;
@@ -2903,6 +2957,7 @@
                         this.option10BlockedIps = result.blockedIps || [];
                         this.option10Totals = result.totals || { visitors: 0, visits: 0 };
                         this.option10BlockedCount = Number(result.blockedCount || 0);
+                        await this.loadOption10PasswordRequests();
                     } catch (error) {
                         this.option10Authenticated = false;
                         alert(error.message || 'My ARTfive! Could not load visitor activity. Please verify Manager access again.');
@@ -3159,7 +3214,70 @@
                 },
 
                 forgotPassword(portalType) {
-                    this.showAppNotice('My ARTfive! Secure password recovery is not available automatically yet. Please contact the My ARTfive! Owner for help resetting your account password.');
+                    const role = String(portalType || '').toLowerCase().includes('staff') ? 'staff' : 'customer';
+                    if (String(portalType || '').toLowerCase().includes('dashboard')) {
+                        this.showAppNotice('My ARTfive! Owner password recovery must be handled securely by the Owner.');
+                        return;
+                    }
+                    this.passwordRecoveryRole = role;
+                    this.passwordRecoveryPhone = this.loginPhone || '';
+                    this.passwordRecoveryNewPassword = '';
+                    this.passwordRecoveryConfirmPassword = '';
+                    this.passwordRecoveryToken = localStorage.getItem('artfive_password_change_token_' + role) || '';
+                    this.passwordRecoveryStatus = '';
+                    this.passwordRecoveryOpen = true;
+                },
+
+                async submitPasswordChangeRequest() {
+                    if (this.passwordRecoveryBusy) return;
+                    if (!this.passwordRecoveryPhone.trim() || this.passwordRecoveryNewPassword.length < 8) {
+                        this.showAppNotice('My ARTfive! Enter your registered phone number and a new password of at least 8 characters.');
+                        return;
+                    }
+                    if (this.passwordRecoveryNewPassword !== this.passwordRecoveryConfirmPassword) {
+                        this.showAppNotice('My ARTfive! The new passwords do not match.');
+                        return;
+                    }
+                    this.passwordRecoveryBusy = true;
+                    try {
+                        const result = await this.apiRequest('/api/password-change/request', {
+                            method: 'POST',
+                            body: {
+                                phone: this.passwordRecoveryPhone.trim(),
+                                role: this.passwordRecoveryRole,
+                                newPassword: this.passwordRecoveryNewPassword
+                            }
+                        });
+                        this.passwordRecoveryToken = result.token || '';
+                        if (this.passwordRecoveryToken) {
+                            localStorage.setItem('artfive_password_change_token_' + this.passwordRecoveryRole, this.passwordRecoveryToken);
+                        }
+                        this.passwordRecoveryNewPassword = '';
+                        this.passwordRecoveryConfirmPassword = '';
+                        this.passwordRecoveryStatus = 'pending';
+                        this.showAppNotice(result.message || 'My ARTfive! Your password change request has been sent to the Owner for approval.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not submit your password change request.');
+                    } finally {
+                        this.passwordRecoveryBusy = false;
+                    }
+                },
+
+                async checkPasswordChangeStatus() {
+                    if (!this.passwordRecoveryToken) return;
+                    try {
+                        const result = await this.apiRequest('/api/password-change/status?token=' + encodeURIComponent(this.passwordRecoveryToken));
+                        this.passwordRecoveryStatus = result.status || 'pending';
+                        if (this.passwordRecoveryStatus === 'approved') {
+                            this.showAppNotice('My ARTfive! Your new password is approved. You can now sign in with it.');
+                        } else if (this.passwordRecoveryStatus === 'rejected') {
+                            this.passwordRecoveryOpen = true;
+                        } else {
+                            this.showAppNotice('My ARTfive! Your password change request is still waiting for Owner approval.');
+                        }
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not check your request status.');
+                    }
                 },
 
                 openLoginModal(role = 'customer') { 
@@ -3554,6 +3672,28 @@
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/pwabuilder-sw.js');
   }
+    </script>
+    <div x-show="passwordRecoveryOpen" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/90 p-4">
+        <div class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-800 p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between"><h3 class="text-lg font-bold text-white">My ARTfive! Password Change Request</h3><button @click="passwordRecoveryOpen = false" class="text-slate-400 hover:text-white" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+            <p class="text-xs text-slate-300">Create a new password and send the request to the Owner for approval. No OTP is used.</p>
+            <div><label class="block text-xs text-slate-300 mb-1">Registered phone number</label><input type="tel" x-model="passwordRecoveryPhone" class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-sm text-white" placeholder="Enter registered phone number"></div>
+            <div><label class="block text-xs text-slate-300 mb-1">New password (at least 8 characters)</label><input type="password" x-model="passwordRecoveryNewPassword" autocomplete="new-password" class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-sm text-white" placeholder="Create new password"></div>
+            <div><label class="block text-xs text-slate-300 mb-1">Confirm new password</label><input type="password" x-model="passwordRecoveryConfirmPassword" autocomplete="new-password" class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-sm text-white" placeholder="Enter new password again"></div>
+            <button @click="submitPasswordChangeRequest()" :disabled="passwordRecoveryBusy" class="w-full rounded-lg bg-emerald-700 py-3 text-sm font-bold text-white disabled:opacity-50" x-text="passwordRecoveryBusy ? 'Sending request...' : 'Send for Owner Approval'"></button>
+            <div x-show="passwordRecoveryToken" class="border-t border-slate-700 pt-3 space-y-2">
+                <p class="text-xs text-slate-300">You can check the request status from this device.</p>
+                <button @click="checkPasswordChangeStatus()" class="w-full rounded-lg bg-sky-700 py-2.5 text-sm font-bold text-white">Check Approval Status</button>
+                <p x-show="passwordRecoveryStatus === 'pending'" class="text-xs text-amber-300">My ARTfive! Your request is waiting for Owner approval.</p>
+                <p x-show="passwordRecoveryStatus === 'approved'" class="text-sm font-bold text-emerald-300">My ARTfive! Your new password has been approved. Sign in using your new password.</p>
+                <p x-show="passwordRecoveryStatus === 'rejected'" class="text-lg font-extrabold text-rose-500">Error!</p>
+            </div>
+        </div>
+    </div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/pwabuilder-sw.js');
+      }
     </script>
 </body>
 </html>
