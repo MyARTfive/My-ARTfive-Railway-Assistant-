@@ -713,7 +713,7 @@
                         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold" x-text="cms.counter3Title"></label><p class="text-3xl font-extrabold text-white" x-text="stats.users">0</p></div>
                         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold" x-text="cms.counter1Title"></label><p class="text-3xl font-extrabold text-white" x-text="stats.subscribers">0</p></div>
                         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold" x-text="cms.counter2Title"></label><p class="text-3xl font-extrabold text-white" x-text="stats.ratings">0</p></div>
-                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold">Downloaded / Installed Count</label><p class="text-3xl font-extrabold text-white" x-text="stats.downloads">0</p></div>
+                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold">APK Downloads</label><p class="text-3xl font-extrabold text-white" x-text="stats.downloads">0</p><button @click="copyToClipboard(window.location.origin + '/download/app')" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg">Copy Tracked APK Download Link</button><p class="text-[10px] text-slate-500">Counts successful downloads through this link, not APK installations or WhatsApp file attachments.</p></div>
                     </div>
                 </div>
 
