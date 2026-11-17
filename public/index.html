@@ -467,7 +467,20 @@
                                     </template>
                                 </select>
                             </div>
-                            <p class="text-xs text-emerald-300">Upload is allowed only after the Owner verifies Option 3 payment.</p>
+                            <div class="rounded-lg border border-slate-700 bg-slate-900 p-3 space-y-2">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="text-xs font-bold text-slate-200">Option 2 & 3 payment verification</p>
+                                    <button type="button" @click="apiRequest('/api/customer-payments').then(result => { paymentInstructions = result.instructions || []; showAppNotice('My ARTfive! Payment status refreshed.'); }).catch(error => showAppNotice(error.message || 'My ARTfive! Could not refresh payment status.'))" class="text-xs text-sky-300 underline">Refresh payments</button>
+                                </div>
+                                <template x-for="instruction in paymentInstructions.filter(item => String(item.customerId) === String(uploadForm.customerId) && String(item.requestId) === String(uploadForm.requestId) && Number(item.optionNo) === 3)" :key="'staff-verify-'+instruction.id">
+                                    <div class="flex items-center justify-between gap-2 text-xs">
+                                        <span :class="instruction.paymentStatus === 'verified' ? 'text-emerald-300' : 'text-amber-300'" x-text="instruction.paymentStatus === 'verified' ? 'Option 3 payment verified ✅' : 'Option 3 payment pending — ticket locked'"></span>
+                                        <button x-show="instruction.paymentStatus !== 'verified'" type="button" @click="verifyCustomerPaymentInstruction(instruction)" class="rounded bg-emerald-700 px-3 py-1.5 font-bold text-white">Mark received ✅</button>
+                                    </div>
+                                </template>
+                                <p x-show="!paymentInstructions.some(item => String(item.customerId) === String(uploadForm.customerId) && String(item.requestId) === String(uploadForm.requestId) && Number(item.optionNo) === 3)" class="text-xs text-amber-300">No Option 3 payment instruction found for this request. Ticket upload stays locked.</p>
+                                <p class="text-[11px] text-slate-400">Only mark received after personally checking the UPI payment. Upload is accepted only after this saved confirmation.</p>
+                            </div>
 
                             <div class="space-y-3">
                                 <p class="text-xs font-bold text-slate-300">Choose Upload Method:</p>
@@ -1179,11 +1192,7 @@
                             <p x-show="!uploadForm.customerId" class="text-xs text-slate-400 mt-2">Choose a customer above to load their ticket requests.</p>
                             <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
                         </div>
-                        <label class="flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
-                            <input type="checkbox" x-model="uploadForm.confirmOption3Payment" class="h-5 w-5 accent-emerald-500">
-                            <span>✓ Option 3 payment received</span>
-                        </label>
-                        
+
                         <div class="space-y-3">
                             <label class="block text-xs font-bold text-slate-400 mb-1">Choose Upload Method</label>
                             <input type="file" x-ref="ownerFile" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" @change="handleFileUpload($event)" class="hidden">
@@ -3240,7 +3249,7 @@
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not send the payment instructions.'); }
                 },
                 async verifyCustomerPaymentInstruction(instruction) {
-                    if (!this.currentUser || this.currentUser.role !== 'owner' || !instruction) return;
+                    if (!this.currentUser || !['owner', 'staff'].includes(this.currentUser.role) || !instruction) return;
                     if (!confirm('My ARTfive! Have you personally checked your UPI app and confirmed this exact payment?')) return;
                     try {
                         const result = await this.apiRequest('/api/customer-payments', {
@@ -3603,10 +3612,6 @@
                 async uploadAndAssignTicket() {
                     if (!this.uploadForm.customerId || !this.uploadForm.requestId || !this.uploadForm.ticketTitle || !this.uploadForm.fileData) {
                         alert('My ARTfive! Select the customer, exact ticket request and ticket file.');
-                        return;
-                    }
-                    if (!this.uploadForm.confirmOption3Payment) {
-                        alert('My ARTfive! Please tick the Option 3 payment-received box before uploading.');
                         return;
                     }
                     try {
