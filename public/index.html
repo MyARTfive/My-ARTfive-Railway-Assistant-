@@ -2169,13 +2169,33 @@
                 staffChatMessages: [],
                 newStaffChatText: '',
 
-                toggleCustomerChatState() {
-                    this.customerChatEnabled = !this.customerChatEnabled;
-                    localStorage.setItem('artfive_customer_chat_enabled', String(this.customerChatEnabled));
+                async loadCustomerChatSettings() {
+                    if (!this.currentUser) return;
+                    try {
+                        const result = await this.apiRequest('/api/customer-chat-settings');
+                        this.customerChatEnabled = !!result.enabled;
+                    } catch (error) {
+                        console.warn('My ARTfive! Chat availability could not be refreshed:', error.message);
+                    }
+                },
+
+                async toggleCustomerChatState() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    try {
+                        const result = await this.apiRequest('/api/customer-chat-settings', {
+                            method: 'POST',
+                            body: { enabled: !this.customerChatEnabled }
+                        });
+                        this.customerChatEnabled = !!result.enabled;
+                        this.showAppNotice(result.message);
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not update customer chat availability.');
+                    }
                 },
 
                 async loadCustomerEnquiryChat(customerId = '') {
                     if (!this.currentUser) return;
+                    await this.loadCustomerChatSettings();
                     const targetId = this.currentUser.role === 'customer' ? this.currentUser.id : (customerId || this.paymentForm.customerId || '');
                     if (!targetId) { this.customerEnquiryMessages = []; return; }
                     try {
