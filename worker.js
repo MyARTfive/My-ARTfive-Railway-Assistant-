@@ -957,7 +957,7 @@ export default {
           )
         `).run();
         const row = await env.DB.prepare(
-          "SELECT id, user_id, requested_password_hash FROM password_change_requests WHERE id = ? AND status = 'pending' LIMIT 1"
+          "SELECT r.id, r.user_id, r.requested_password_hash FROM password_change_requests r JOIN users u ON u.id = r.user_id AND u.active = 1 WHERE r.id = ? AND r.status = 'pending' LIMIT 1"
         ).bind(requestId).first();
         if (!row || !row.user_id) return json({ success: false, message: "This password change request is no longer available." }, 409);
         const nextStatus = decision === "approve" ? "approved" : "rejected";
