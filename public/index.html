@@ -1200,7 +1200,7 @@
                             <div class="rounded-lg border border-slate-700 bg-slate-900 p-3 mt-4 space-y-2" aria-label="Owner manual ticket payment confirmation">
                                 <div class="flex items-center justify-between gap-2">
                                     <p class="text-xs font-bold text-slate-200">Owner Payment Confirmation</p>
-                                    <button type="button" @click="refreshOwnerTicketPaymentVerification()" class="text-xs text-sky-300 underline">Refresh status</button>
+                                    <button type="button" @click="refreshOwnerTicketPaymentVerification()" :disabled="ownerPaymentStatusRefreshing" class="text-xs text-sky-300 underline disabled:opacity-50 disabled:cursor-wait" x-text="ownerPaymentStatusRefreshing ? 'Refreshing…' : 'Refresh status'"></button>
                                 </div>
                                 <p class="text-xs text-slate-300">Personally check the customer's actual payment. No Option 3 payment instruction or manual linking is required.</p>
                                 <div x-show="uploadForm.customerId && uploadForm.requestId" class="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -2563,6 +2563,7 @@
                 ticketFilesRefreshMessage: '',
                 paymentInstructions: [],
                 ticketPaymentVerifications: [],
+                ownerPaymentStatusRefreshing: false,
                 paymentForm: { customerId: '', requestId: '', optionNo: '2', amount: '', message: '' },
                 customerPaymentRequestId: '',
 
@@ -3266,13 +3267,25 @@
                     await this.refreshOwnerTicketPaymentVerification();
                 },
                 async refreshOwnerTicketPaymentVerification() {
-                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    if (!this.currentUser || this.currentUser.role !== 'owner') {
+                        this.showAppNotice('My ARTfive! Owner sign-in is required to refresh payment status.');
+                        return false;
+                    }
+                    if (this.ownerPaymentStatusRefreshing) return false;
+                    this.ownerPaymentStatusRefreshing = true;
                     try {
                         const result = await this.apiRequest('/api/ticket-payment-verification');
-                        this.ticketPaymentVerifications = result.verifications || [];
+                        if (!result || result.success !== true || !Array.isArray(result.verifications)) {
+                            throw new Error((result && result.message) || 'The server returned an invalid payment-status response.');
+                        }
+                        this.ticketPaymentVerifications = result.verifications;
+                        return true;
                     } catch (error) {
-                        this.ticketPaymentVerifications = [];
                         console.warn('My ARTfive! Owner payment confirmation could not be refreshed:', error.message);
+                        this.showAppNotice(error.message || 'My ARTfive! Payment status could not be refreshed. Please try again.');
+                        return false;
+                    } finally {
+                        this.ownerPaymentStatusRefreshing = false;
                     }
                 },
                 isOwnerTicketPaymentVerified() {
