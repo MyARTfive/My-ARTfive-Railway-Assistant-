@@ -2771,6 +2771,8 @@
                         return;
                     }
                     this.activeMenuOption = optNum;
+                    if (optNum === 'custChat') this.loadCustomerChatSettings();
+                    if (optNum === 'staffChat') this.loadStaffChat();
                     if (optNum === 10) {
                         this.option10Authenticated = false;
                         this.option10Phone = '';
