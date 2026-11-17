@@ -1544,46 +1544,62 @@
                     </div>
                 </div>
 
-                <!-- Customer Option 2: Payment -->
+                <!-- Customer Option 2: Booking Request Payment -->
                 <div x-show="activeCustOption === 2" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
                     <p class="text-xs text-slate-300" x-text="cms.payOpt2Instruction"></p>
-                    <div class="rounded-xl border border-emerald-500/30 bg-slate-900 p-4 space-y-2"><label class="block text-xs font-bold text-emerald-300">Select your ticket request</label><select x-model="customerPaymentRequestId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white"><option value="">-- Select your request --</option><template x-for="req in customerPaymentRequests()" :key="'custpay2-'+req.id"><option :value="req.id" x-text="paymentRequestLabel(req)"></option></template></select>
-                        <template x-if="selectedCustomerPaymentInstruction(2)"><div class="space-y-2"><p class="text-xs text-slate-400">Your individual booking-request payment amount</p><p class="text-2xl font-extrabold text-emerald-300" x-text="formatPaymentAmount(selectedCustomerPaymentInstruction(2).amountPaise)"></p><p class="text-xs font-bold" :class="selectedCustomerPaymentInstruction(2).paymentStatus === 'verified' ? 'text-emerald-400' : 'text-amber-300'" x-text="selectedCustomerPaymentInstruction(2).paymentStatus === 'verified' ? 'Payment verified' : 'Payment pending verification'"></p><p class="text-sm text-white whitespace-pre-wrap" x-text="selectedCustomerPaymentInstruction(2).message"></p></div></template>
-                        <template x-if="!selectedCustomerPaymentInstruction(2)"><p class="text-xs text-amber-300">My ARTfive! Your booking-request amount and payment instructions are not available yet. Please wait for a personal update.</p></template></div>
-                    <template x-if="selectedCustomerPaymentInstruction(2)">
-                    <div @click="copyToClipboard(cms.upiNumber)" class="bg-slate-900 border border-emerald-500/40 p-4 rounded-xl flex items-center justify-between cursor-pointer">
-                        <span class="text-emerald-400 font-mono font-bold text-lg" x-text="cms.upiNumber"></span>
-                        <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded">Tap to Copy</span>
+                    <template x-for="instruction in customerPaymentInstructions(2)" :key="'custpay2-'+instruction.id">
+                        <div class="rounded-xl border border-emerald-500/30 bg-slate-900 p-4 space-y-3">
+                            <p class="text-xs font-bold text-emerald-300" x-text="customerPaymentRequestLabel(instruction.requestId)"></p>
+                            <p class="text-xs text-slate-400">Your Railway Ticket Booking Request Payment</p>
+                            <p class="text-2xl font-extrabold text-emerald-300" x-text="formatPaymentAmount(instruction.amountPaise)"></p>
+                            <p class="text-xs font-bold" :class="instruction.paymentStatus === 'verified' ? 'text-emerald-400' : 'text-amber-300'" x-text="instruction.paymentStatus === 'verified' ? 'Payment verified' : 'Payment pending verification'"></p>
+                            <p class="text-sm text-white whitespace-pre-wrap" x-text="instruction.message"></p>
+                        </div>
+                    </template>
+                    <template x-if="customerPaymentInstructions(2).length === 0">
+                        <div class="rounded-xl border border-amber-500/30 bg-slate-900 p-4 text-sm text-amber-200">My ARTfive! Your Railway Ticket Booking Request Payment amount and personal payment message will appear here when our team sends them. Please wait for our notification before making this payment.</div>
+                    </template>
+                    <div class="bg-slate-900 border border-emerald-500/40 p-4 rounded-xl flex items-center justify-between cursor-pointer" @click="copyToClipboard(cms.upiNumber)">
+                        <div><p class="text-xs text-slate-400 mb-1">UPI number — tap to copy</p><span class="text-emerald-400 font-mono font-bold text-lg" x-text="cms.upiNumber || 'UPI number not added yet'"></span></div>
+                        <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded">Copy</span>
                     </div>
                     <div class="bg-slate-900 p-4 rounded-xl text-center space-y-2 border border-slate-700">
-                        <template x-if="cms.bookingQrImage"><img :src="cms.bookingQrImage" alt="Booking QR" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
-                        <template x-if="!cms.bookingQrImage"><i class="fa-solid fa-qrcode text-emerald-400 text-5xl"></i></template>
+                        <p class="text-xs text-slate-400">Or scan this QR code to pay</p>
+                        <template x-if="cms.bookingQrImage"><img :src="cms.bookingQrImage" alt="Booking payment QR code" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
+                        <template x-if="!cms.bookingQrImage"><p class="text-xs text-amber-300">My ARTfive! Booking QR code has not been uploaded yet.</p></template>
                     </div>
-                    <button @click="showAppNotice('My ARTfive! Please complete the payment shown above. Our team will check the payment manually and send you an update.')"
-                            class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt2ConfirmBtn"></button>
-                    </template>
+                    <div class="rounded-xl bg-slate-900 border border-slate-700 p-3 text-sm text-slate-200">My ARTfive! Please pay only the amount shown in our latest personal message. After payment, wait for our team to verify it and guide you to the next step.</div>
+                    <button @click="showAppNotice('My ARTfive! Please complete the Railway Ticket Booking Request Payment shown in your personal message. Our team will check your payment manually and update you.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt2ConfirmBtn"></button>
                 </div>
 
-                <!-- Customer Option 3: Collection -->
+                <!-- Customer Option 3: Ticket Collection Charges -->
                 <div x-show="activeCustOption === 3" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
                     <p class="text-xs text-slate-300" x-text="cms.payOpt3Instruction"></p>
-                    <div class="rounded-xl border border-emerald-500/30 bg-slate-900 p-4 space-y-2"><label class="block text-xs font-bold text-emerald-300">Select your ticket request</label><select x-model="customerPaymentRequestId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white"><option value="">-- Select your request --</option><template x-for="req in customerPaymentRequests()" :key="'custpay3-'+req.id"><option :value="req.id" x-text="paymentRequestLabel(req)"></option></template></select>
-                        <template x-if="selectedCustomerPaymentInstruction(3)"><div class="space-y-2"><p class="text-xs text-slate-400">Your individual ticket collection charges</p><p class="text-2xl font-extrabold text-emerald-300" x-text="formatPaymentAmount(selectedCustomerPaymentInstruction(3).amountPaise)"></p><p class="text-xs font-bold" :class="selectedCustomerPaymentInstruction(3).paymentStatus === 'verified' ? 'text-emerald-400' : 'text-amber-300'" x-text="selectedCustomerPaymentInstruction(3).paymentStatus === 'verified' ? 'Payment verified' : 'Payment pending verification'"></p><p class="text-sm text-white whitespace-pre-wrap" x-text="selectedCustomerPaymentInstruction(3).message"></p></div></template>
-                        <template x-if="!selectedCustomerPaymentInstruction(3)"><p class="text-xs text-amber-300">My ARTfive! Your ticket charges and payment instructions are not available yet. Please wait for a personal update.</p></template></div>
-                    <template x-if="selectedCustomerPaymentInstruction(3)">
-                    <div @click="copyToClipboard(cms.collectionUpiNumber)" class="bg-slate-900 border border-emerald-500/40 p-4 rounded-xl flex items-center justify-between cursor-pointer">
-                        <span class="text-emerald-400 font-mono font-bold text-lg" x-text="cms.collectionUpiNumber"></span>
-                        <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded">Tap to Copy</span>
+                    <template x-for="instruction in customerPaymentInstructions(3)" :key="'custpay3-'+instruction.id">
+                        <div class="rounded-xl border border-emerald-500/30 bg-slate-900 p-4 space-y-3">
+                            <p class="text-xs font-bold text-emerald-300" x-text="customerPaymentRequestLabel(instruction.requestId)"></p>
+                            <p class="text-xs text-slate-400">Your Ticket Collection Charges</p>
+                            <p class="text-2xl font-extrabold text-emerald-300" x-text="formatPaymentAmount(instruction.amountPaise)"></p>
+                            <p class="text-xs font-bold" :class="instruction.paymentStatus === 'verified' ? 'text-emerald-400' : 'text-amber-300'" x-text="instruction.paymentStatus === 'verified' ? 'Payment verified' : 'Payment pending verification'"></p>
+                            <p class="text-sm text-white whitespace-pre-wrap" x-text="instruction.message"></p>
+                        </div>
+                    </template>
+                    <template x-if="customerPaymentInstructions(3).length === 0">
+                        <div class="rounded-xl border border-amber-500/30 bg-slate-900 p-4 text-sm text-amber-200">My ARTfive! Your Ticket Collection Charges and personal payment message will appear here after our team completes your booking. Please wait for our notification. Do not make this payment before receiving our message.</div>
+                    </template>
+                    <div class="bg-slate-900 border border-emerald-500/40 p-4 rounded-xl flex items-center justify-between cursor-pointer" @click="copyToClipboard(cms.collectionUpiNumber)">
+                        <div><p class="text-xs text-slate-400 mb-1">UPI number — tap to copy</p><span class="text-emerald-400 font-mono font-bold text-lg" x-text="cms.collectionUpiNumber || 'UPI number not added yet'"></span></div>
+                        <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded">Copy</span>
                     </div>
                     <div class="bg-slate-900 p-4 rounded-xl text-center space-y-2 border border-slate-700">
-                        <template x-if="cms.collectionQrImage"><img :src="cms.collectionQrImage" alt="Collection QR" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
-                        <template x-if="!cms.collectionQrImage"><i class="fa-solid fa-qrcode text-emerald-400 text-5xl"></i></template>
+                        <p class="text-xs text-slate-400">Or scan this QR code to pay</p>
+                        <template x-if="cms.collectionQrImage"><img :src="cms.collectionQrImage" alt="Ticket collection payment QR code" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
+                        <template x-if="!cms.collectionQrImage"><p class="text-xs text-amber-300">My ARTfive! Ticket collection QR code has not been uploaded yet.</p></template>
                     </div>
-                    <button @click="showAppNotice('My ARTfive! Please complete the payment shown above. Our team will check the payment manually and send you an update.')"
-                            class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt3ConfirmBtn"></button>
-                    </template>
+                    <div class="rounded-xl bg-slate-900 border border-slate-700 p-3 text-sm text-slate-200">My ARTfive! Please pay only the Ticket Collection Charges sent in your personal message after booking is completed. Once our team verifies your payment and uploads your ticket, we will notify you to open Option 4 — GET MY TICKET!</div>
+                    <button @click="showAppNotice('My ARTfive! Please complete the Ticket Collection Charges Payment only after receiving your personal payment message. Our team will check your payment manually and update you.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt3ConfirmBtn"></button>
                 </div>
 
                 <!-- Customer Option 4: My Tickets -->
@@ -3083,6 +3099,14 @@
                 },
                 selectedCustomerPaymentInstruction(optionNo) {
                     return (this.paymentInstructions || []).find(item => String(item.requestId) === String(this.customerPaymentRequestId) && Number(item.optionNo) === Number(optionNo)) || null;
+                },
+                customerPaymentInstructions(optionNo) {
+                    const ownRequestIds = new Set(this.customerPaymentRequests().map(req => String(req.id)));
+                    return (this.paymentInstructions || []).filter(item => Number(item.optionNo) === Number(optionNo) && ownRequestIds.has(String(item.requestId)));
+                },
+                customerPaymentRequestLabel(requestId) {
+                    const request = this.customerPaymentRequests().find(req => String(req.id) === String(requestId));
+                    return request ? this.paymentRequestLabel(request) : 'Your railway ticket request';
                 },
                 customerPaymentRequests() {
                     return (this.ticketRequests || []).filter(req => String(req.customerId) === String(this.currentUser && this.currentUser.id));
