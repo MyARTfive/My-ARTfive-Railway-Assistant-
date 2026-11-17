@@ -195,22 +195,22 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div @click="selectCustomerOption(1)" class="bg-slate-700/50 hover:bg-slate-700 border border-slate-600/80 hover:border-emerald-500/50 p-5 rounded-xl cursor-pointer transition group shadow">
-                            <div class="text-emerald-400 text-2xl mb-3 group-hover:scale-110 transition transform"><i class="fa-solid fa-ticket"></i></div>
+                            <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-ticket text-2xl"></i><span class="text-xs font-extrabold">Option 1</span></div>
                             <h4 class="font-bold text-white text-base mb-1" x-text="cms.custOpt1Title"></h4>
                             <p class="text-xs text-slate-300" x-text="cms.custOpt1Desc"></p>
                         </div>
                         <div @click="selectCustomerOption(2)" class="bg-slate-700/50 hover:bg-slate-700 border border-slate-600/80 hover:border-emerald-500/50 p-5 rounded-xl cursor-pointer transition group shadow">
-                            <div class="text-emerald-400 text-2xl mb-3 group-hover:scale-110 transition transform"><i class="fa-solid fa-credit-card"></i></div>
+                            <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-credit-card text-2xl"></i><span class="text-xs font-extrabold">Option 2</span></div>
                             <h4 class="font-bold text-white text-base mb-1" x-text="cms.custOpt2Title"></h4>
                             <p class="text-xs text-slate-300" x-text="cms.custOpt2Desc"></p>
                         </div>
                         <div @click="selectCustomerOption(3)" class="bg-slate-700/50 hover:bg-slate-700 border border-slate-600/80 hover:border-emerald-500/50 p-5 rounded-xl cursor-pointer transition group shadow">
-                            <div class="text-emerald-400 text-2xl mb-3 group-hover:scale-110 transition transform"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                            <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-file-invoice-dollar text-2xl"></i><span class="text-xs font-extrabold">Option 3</span></div>
                             <h4 class="font-bold text-white text-base mb-1" x-text="cms.custOpt3Title"></h4>
                             <p class="text-xs text-slate-300" x-text="cms.custOpt3Desc"></p>
                         </div>
                         <div @click="selectCustomerOption(4)" class="bg-slate-700/50 hover:bg-slate-700 border border-slate-600/80 hover:border-emerald-500/50 p-5 rounded-xl cursor-pointer transition group shadow">
-                            <div class="text-emerald-400 text-2xl mb-3 group-hover:scale-110 transition transform"><i class="fa-solid fa-folder-open"></i></div>
+                            <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-folder-open text-2xl"></i><span class="text-xs font-extrabold">Option 4</span></div>
                             <h4 class="font-bold text-white text-base mb-1" x-text="cms.custOpt4Title"></h4>
                             <p class="text-xs text-slate-300" x-text="cms.custOpt4Desc"></p>
                         </div>
@@ -516,22 +516,22 @@
 
                     <div x-show="ownerInspectCustOpt === null" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div @click="ownerInspectCustOpt = 1" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
-                            <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-ticket"></i></div>
+                            <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-ticket text-2xl"></i><span class="text-xs font-extrabold">Option 1</span></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt1Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt1Desc"></p>
                         </div>
                         <div @click="ownerInspectCustOpt = 2" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
-                            <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-credit-card"></i></div>
+                            <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-credit-card text-2xl"></i><span class="text-xs font-extrabold">Option 2</span></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt2Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt2Desc"></p>
                         </div>
                         <div @click="ownerInspectCustOpt = 3" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
-                            <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                            <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-file-invoice-dollar text-2xl"></i><span class="text-xs font-extrabold">Option 3</span></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt3Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt3Desc"></p>
                         </div>
                         <div @click="ownerInspectCustOpt = 4" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
-                            <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-folder-open"></i></div>
+                            <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-folder-open text-2xl"></i><span class="text-xs font-extrabold">Option 4</span></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt4Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt4Desc"></p>
                         </div>
@@ -2851,9 +2851,9 @@
                         this.showLoginModal = false;
                         this.loginPassword = '';
                         if (this.currentUser && this.currentUser.role === 'customer') {
-                            if (this.loginRole === 'customer_verify') this.showAppNotice('My ARTfive! have verified your details. Please visit Option 4 🎫 — GET MY TICKET! to view and download your tickets.');
-                            else if (createdCustomerAccount) this.showAppNotice('My ARTfive! have created your account successfully. Welcome! We're happy to help you.');
-                            else this.showAppNotice('My ARTfive! have welcomed you back. Please choose the option you need from your Customer Dashboard.');
+                            if (this.loginRole === 'customer_verify') this.showAppNotice('My ARTfive! have verified your details. You can now view and download your tickets below.');
+                            else if (createdCustomerAccount) this.showAppNotice('My ARTfive! have created your account successfully. Welcome! Please visit Option 1 🚆 — Request A Railway Ticket to send your first request.');
+                            else this.showAppNotice('My ARTfive! have welcomed you back. Please choose the next service from your Customer Dashboard options.');
                         }
                     } catch (error) {
                         if (this.loginRole === 'customer' || this.loginRole === 'customer_new' || this.loginRole === 'customer_verify') {
