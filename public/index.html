@@ -217,13 +217,13 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4">
                     <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-lg flex items-center justify-between">
                         <div>
                             <p class="text-xs uppercase tracking-wider text-slate-400 font-bold mb-1" x-text="cms.counter1Title"></p>
                             <h3 class="text-3xl font-extrabold text-white" x-text="stats.subscribers">0</h3>
                         </div>
-                        <button @click="toggleSubscribe()" class="text-xs px-3 py-1.5 rounded-lg font-bold transition shadow border" :class="isSubscribed ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600'" x-text="isSubscribed ? cms.subscribedBtnText : cms.subscribeBtnText"></button>
+                        <button @click="toggleSubscribe()" class="text-xs px-3 py-1.5 rounded-lg font-bold transition shadow border bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600" x-text="cms.subscribeBtnText"></button>
                     </div>
 
                     <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-lg flex items-center justify-between">
@@ -231,17 +231,9 @@
                             <p class="text-xs uppercase tracking-wider text-slate-400 font-bold mb-1" x-text="cms.counter2Title"></p>
                             <h3 class="text-3xl font-extrabold text-white flex items-center gap-2"><span x-text="stats.ratings">0</span> <i class="fa-solid fa-star text-amber-400 text-lg"></i></h3>
                         </div>
-                        <button @click="toggleRating()" class="text-xs px-3 py-1.5 rounded-lg font-bold transition shadow border flex items-center gap-1" :class="hasRated ? 'bg-amber-600 text-white border-amber-500' : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600'">
-                            <i class="fa-solid fa-star" :class="hasRated ? 'text-white' : 'text-slate-400'"></i> <span x-text="hasRated ? cms.ratedBtnText : cms.rateBtnText"></span>
+                        <button @click="toggleRating()" class="text-xs px-3 py-1.5 rounded-lg font-bold transition shadow border bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600 flex items-center gap-1">
+                            <i class="fa-solid fa-star text-slate-400"></i> <span x-text="cms.rateBtnText"></span>
                         </button>
-                    </div>
-
-                    <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-lg flex items-center justify-between">
-                        <div>
-                            <p class="text-xs uppercase tracking-wider text-slate-400 font-bold mb-1" x-text="cms.counter3Title"></p>
-                            <h3 class="text-3xl font-extrabold text-white" x-text="stats.users">3</h3>
-                        </div>
-                        <button @click="resetCounters()" class="bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] px-2.5 py-1.5 rounded-lg border border-slate-600 transition" x-text="cms.resetBtnText"></button>
                     </div>
                 </div>
             </div>
@@ -706,11 +698,11 @@
                         <h3 class="text-lg font-bold text-white" x-text="cms.ownerOpt3Name"></h3>
                         <button @click="activeMenuOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold" x-text="cms.counter3Title"></label><input type="number" x-model.number="stats.users" class="w-full bg-slate-700 text-white p-2 rounded text-sm"></div>
-                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold" x-text="cms.counter1Title"></label><input type="number" x-model.number="stats.subscribers" class="w-full bg-slate-700 text-white p-2 rounded text-sm"></div>
-                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold" x-text="cms.counter2Title"></label><input type="number" x-model.number="stats.ratings" class="w-full bg-slate-700 text-white p-2 rounded text-sm"></div>
-                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold">Downloads Count</label><input type="number" x-model.number="stats.downloads" class="w-full bg-slate-700 text-white p-2 rounded text-sm"></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold" x-text="cms.counter3Title"></label><p class="text-3xl font-extrabold text-white" x-text="stats.users">0</p></div>
+                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold" x-text="cms.counter1Title"></label><p class="text-3xl font-extrabold text-white" x-text="stats.subscribers">0</p></div>
+                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold" x-text="cms.counter2Title"></label><p class="text-3xl font-extrabold text-white" x-text="stats.ratings">0</p></div>
+                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2"><label class="text-xs text-slate-400 font-bold">Downloaded / Installed Count</label><p class="text-3xl font-extrabold text-white" x-text="stats.downloads">0</p></div>
                     </div>
                 </div>
 
@@ -1959,6 +1951,12 @@
 
                     this.loadSavedPassengerProfiles();
 
+                    this.loadPublicStats();
+                    window.addEventListener('appinstalled', () => this.recordAppInstallation());
+                    const isInstalledApp = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+                        window.navigator.standalone === true;
+                    if (isInstalledApp) this.recordAppInstallation();
+
                     let timer = setInterval(() => {
                         if (this.activeSplashIndex < this.totalSplashSlides - 1) {
                             this.activeSplashIndex++;
@@ -2127,7 +2125,7 @@
                     document.body.removeChild(a);
                 },
 
-                stats: { subscribers: 1, ratings: 1, users: 3, downloads: 1 },
+                stats: { subscribers: 0, ratings: 0, users: 0, downloads: 0 },
                 isSubscribed: false,
                 hasRated: false,
 
@@ -2205,8 +2203,8 @@
                     counter2Title: '2. Ratings Count',
                     rateBtnText: 'Rate 5★',
                     ratedBtnText: 'Rated 5★ ✓',
-                    counter3Title: '3. Total User Count (Auto)',
-                    resetBtnText: 'Reset 0',
+                    counter3Title: 'Total Customer Count',
+                    
 
                     custBadgeText: 'Customer Dashboard',
                     custDashTitle: 'Customer dashboard',
@@ -2391,6 +2389,8 @@
                         const customerResult = await this.apiRequest('/api/customers');
                         this.customers = customerResult.customers || [];
                     }
+                    if (this.currentUser.role === 'owner') await this.loadOwnerAnalysis();
+                    else await this.loadPublicStats();
                 },
 
                 async restoreCentralSession() {
@@ -3043,22 +3043,97 @@
                     this.showRequestFormModal = true;
                 },
 
-                toggleSubscribe() {
-                    this.isSubscribed = !this.isSubscribed;
-                    this.stats.subscribers = this.isSubscribed ? this.stats.subscribers + 1 : Math.max(0, this.stats.subscribers - 1);
+                getEngagementDeviceId() {
+                    let id = localStorage.getItem('artfive_engagement_device_id');
+                    if (!id) {
+                        id = (window.crypto && crypto.randomUUID)
+                            ? crypto.randomUUID()
+                            : 'device_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 18);
+                        localStorage.setItem('artfive_engagement_device_id', id);
+                    }
+                    return id;
                 },
 
-                toggleRating() {
-                    this.hasRated = !this.hasRated;
-                    this.stats.ratings = this.hasRated ? this.stats.ratings + 1 : Math.max(0, this.stats.ratings - 1);
+                async loadPublicStats() {
+                    try {
+                        const result = await this.apiRequest('/api/public/stats');
+                        this.stats.subscribers = Number(result.subscribers || 0);
+                        this.stats.ratings = Number(result.ratings || 0);
+                    } catch (error) {
+                        console.warn('My ARTfive! Public counts could not be refreshed:', error.message);
+                    }
                 },
 
-                resetCounters() {
-                    this.stats.subscribers = 0;
-                    this.stats.ratings = 0;
-                    this.stats.users = 3;
-                    this.isSubscribed = false;
-                    this.hasRated = false;
+                async loadOwnerAnalysis() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/analysis');
+                        this.stats.users = Number(result.users || 0);
+                        this.stats.subscribers = Number(result.subscribers || 0);
+                        this.stats.ratings = Number(result.ratings || 0);
+                        this.stats.downloads = Number(result.downloads || 0);
+                    } catch (error) {
+                        console.warn('My ARTfive! Owner analysis could not be refreshed:', error.message);
+                    }
+                },
+
+                async toggleSubscribe() {
+                    if (!this.currentUser || this.currentUser.role !== 'customer') {
+                        this.showAppNotice('My ARTfive! Please sign in to your customer account before subscribing.');
+                        return;
+                    }
+                    try {
+                        const result = await this.apiRequest('/api/engagement/subscribe', {
+                            method: 'POST',
+                            body: { deviceId: this.getEngagementDeviceId() }
+                        });
+                        this.isSubscribed = false;
+                        await this.loadPublicStats();
+                        if (this.currentUser.role === 'owner') await this.loadOwnerAnalysis();
+                        this.showAppNotice(result.recorded
+                            ? 'My ARTfive! Thank you for subscribing. Your subscription has been counted.'
+                            : 'My ARTfive! Your subscription has already been counted on this phone and device.');
+                    } catch (error) {
+                        this.isSubscribed = false;
+                        this.showAppNotice(error.message || 'My ARTfive! We could not record your subscription. Please try again.');
+                    }
+                },
+
+                async toggleRating() {
+                    if (!this.currentUser || this.currentUser.role !== 'customer') {
+                        this.showAppNotice('My ARTfive! Please sign in to your customer account before rating.');
+                        return;
+                    }
+                    try {
+                        const result = await this.apiRequest('/api/engagement/rating', {
+                            method: 'POST',
+                            body: { deviceId: this.getEngagementDeviceId() }
+                        });
+                        this.hasRated = false;
+                        await this.loadPublicStats();
+                        this.showAppNotice(result.recorded
+                            ? 'My ARTfive! Thank you for your 5-star rating. Your rating has been counted.'
+                            : 'My ARTfive! Your rating has already been counted on this phone and device.');
+                    } catch (error) {
+                        this.hasRated = false;
+                        this.showAppNotice(error.message || 'My ARTfive! We could not record your rating. Please try again.');
+                    }
+                },
+
+                async recordAppInstallation() {
+                    try {
+                        let installationId = localStorage.getItem('artfive_installation_id');
+                        if (!installationId) {
+                            installationId = (window.crypto && crypto.randomUUID)
+                                ? crypto.randomUUID()
+                                : 'install_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 18);
+                            localStorage.setItem('artfive_installation_id', installationId);
+                        }
+                        await this.apiRequest('/api/app/install', { method: 'POST', body: { installationId } });
+                        if (this.currentUser && this.currentUser.role === 'owner') await this.loadOwnerAnalysis();
+                    } catch (error) {
+                        console.warn('My ARTfive! Installation count could not be recorded:', error.message);
+                    }
                 },
 
                 async submitTicketRequest() {
