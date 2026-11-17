@@ -964,8 +964,8 @@ export default {
         const statements = [];
         if (decision === "approve") {
           statements.push(env.DB.prepare(
-            "UPDATE users SET password_hash = ? WHERE id = ? AND active = 1"
-          ).bind(row.requested_password_hash, row.user_id));
+            "UPDATE users SET password_hash = ? WHERE id = ? AND active = 1 AND EXISTS (SELECT 1 FROM password_change_requests WHERE id = ? AND status = 'pending' AND user_id = ?)"
+          ).bind(row.requested_password_hash, row.user_id, requestId, row.user_id));
         }
         statements.push(env.DB.prepare(
           "UPDATE password_change_requests SET status = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ? AND status = 'pending' AND user_id IS NOT NULL"
