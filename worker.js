@@ -982,6 +982,28 @@ export default {
           "SELECT id FROM requests WHERE id = ? AND customer_id = ? LIMIT 1"
         ).bind(requestId, customerId).first();
         if (!requestRow) return json({ success: false, message: "The selected request does not belong to this customer." }, 404);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS customer_payment_instructions (
+            id TEXT PRIMARY KEY,
+            request_id TEXT NOT NULL,
+            customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            option_no INTEGER NOT NULL CHECK (option_no IN (2, 3)),
+            amount_paise INTEGER NOT NULL CHECK (amount_paise > 0),
+            message TEXT NOT NULL,
+            updated_by TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            payment_status TEXT NOT NULL DEFAULT 'pending',
+            verified_by TEXT,
+            verified_at INTEGER,
+            UNIQUE (request_id, option_no)
+          )
+        `).run();
+        const ticketPaymentColumnsResult = await env.DB.prepare("PRAGMA table_info(customer_payment_instructions)").all();
+        const ticketPaymentColumns = new Set((ticketPaymentColumnsResult.results || []).map(column => column.name));
+        if (!ticketPaymentColumns.has("payment_status")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'pending'").run();
+        if (!ticketPaymentColumns.has("verified_by")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN verified_by TEXT").run();
+        if (!ticketPaymentColumns.has("verified_at")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN verified_at INTEGER").run();
         const collectionPayment = await env.DB.prepare(
           "SELECT payment_status FROM customer_payment_instructions WHERE request_id = ? AND customer_id = ? AND option_no = 3 LIMIT 1"
         ).bind(requestId, customerId).first();
