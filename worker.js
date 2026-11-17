@@ -108,6 +108,27 @@ function visitorDetails(request) {
   return { ua, device, operatingSystem, browser, city: cf.city || null, region: cf.region || cf.regionCode || null, country: cf.country || null, isp: cf.asOrganization || null };
 }
 
+async function deleteTicketObjectsFromR2(env, ticketRows) {
+  const keys = [...new Set((ticketRows || []).map(row => String(row.storage_key || "").trim()).filter(Boolean))];
+  if (!keys.length) return true;
+  if (!env.TICKETS_R2 || typeof env.TICKETS_R2.delete !== "function") return false;
+  for (const key of keys) await env.TICKETS_R2.delete(key);
+  return true;
+}
+
+async function hydrateTicketFiles(env, rows) {
+  return Promise.all((rows || []).map(async row => {
+    if (!row.storage_key) return row;
+    if (!env.TICKETS_R2 || typeof env.TICKETS_R2.get !== "function") {
+      throw new Error("Ticket storage is temporarily unavailable. Please contact My ARTfive! support.");
+    }
+    const object = await env.TICKETS_R2.get(row.storage_key);
+    if (!object) throw new Error("A stored ticket file is missing from R2. Please contact My ARTfive! support.");
+    const bytes = new Uint8Array(await object.arrayBuffer());
+    return { ...row, fileData: `data:${row.mimeType};base64,${bytesToBase64(bytes)}` };
+  }));
+}
+
 async function ensureEngagementTables(env) {
   await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS customer_engagement (
@@ -1022,6 +1043,11 @@ export default {
             UNIQUE (request_id, option_no)
           )
         `).run();
+        const linkedTickets = await env.DB.prepare("SELECT id, storage_key FROM tickets WHERE request_id = ?").bind(id).all();
+        if (!(await deleteTicketObjectsFromR2(env, linkedTickets.results || []))) {
+          return json({ success: false, message: "R2 ticket storage is not connected. No request or ticket records were deleted; reconnect storage and retry." }, 503);
+        }
+        await env.DB.prepare("DELETE FROM tickets WHERE request_id = ?").bind(id).run();
         await env.DB.prepare("DELETE FROM customer_payment_instructions WHERE request_id = ?").bind(id).run();
         const result = await env.DB.prepare("DELETE FROM requests WHERE id = ?").bind(id).run();
         if (!result.meta || result.meta.changes === 0) return json({ success: false, message: "Ticket request was not found." }, 404);
@@ -1164,6 +1190,7 @@ export default {
         const ticketColumnsResult = await env.DB.prepare("PRAGMA table_info(tickets)").all();
         const ticketColumns = new Set((ticketColumnsResult.results || []).map(column => column.name));
         if (!ticketColumns.has("request_id")) await env.DB.prepare("ALTER TABLE tickets ADD COLUMN request_id TEXT").run();
+        if (!ticketColumns.has("storage_key")) await env.DB.prepare("ALTER TABLE tickets ADD COLUMN storage_key TEXT").run();
       }
 
       if (path === "/api/tickets" && method === "GET") {
@@ -1172,7 +1199,7 @@ export default {
         let result;
         if (user.role === "owner" || user.role === "staff") {
           result = await env.DB.prepare(
-            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets ORDER BY created_at DESC"
+            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, storage_key, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets ORDER BY created_at DESC"
           ).all();
         } else if (user.role === "customer") {
           const ticketAccessToken = request.headers.get("X-Ticket-Access") || "";
@@ -1183,12 +1210,13 @@ export default {
           ).bind(ticketAccessHash, user.id, now).first();
           if (!ticketAccess) return json({ success: false, message: "Your ticket access verification has expired. Please sign in again." }, 403);
           result = await env.DB.prepare(
-            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets WHERE customer_id = ? ORDER BY created_at DESC"
+            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, storage_key, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets WHERE customer_id = ? ORDER BY created_at DESC"
           ).bind(user.id).all();
         } else {
           return json({ success: false, message: "Access denied." }, 403);
         }
-        return json({ success: true, tickets: result.results || [] });
+        const ticketsWithFiles = await hydrateTicketFiles(env, result.results || []);
+        return json({ success: true, tickets: ticketsWithFiles });
       }
 
       if (path === "/api/tickets" && method === "POST") {
@@ -1246,9 +1274,20 @@ export default {
           return json({ success: false, message: "Ticket upload is locked until the Owner verifies this request's Option 3 Ticket Collection Charges Payment." }, 409);
         }
         const id = crypto.randomUUID();
+        let storageKey = null;
+        let storedFileData = fileData;
+        if (env.TICKETS_R2 && typeof env.TICKETS_R2.put === "function") {
+          storageKey = `tickets/${customerId}/${id}`;
+          const fileBytes = base64ToBytes(match[2]);
+          await env.TICKETS_R2.put(storageKey, fileBytes, {
+            httpMetadata: { contentType: match[1] },
+            customMetadata: { customerId, requestId, ticketId: id }
+          });
+          storedFileData = null;
+        }
         await env.DB.prepare(
-          "INSERT INTO tickets (id, request_id, customer_id, customer_name, customer_phone, ticket_title, mime_type, file_data, payment_confirmed, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
-        ).bind(id, requestId, customer.id, customer.name, customer.phone, ticketTitle, match[1], fileData, user.id, now).run();
+          "INSERT INTO tickets (id, request_id, customer_id, customer_name, customer_phone, ticket_title, mime_type, file_data, storage_key, payment_confirmed, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
+        ).bind(id, requestId, customer.id, customer.name, customer.phone, ticketTitle, match[1], storedFileData, storageKey, user.id, now).run();
         return json({ success: true, id, message: "My ARTfive! Ticket sent successfully." }, 201);
       }
 
@@ -1260,9 +1299,13 @@ export default {
         const body = await readJson(request);
         const id = String(body.id || "").trim();
         if (!id) return json({ success: false, message: "Ticket ID is required." }, 400);
-        const result = await env.DB.prepare("DELETE FROM tickets WHERE id = ?").bind(id).run();
-        if (!result.meta || result.meta.changes === 0) return json({ success: false, message: "Ticket was not found." }, 404);
-        return json({ success: true, message: "Ticket file and its database record were permanently deleted." });
+        const ticket = await env.DB.prepare("SELECT id, storage_key FROM tickets WHERE id = ? LIMIT 1").bind(id).first();
+        if (!ticket) return json({ success: false, message: "Ticket was not found." }, 404);
+        if (!(await deleteTicketObjectsFromR2(env, [ticket]))) {
+          return json({ success: false, message: "R2 ticket storage is not connected. The ticket record was kept; reconnect storage and retry deletion." }, 503);
+        }
+        await env.DB.prepare("DELETE FROM tickets WHERE id = ?").bind(id).run();
+        return json({ success: true, message: "My ARTfive! Ticket file was permanently deleted from R2 (when stored there) and its D1 record was deleted." });
       }
 
       return json({ success: false, message: "API endpoint not found." }, 404);
