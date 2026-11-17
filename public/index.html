@@ -3363,7 +3363,6 @@
                         this.currentUser = result.user;
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
                         this.offlineMode = false;
-                        await this.refreshCentralData();
                         this.currentDashboard = this.currentUser.role === 'owner' ? 'owner' :
                             (this.currentUser.role === 'staff' ? 'staff' : 'customer');
                         if (this.loginRole === 'customer_verify') this.activeCustOption = 4;
@@ -3373,10 +3372,26 @@
                         this.ownerInspectCustOpt = null;
                         this.showLoginModal = false;
                         this.loginPassword = '';
+
+                        if (this.loginRole === 'customer_verify') {
+                            // Open Option 4 immediately after valid credentials. Do not let unrelated
+                            // dashboard refresh requests prevent the ticket page from appearing.
+                            this.assignedTickets = [];
+                            try {
+                                const ticketResult = await this.apiRequest('/api/tickets');
+                                this.assignedTickets = ticketResult.tickets || [];
+                            } catch (ticketError) {
+                                console.error('My ARTfive! Option 4 ticket loading failed:', ticketError);
+                                this.showAppNotice(ticketError.message || 'My ARTfive! have verified your sign-in, but could not load your ticket list. Please refresh and try again.');
+                            }
+                        } else {
+                            await this.refreshCentralData();
+                        }
+
                         if (this.currentUser && this.currentUser.role === 'customer') {
                             if (this.loginRole === 'customer_verify') {
                                 if (this.getMyAssignedTickets().length > 0) this.showAppNotice('My ARTfive! have uploaded your ticket successfully. You can view and download your ticket below.');
-                                else this.showAppNotice('My ARTfive! have verified your details. Your ticket will appear here after our team uploads it.');
+                                else if (!this.assignedTickets.length) this.showAppNotice('My ARTfive! have verified your details. Your ticket will appear here after our team uploads it.');
                             }
                             else if (createdCustomerAccount) this.showAppNotice('My ARTfive! have created your account successfully. Welcome! Please visit Option 1 🚆 — Request A Railway Ticket to send your first request.');
                             else this.showAppNotice('My ARTfive! have welcomed you back. Please choose the next service from your Customer Dashboard options.');
