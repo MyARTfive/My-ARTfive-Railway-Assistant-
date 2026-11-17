@@ -172,6 +172,15 @@ async function logSecurity(env, ip, event, details, now) {
 
 async function loginRateLimited(env, ip, eventPrefix, now) {
   try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS security_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ip_address TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        details TEXT,
+        created_at INTEGER NOT NULL
+      )
+    `).run();
     const row = await env.DB.prepare(
       "SELECT COUNT(*) AS total FROM security_logs WHERE ip_address = ? AND event_type = ? AND created_at > ?"
     ).bind(ip, eventPrefix, now - 15 * 60 * 1000).first();
