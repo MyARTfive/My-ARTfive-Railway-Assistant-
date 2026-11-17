@@ -108,6 +108,26 @@ function visitorDetails(request) {
   return { ua, device, operatingSystem, browser, city: cf.city || null, region: cf.region || cf.regionCode || null, country: cf.country || null, isp: cf.asOrganization || null };
 }
 
+async function ensureEngagementTables(env) {
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS customer_engagement (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      device_id TEXT NOT NULL,
+      action TEXT NOT NULL CHECK (action IN ('subscribe', 'rating')),
+      rating INTEGER,
+      created_at INTEGER NOT NULL,
+      UNIQUE (customer_id, device_id, action)
+    )
+  `).run();
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS app_installations (
+      installation_id TEXT PRIMARY KEY,
+      first_seen INTEGER NOT NULL
+    )
+  `).run();
+}
+
 function publicUser(user) {
   return {
     id: user.id,
@@ -229,6 +249,62 @@ export default {
     }
 
     try {
+      if (path === "/api/public/stats" && method === "GET") {
+        await ensureEngagementTables(env);
+        const [subscribers, ratings] = await Promise.all([
+          env.DB.prepare("SELECT COUNT(*) AS total FROM customer_engagement WHERE action = 'subscribe'").first(),
+          env.DB.prepare("SELECT COUNT(*) AS total FROM customer_engagement WHERE action = 'rating'").first()
+        ]);
+        return json({ success: true, subscribers: Number(subscribers?.total || 0), ratings: Number(ratings?.total || 0) });
+      }
+
+      if ((path === "/api/engagement/subscribe" || path === "/api/engagement/rating") && method === "POST") {
+        const user = await getSessionUser(request, env, now);
+        if (!user || user.role !== "customer") return json({ success: false, message: "My ARTfive! Please sign in to your customer account before subscribing or rating." }, 401);
+        const body = await readJson(request);
+        const deviceId = String(body.deviceId || "").trim();
+        if (!/^[A-Za-z0-9_-]{16,100}$/.test(deviceId)) return json({ success: false, message: "My ARTfive! This device could not be verified. Please refresh and try again." }, 400);
+        await ensureEngagementTables(env);
+        const action = path.endsWith("/subscribe") ? "subscribe" : "rating";
+        const id = crypto.randomUUID();
+        const result = await env.DB.prepare(
+          "INSERT INTO customer_engagement (id, customer_id, device_id, action, rating, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(customer_id, device_id, action) DO NOTHING"
+        ).bind(id, user.id, deviceId, action, action === "rating" ? 5 : null, now).run();
+        const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM customer_engagement WHERE action = ?").bind(action).first();
+        return json({ success: true, recorded: Number(result.meta?.changes || 0) > 0, count: Number(count?.total || 0) });
+      }
+
+      if (path === "/api/app/install" && method === "POST") {
+        const body = await readJson(request);
+        const installationId = String(body.installationId || "").trim();
+        if (!/^[A-Za-z0-9_-]{16,100}$/.test(installationId)) return json({ success: false, message: "Invalid installation identifier." }, 400);
+        await ensureEngagementTables(env);
+        const result = await env.DB.prepare(
+          "INSERT INTO app_installations (installation_id, first_seen) VALUES (?, ?) ON CONFLICT(installation_id) DO NOTHING"
+        ).bind(installationId, now).run();
+        const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM app_installations").first();
+        return json({ success: true, recorded: Number(result.meta?.changes || 0) > 0, count: Number(count?.total || 0) });
+      }
+
+      if (path === "/api/owner/analysis" && method === "GET") {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the Owner can view private app analysis." }, 403);
+        await ensureEngagementTables(env);
+        const [users, subscribers, ratings, downloads] = await Promise.all([
+          env.DB.prepare("SELECT COUNT(*) AS total FROM users WHERE role = 'customer'").first(),
+          env.DB.prepare("SELECT COUNT(*) AS total FROM customer_engagement WHERE action = 'subscribe'").first(),
+          env.DB.prepare("SELECT COUNT(*) AS total FROM customer_engagement WHERE action = 'rating'").first(),
+          env.DB.prepare("SELECT COUNT(*) AS total FROM app_installations").first()
+        ]);
+        return json({
+          success: true,
+          users: Number(users?.total || 0),
+          subscribers: Number(subscribers?.total || 0),
+          ratings: Number(ratings?.total || 0),
+          downloads: Number(downloads?.total || 0)
+        });
+      }
+
       if (path === "/api/me" && method === "GET") {
         const user = await getSessionUser(request, env, now);
         if (!user) return json({ success: false, message: "Not signed in." }, 401);
