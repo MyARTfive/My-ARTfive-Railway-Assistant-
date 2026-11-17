@@ -894,7 +894,24 @@ export default {
           return json({ success: false, message: "Phone number or password was not accepted." }, 401);
         }
         const token = await createSession(user, env, now);
-        return json({ success: true, user: publicUser(user) }, 200, { "Set-Cookie": sessionCookie(token) });
+        const response = { success: true, user: publicUser(user) };
+        if (body.ticketAccess === true) {
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS customer_ticket_access (
+              token_hash TEXT PRIMARY KEY,
+              customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              expires_at INTEGER NOT NULL,
+              created_at INTEGER NOT NULL
+            )
+          `).run();
+          const accessBytes = crypto.getRandomValues(new Uint8Array(32));
+          const ticketAccessToken = bytesToBase64(accessBytes).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+          const accessHash = await sha256Base64(ticketAccessToken);
+          await env.DB.prepare("DELETE FROM customer_ticket_access WHERE expires_at <= ?").bind(now).run();
+          await env.DB.prepare("INSERT INTO customer_ticket_access (token_hash, customer_id, expires_at, created_at) VALUES (?, ?, ?, ?)").bind(accessHash, user.id, now + 10 * 60 * 1000, now).run();
+          response.ticketAccessToken = ticketAccessToken;
+        }
+        return json(response, 200, { "Set-Cookie": sessionCookie(token) });
       }
 
       if (path === "/api/customer/passenger-profiles" && method === "GET") {
@@ -1148,6 +1165,13 @@ export default {
             "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets ORDER BY created_at DESC"
           ).all();
         } else if (user.role === "customer") {
+          const ticketAccessToken = request.headers.get("X-Ticket-Access") || "";
+          if (!ticketAccessToken) return json({ success: false, message: "Please verify your phone number and password again to open GET MY TICKET!." }, 403);
+          const ticketAccessHash = await sha256Base64(ticketAccessToken);
+          const ticketAccess = await env.DB.prepare(
+            "SELECT token_hash FROM customer_ticket_access WHERE token_hash = ? AND customer_id = ? AND expires_at > ? LIMIT 1"
+          ).bind(ticketAccessHash, user.id, now).first();
+          if (!ticketAccess) return json({ success: false, message: "Your ticket access verification has expired. Please sign in again." }, 403);
           result = await env.DB.prepare(
             "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets WHERE customer_id = ? ORDER BY created_at DESC"
           ).bind(user.id).all();
