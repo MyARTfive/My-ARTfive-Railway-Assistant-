@@ -1226,8 +1226,12 @@ export default {
           return json({ success: true, instructions: result.results || [] });
         }
 
-        if (user.role !== "owner") return json({ success: false, message: "Only the Owner can manage customer payment instructions." }, 403);
         const body = await readJson(request);
+        if (body.action === "verify") {
+          if (!["owner", "staff"].includes(user.role)) return json({ success: false, message: "Only the Owner or authorized Staff can verify customer payments." }, 403);
+        } else if (user.role !== "owner") {
+          return json({ success: false, message: "Only the Owner can manage customer payment instructions." }, 403);
+        }
         const requestId = String(body.requestId || "").trim();
         if (!requestId) return json({ success: false, message: "Select the customer's ticket request." }, 400);
         const requestRow = await env.DB.prepare(
@@ -1390,17 +1394,8 @@ export default {
         const collectionPayment = await env.DB.prepare(
           "SELECT id, payment_status FROM customer_payment_instructions WHERE request_id = ? AND customer_id = ? AND option_no = 3 LIMIT 1"
         ).bind(requestId, customerId).first();
-        if (body.confirmOption3Payment === true) {
-          if (!collectionPayment) {
-            return json({ success: false, message: "My ARTfive! Option 3 payment details were not found for this request. Please check the selected request and payment record." }, 409);
-          }
-          if (collectionPayment.payment_status !== "verified") {
-            await env.DB.prepare(
-              "UPDATE customer_payment_instructions SET payment_status = 'verified', verified_by = ?, verified_at = ?, updated_at = ? WHERE request_id = ? AND customer_id = ? AND option_no = 3"
-            ).bind(user.id, now, now, requestId, customerId).run();
-          }
-        } else if (!collectionPayment || collectionPayment.payment_status !== "verified") {
-          return json({ success: false, message: "My ARTfive! Please confirm that the Option 3 payment has been received before uploading this ticket." }, 409);
+        if (body.confirmOption3Payment !== true || !collectionPayment || collectionPayment.payment_status !== "verified") {
+          return json({ success: false, message: "My ARTfive! Ticket upload is locked until the Owner or authorized Staff manually marks the Option 3 payment as received (✅)." }, 409);
         }
         const id = crypto.randomUUID();
         await env.DB.prepare(
