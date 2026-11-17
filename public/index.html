@@ -2030,7 +2030,12 @@
                     // Keep centrally stored totals fresh while the dashboard remains open.
                     setInterval(() => {
                         this.loadPublicStats();
-                        if (this.currentUser && this.currentUser.role === 'owner') this.loadOwnerAnalysis();
+                        this.loadAppUpdates();
+                        if (this.currentUser && this.currentUser.role === 'owner') {
+                            this.loadOwnerAnalysis();
+                            this.loadCustomerNotifications();
+                        }
+                        if (this.currentUser && this.currentUser.role === 'customer') this.loadCustomerNotifications();
                     }, 30000);
 
                     // Refresh only the open chat conversation; chat history stays in D1.
