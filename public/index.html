@@ -1153,15 +1153,15 @@
                             <input type="search" x-model="customerSearch" placeholder="Type to search customers..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                             <div x-show="customerSearch.trim().length > 0" class="max-h-40 overflow-y-auto rounded-lg border border-slate-600 bg-slate-900 mb-3">
                                 <template x-for="cust in filteredCustomers()" :key="'upload-customer-'+cust.id">
-                                    <button type="button" @click="uploadForm.customerId = cust.id; uploadForm.requestId = ''; customerSearch = cust.name" class="w-full text-left px-3 py-2.5 text-sm text-white hover:bg-slate-700 border-b border-slate-800 last:border-0" x-text="cust.name + ' (' + cust.phone + ')'"></button>
+                                    <button type="button" @click="uploadForm.customerId = cust.id; uploadForm.requestId = ''; customerSearch = cust.name; uploadCustomerFilter = String(cust.id)" class="w-full text-left px-3 py-2.5 text-sm text-white hover:bg-slate-700 border-b border-slate-800 last:border-0" x-text="cust.name + ' (' + cust.phone + ')'"></button>
                                 </template>
                                 <div x-show="filteredCustomers().length === 0" class="px-3 py-3 text-xs text-slate-400">No matching customer found.</div>
                             </div>
                             <label class="block text-xs font-bold text-slate-400 mb-1">Or choose a customer from the filter</label>
-                            <select x-model="uploadForm.customerId" @change="uploadForm.requestId = ''; customerSearch = ''" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                            <select x-model="uploadCustomerFilter" @change="selectUploadCustomerFromFilter($event.target.value)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                                 <option value="">-- Filter / Choose Customer --</option>
                                 <template x-for="cust in customers" :key="'upload-filter-customer-'+cust.id">
-                                    <option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option>
+                                    <option :value="String(cust.id)" x-text="cust.name + ' (' + cust.phone + ')'"></option>
                                 </template>
                             </select>
                             <p x-show="uploadForm.customerId" class="text-sm text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Selected customer: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
@@ -2750,6 +2750,7 @@
 
                 uploadForm: { customerId: '', requestId: '', ticketTitle: '', fileData: null, confirmOption3Payment: false },
                 customerSearch: '',
+                uploadCustomerFilter: '',
                 ticketLoadError: '',
 
                 filteredCustomers() {
@@ -2759,6 +2760,14 @@
                         String(customer.name || '').toLowerCase().includes(query) ||
                         String(customer.phone || '').toLowerCase().includes(query)
                     );
+                },
+
+                selectUploadCustomerFromFilter(customerId) {
+                    const selectedId = String(customerId || '');
+                    this.uploadCustomerFilter = selectedId;
+                    this.uploadForm.customerId = selectedId;
+                    this.uploadForm.requestId = '';
+                    this.customerSearch = '';
                 },
 
                 openTicketUploadForRequest(request, staffMode = false) {
@@ -2771,7 +2780,8 @@
                         alert('My ARTfive! Customer account could not be found. Refresh the dashboard and try again.');
                         return;
                     }
-                    this.uploadForm.customerId = customer.id;
+                    this.uploadForm.customerId = String(customer.id);
+                    this.uploadCustomerFilter = String(customer.id);
                     this.uploadForm.requestId = request.id;
                     this.customerSearch = customer.name;
                     if (staffMode || (this.currentUser && this.currentUser.role === 'staff')) {
@@ -3543,6 +3553,9 @@
                         this.uploadForm.confirmOption3Payment = false;
                         this.uploadForm.requestId = '';
                         this.uploadForm.ticketTitle = '';
+                        this.uploadForm.customerId = '';
+                        this.uploadCustomerFilter = '';
+                        this.customerSearch = '';
                         this.uploadForm.fileData = null;
                         const refreshed = await this.loadAssignedTicketsFromDB();
                         if (refreshed) {
