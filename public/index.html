@@ -1185,6 +1185,20 @@
                             </select>
                             <p x-show="uploadForm.customerId && uploadRequestsForSelectedCustomer().length === 0" class="text-xs text-amber-300 mt-2">No ticket requests are currently linked to this customer. Tap “Refresh requests” to check the latest saved requests.</p>
                             <p x-show="!uploadForm.customerId" class="text-xs text-slate-400 mt-2">Choose a customer above to load their ticket requests.</p>
+                            <div class="rounded-lg border border-slate-700 bg-slate-900 p-3 mt-4 space-y-2">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="text-xs font-bold text-slate-200">Option 3 — Ticket Collection Charges Payment</p>
+                                    <button type="button" @click="apiRequest('/api/customer-payments').then(result => { paymentInstructions = result.instructions || []; showAppNotice('My ARTfive! Payment status refreshed.'); }).catch(error => showAppNotice(error.message || 'My ARTfive! Could not refresh payment status.'))" class="text-xs text-sky-300 underline">Refresh payments</button>
+                                </div>
+                                <template x-for="instruction in paymentInstructions.filter(item => String(item.customerId) === String(uploadForm.customerId) && String(item.requestId) === String(uploadForm.requestId) && Number(item.optionNo) === 3)" :key="'owner-verify-'+instruction.id">
+                                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                                        <span :class="instruction.paymentStatus === 'verified' ? 'text-emerald-300' : 'text-amber-300'" x-text="instruction.paymentStatus === 'verified' ? 'Option 3 payment verified ✅' : 'Option 3 payment pending — ticket locked'"></span>
+                                        <button x-show="instruction.paymentStatus !== 'verified'" type="button" @click="verifyCustomerPaymentInstruction(instruction)" class="rounded bg-emerald-700 px-3 py-1.5 font-bold text-white">Mark received ✅</button>
+                                    </div>
+                                </template>
+                                <p x-show="uploadForm.customerId && uploadForm.requestId && !paymentInstructions.some(item => String(item.customerId) === String(uploadForm.customerId) && String(item.requestId) === String(uploadForm.requestId) && Number(item.optionNo) === 3)" class="text-xs text-amber-300">No Option 3 payment instruction found for this request. Ticket upload stays locked.</p>
+                                <p class="text-[11px] text-slate-400">Check the actual UPI payment yourself before tapping Mark received. Ticket upload is allowed only after this confirmation is saved.</p>
+                            </div>
                             <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
                         </div>
 
