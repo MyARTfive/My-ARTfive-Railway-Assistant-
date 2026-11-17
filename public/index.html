@@ -1165,7 +1165,6 @@
                                 </template>
                             </select>
                             <p x-show="uploadForm.customerId" class="text-sm text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Selected customer: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
-                            <label class="block text-xs font-bold text-slate-400 mt-3 mb-1">Select the exact ticket request</label>
                             <div class="flex items-center justify-between gap-2">
                                 <label class="block text-xs font-bold text-slate-400 mt-3 mb-1">Select the exact ticket request</label>
                                 <button type="button" @click="refreshUploadRequestList()" class="text-xs text-sky-300 underline">Refresh requests</button>
