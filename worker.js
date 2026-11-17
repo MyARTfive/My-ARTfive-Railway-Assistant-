@@ -838,6 +838,150 @@ export default {
         return json({ success: true, visitors: result.results || [], blockedIps: blockedIps.results || [], totals: totals || { visitors: 0, visits: 0 }, blockedCount: blocked ? blocked.count : 0 });
       }
 
+      if (path === "/api/password-change/request" && method === "POST") {
+        if (await loginRateLimited(env, ip, "password_change_request", now)) {
+          return json({ success: false, message: "My ARTfive! Too many password change requests. Please try again later." }, 429);
+        }
+        const body = await readJson(request);
+        const phone = String(body.phone || "").trim();
+        const role = String(body.role || "").trim();
+        const newPassword = String(body.newPassword || "");
+        if (!phone || phone.length > 30 || !["customer", "staff"].includes(role) || newPassword.length < 8 || newPassword.length > 256) {
+          return json({ success: false, message: "My ARTfive! Enter your registered phone number and a new password of at least 8 characters." }, 400);
+        }
+        const account = await env.DB.prepare(
+          "SELECT id FROM users WHERE phone = ? AND role = ? AND active = 1 LIMIT 1"
+        ).bind(phone, role).first();
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS password_change_requests (
+            id TEXT PRIMARY KEY,
+            status TEXT NOT NULL DEFAULT 'pending',
+            user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+            role TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            requested_password_hash TEXT NOT NULL,
+            token_hash TEXT NOT NULL UNIQUE,
+            created_at INTEGER NOT NULL,
+            reviewed_at INTEGER,
+            reviewed_by TEXT
+          )
+        `).run();
+        const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
+        const token = bytesToBase64(tokenBytes).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+        const tokenHash = await sha256Base64(token);
+        const passwordHash = await hashPassword(newPassword);
+        if (account) {
+          await env.DB.prepare(
+            "UPDATE password_change_requests SET status = 'superseded', reviewed_at = ? WHERE user_id = ? AND status = 'pending'"
+          ).bind(now, account.id).run();
+        }
+        await env.DB.prepare(
+          "INSERT INTO password_change_requests (id, status, user_id, role, phone, requested_password_hash, token_hash, created_at) VALUES (?, 'pending', ?, ?, ?, ?, ?, ?)"
+        ).bind(crypto.randomUUID(), account?.id || null, role, phone, passwordHash, tokenHash, now).run();
+        await logSecurity(env, ip, "password_change_request", "Password change approval request submitted", now);
+        return json({
+          success: true,
+          token,
+          message: "My ARTfive! Your password change request has been sent to the Owner for approval."
+        }, 201);
+      }
+
+      if (path === "/api/password-change/status" && method === "GET") {
+        const token = String(url.searchParams.get("token") || "");
+        if (!/^[A-Za-z0-9_\\-]{30,100}$/.test(token)) return json({ success: false, message: "Invalid request reference." }, 400);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS password_change_requests (
+            id TEXT PRIMARY KEY,
+            status TEXT NOT NULL DEFAULT 'pending',
+            user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+            role TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            requested_password_hash TEXT NOT NULL,
+            token_hash TEXT NOT NULL UNIQUE,
+            created_at INTEGER NOT NULL,
+            reviewed_at INTEGER,
+            reviewed_by TEXT
+          )
+        `).run();
+        const tokenHash = await sha256Base64(token);
+        const row = await env.DB.prepare(
+          "SELECT status FROM password_change_requests WHERE token_hash = ? LIMIT 1"
+        ).bind(tokenHash).first();
+        return json({ success: true, status: row?.status || "pending" });
+      }
+
+      if (path === "/api/owner/control/password-requests" && method === "GET") {
+        const owner = await getManagerVerifiedOwner(request, env, now);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required for Control." }, 403);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS password_change_requests (
+            id TEXT PRIMARY KEY,
+            status TEXT NOT NULL DEFAULT 'pending',
+            user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+            role TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            requested_password_hash TEXT NOT NULL,
+            token_hash TEXT NOT NULL UNIQUE,
+            created_at INTEGER NOT NULL,
+            reviewed_at INTEGER,
+            reviewed_by TEXT
+          )
+        `).run();
+        const rows = await env.DB.prepare(
+          "SELECT r.id, r.role, r.phone, u.name, r.created_at AS createdAt FROM password_change_requests r JOIN users u ON u.id = r.user_id WHERE r.status = 'pending' ORDER BY r.created_at ASC LIMIT 200"
+        ).all();
+        return json({ success: true, requests: rows.results || [] });
+      }
+
+      if (path === "/api/owner/control/password-requests/decision" && method === "POST") {
+        const owner = await getManagerVerifiedOwner(request, env, now);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required for Control." }, 403);
+        const body = await readJson(request);
+        const requestId = String(body.requestId || "");
+        const decision = String(body.decision || "");
+        if (!requestId || !["approve", "reject"].includes(decision)) {
+          return json({ success: false, message: "Choose Approve or Reject for a valid request." }, 400);
+        }
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS password_change_requests (
+            id TEXT PRIMARY KEY,
+            status TEXT NOT NULL DEFAULT 'pending',
+            user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+            role TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            requested_password_hash TEXT NOT NULL,
+            token_hash TEXT NOT NULL UNIQUE,
+            created_at INTEGER NOT NULL,
+            reviewed_at INTEGER,
+            reviewed_by TEXT
+          )
+        `).run();
+        const row = await env.DB.prepare(
+          "SELECT id, user_id, requested_password_hash FROM password_change_requests WHERE id = ? AND status = 'pending' LIMIT 1"
+        ).bind(requestId).first();
+        if (!row || !row.user_id) return json({ success: false, message: "This password change request is no longer available." }, 409);
+        const nextStatus = decision === "approve" ? "approved" : "rejected";
+        const statements = [];
+        if (decision === "approve") {
+          statements.push(env.DB.prepare(
+            "UPDATE users SET password_hash = ? WHERE id = ? AND active = 1"
+          ).bind(row.requested_password_hash, row.user_id));
+        }
+        statements.push(env.DB.prepare(
+          "UPDATE password_change_requests SET status = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ? AND status = 'pending' AND user_id IS NOT NULL"
+        ).bind(nextStatus, now, owner.id, requestId));
+        const results = await env.DB.batch(statements);
+        const decisionResult = results[results.length - 1];
+        if (!Number(decisionResult?.meta?.changes || 0)) {
+          return json({ success: false, message: "This password change request has already been handled." }, 409);
+        }
+        if (decision === "approve" && !Number(results[0]?.meta?.changes || 0)) {
+          return json({ success: false, message: "The account is no longer active. The password was not changed." }, 409);
+        }
+        await logSecurity(env, ip, "password_change_" + decision, "Owner " + decision + "d a password change request", now);
+        return json({ success: true, status: nextStatus, message: decision === "approve" ? "My ARTfive! Password change approved." : "My ARTfive! Request decision saved." });
+      }
+
       if (path === "/api/owner/control/block" && method === "POST") {
         const owner = await getManagerVerifiedOwner(request, env, now);
         if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required for Control." }, 403);
