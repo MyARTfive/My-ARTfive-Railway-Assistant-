@@ -126,6 +126,14 @@ async function ensureEngagementTables(env) {
       first_seen INTEGER NOT NULL
     )
   `).run();
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS apk_downloads (
+      id TEXT PRIMARY KEY,
+      downloaded_at INTEGER NOT NULL,
+      country TEXT,
+      user_agent TEXT
+    )
+  `).run();
 }
 
 function publicUser(user) {
@@ -202,6 +210,44 @@ export default {
     const method = request.method.toUpperCase();
     const now = Date.now();
     const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+
+    if (path === "/download/app" && method === "GET") {
+      const configuredUrl = String(env.APK_DOWNLOAD_URL || "").trim();
+      if (!configuredUrl) return new Response("My ARTfive! APK download is not configured yet.", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+      let target;
+      try {
+        target = new URL(configuredUrl);
+        if (target.protocol !== "https:") throw new Error("HTTPS required");
+      } catch {
+        return new Response("My ARTfive! APK download link is not configured correctly.", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+      }
+      try {
+        const upstream = await fetch(target.toString(), { redirect: "follow" });
+        if (!upstream.ok || !upstream.body) return new Response("My ARTfive! APK file is temporarily unavailable. Please try again later.", { status: 502, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS apk_downloads (
+            id TEXT PRIMARY KEY,
+            downloaded_at INTEGER NOT NULL,
+            country TEXT,
+            user_agent TEXT
+          )
+        `).run();
+        await env.DB.prepare(
+          "INSERT INTO apk_downloads (id, downloaded_at, country, user_agent) VALUES (?, ?, ?, ?)"
+        ).bind(crypto.randomUUID(), now, request.cf?.country || null, (request.headers.get("User-Agent") || "").slice(0, 500)).run();
+        const headers = new Headers({
+          "Content-Type": "application/vnd.android.package-archive",
+          "Content-Disposition": 'attachment; filename="My-ARTfive-Railway-Assistant.apk"',
+          "Cache-Control": "no-store"
+        });
+        const contentLength = upstream.headers.get("Content-Length");
+        if (contentLength) headers.set("Content-Length", contentLength);
+        return new Response(upstream.body, { status: 200, headers });
+      } catch (error) {
+        console.error("My ARTfive! APK download failed:", error && error.message ? error.message : String(error));
+        return new Response("My ARTfive! APK download failed. Please try again later.", { status: 502, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+      }
+    }
 
     if (path.startsWith("/api/") && !isSameOrigin(request)) {
       return json({ success: false, message: "Cross-origin request blocked." }, 403);
@@ -294,7 +340,7 @@ export default {
           env.DB.prepare("SELECT COUNT(*) AS total FROM users WHERE role = 'customer'").first(),
           env.DB.prepare("SELECT COUNT(*) AS total FROM customer_engagement WHERE action = 'subscribe'").first(),
           env.DB.prepare("SELECT COUNT(*) AS total FROM customer_engagement WHERE action = 'rating'").first(),
-          env.DB.prepare("SELECT COUNT(*) AS total FROM app_installations").first()
+          env.DB.prepare("SELECT COUNT(*) AS total FROM apk_downloads").first()
         ]);
         return json({
           success: true,
