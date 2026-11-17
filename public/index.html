@@ -1998,6 +1998,13 @@
                         if (this.currentUser && this.currentUser.role === 'owner') this.loadOwnerAnalysis();
                     }, 30000);
 
+                    // Refresh only the open chat conversation; chat history stays in D1.
+                    setInterval(() => {
+                        if (this.currentUser && this.currentUser.role === 'customer' && this.currentDashboard === 'customer' && this.activeCustOption === 1) this.loadCustomerEnquiryChat();
+                        if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'custChat' && this.paymentForm.customerId) this.loadCustomerEnquiryChat(this.paymentForm.customerId);
+                        if (this.currentUser && ['owner', 'staff'].includes(this.currentUser.role) && (this.activeMenuOption === 'staffChat' || this.activeStaffOption === 3)) this.loadStaffChat();
+                    }, 7000);
+
                     let timer = setInterval(() => {
                         if (this.activeSplashIndex < this.totalSplashSlides - 1) {
                             this.activeSplashIndex++;
