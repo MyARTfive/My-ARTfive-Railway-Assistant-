@@ -868,7 +868,8 @@ export default {
       }
 
       if (path === "/api/customer/register" && method === "POST") {
-        if (await loginRateLimited(env, ip, "customer_register_failed", now)) return json({ success: false, message: "Too many sign-up attempts. Please wait 15 minutes and try again." }, 429);
+        if (await loginRateLimited(env, ip, "customer_register_attempt", now)) return json({ success: false, message: "Too many sign-up attempts. Please wait 15 minutes and try again." }, 429);
+        await logSecurity(env, ip, "customer_register_attempt", "Customer registration attempt", now);
         const body = await readJson(request);
         const name = String(body.name || "").trim();
         const phone = String(body.phone || "").trim();
