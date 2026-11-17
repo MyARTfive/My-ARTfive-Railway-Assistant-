@@ -2119,10 +2119,14 @@
                 sendCustomerEnquiryReply() {
                     if (!this.customerReplyText.trim()) return;
                     const senderName = (this.currentUser && this.currentUser.name) ? this.currentUser.name : 'Customer';
+                    const replyText = this.customerReplyText.trim();
+                    const brandedReply = this.currentUser && this.currentUser.role !== 'customer'
+                        ? (/^My ARTfive!/i.test(replyText) ? replyText : 'My ARTfive! ' + replyText)
+                        : replyText;
                     this.customerEnquiryMessages.push({
                         id: Date.now(),
                         sender: senderName,
-                        text: this.customerReplyText.trim(),
+                        text: brandedReply,
                         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     });
                     localStorage.setItem('artfive_customer_enquiry_chat', JSON.stringify(this.customerEnquiryMessages));
@@ -2132,10 +2136,10 @@
                 notifForm: { category: 'All', customerId: '', message: '' },
                 selectedNotificationTemplate: '',
                 notificationTemplates: [
-                    'Your Railway Ticket Request has been received and is under processing.',
-                    'Payment confirmed! Your confirmed e-ticket PDF is now available in My Tickets (Option 4).',
-                    'Reminder: Please complete your ticket collection charges payment to unlock ticket download.',
-                    'Tatkal booking window opens soon. Please verify passenger details.'
+                    'My ARTfive! We have received your railway ticket request. Please wait for your booking confirmation and payment details.',
+                    'My ARTfive! Your booking payment has been verified. Please wait for your ticket booking update.',
+                    'My ARTfive! Please complete your ticket collection charges payment to receive your confirmed ticket.',
+                    'My ARTfive! Your Tatkal booking window opens soon. Please review your passenger details.'
                 ],
 
                 updateForm: { title: '', desc: '' },
@@ -2720,13 +2724,11 @@
                 applyNotificationTemplate(tmpl) { if (tmpl) { this.notifForm.message = tmpl; } },
 
                 sendNotificationMessage() {
-                    if (!this.notifForm.message.trim()) { alert('Please select or type a notification message.'); return; }
-                    alert('Notification successfully filtered and broadcasted to target customers!\n\nMessage: ' + this.notifForm.message);
-                    this.notifForm.message = '';
+                    const rawMessage = String(this.notifForm.message || '').trim();
+                    if (!rawMessage) { this.showAppNotice('My ARTfive! Please select or write a notification message first.'); return; }
+                    this.notifForm.message = /^My ARTfive!/i.test(rawMessage) ? rawMessage : 'My ARTfive! ' + rawMessage;
+                    this.showAppNotice('My ARTfive! Your message has been prepared with the correct brand prefix. Customer delivery from this notification control still needs a connected delivery workflow.');
                     this.selectedNotificationTemplate = '';
-                    this.activeMenuOption = null;
-                    this.ownerInspectStaffOpt = null;
-                    this.ownerInspectCustOpt = null;
                 },
 
                 sendStaffChatMessage(senderName) {
