@@ -1080,7 +1080,7 @@ export default {
             )
           `).run();
           const accessBytes = crypto.getRandomValues(new Uint8Array(32));
-          const ticketAccessToken = bytesToBase64(accessBytes).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+          const ticketAccessToken = bytesToBase64(accessBytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
           const accessHash = await sha256Base64(ticketAccessToken);
           await env.DB.prepare("DELETE FROM customer_ticket_access WHERE expires_at <= ?").bind(now).run();
           await env.DB.prepare("INSERT INTO customer_ticket_access (token_hash, customer_id, expires_at, created_at) VALUES (?, ?, ?, ?)").bind(accessHash, user.id, now + 10 * 60 * 1000, now).run();
