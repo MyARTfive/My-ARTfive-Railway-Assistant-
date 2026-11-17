@@ -3094,7 +3094,6 @@
                         });
                         this.isSubscribed = false;
                         await this.loadPublicStats();
-                        if (this.currentUser.role === 'owner') await this.loadOwnerAnalysis();
                         this.showAppNotice(result.recorded
                             ? 'My ARTfive! Thank you for subscribing. Your subscription has been counted.'
                             : 'My ARTfive! Your subscription has already been counted on this phone and device.');
