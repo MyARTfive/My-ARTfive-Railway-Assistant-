@@ -605,6 +605,13 @@ export default {
         `).run();
         if (method === "GET") {
           if (user.role === "customer") {
+            await env.DB.prepare(
+              "UPDATE customer_notifications SET message = ? WHERE customer_id = ? AND message = ?"
+            ).bind(
+              "My ARTfive! Thank you for choosing us! Your confirmed railway ticket is ready. You can now view and download your ticket. You're always most welcome to visit us again. Have a safe and happy journey! ❤️",
+              user.id,
+              "My ARTfive! have uploaded your railway ticket successfully. It is now available in 🎫 Option 4 — GET MY TICKET! Please sign in with the same phone number and password used when you created your customer account."
+            ).run();
             const rows = await env.DB.prepare(
               "SELECT id, message, created_at AS createdAt, read_at AS readAt FROM customer_notifications WHERE customer_id = ? ORDER BY created_at DESC LIMIT 100"
             ).bind(user.id).all();
