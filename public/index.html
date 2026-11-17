@@ -2136,10 +2136,10 @@
                 notifForm: { category: 'All', customerId: '', message: '' },
                 selectedNotificationTemplate: '',
                 notificationTemplates: [
-                    'My ARTfive! We have received your railway ticket request. Please wait for your booking confirmation and payment details.',
-                    'My ARTfive! Your booking payment has been verified. Please wait for your ticket booking update.',
-                    'My ARTfive! Please complete your ticket collection charges payment to receive your confirmed ticket.',
-                    'My ARTfive! Your Tatkal booking window opens soon. Please review your passenger details.'
+                    'My ARTfive! We have received your railway ticket request. Our team will review your details and update you with the booking confirmation and payment information.',
+                    'My ARTfive! We have verified your booking payment. Our team is now working on your ticket booking and will update you soon.',
+                    'My ARTfive! Your ticket is ready for collection. Please complete the ticket collection charges payment, and we'll make your ticket available.',
+                    'My ARTfive! Your Tatkal booking window opens soon. Please review your passenger details so our team can help with your booking.'
                 ],
 
                 updateForm: { title: '', desc: '' },
@@ -2837,13 +2837,13 @@
                         this.showLoginModal = false;
                         this.loginPassword = '';
                         if (this.currentUser && this.currentUser.role === 'customer') {
-                            if (this.loginRole === 'customer_verify') this.showAppNotice('My ARTfive! Your identity has been verified. Your tickets are ready to view.');
-                            else if (createdCustomerAccount) this.showAppNotice('My ARTfive! Your account has been created successfully. Welcome! We are delighted to serve you.');
-                            else this.showAppNotice('My ARTfive! Welcome back! We are happy to have you with us.');
+                            if (this.loginRole === 'customer_verify') this.showAppNotice('My ARTfive! We have verified your details. We're ready to help you view your tickets.');
+                            else if (createdCustomerAccount) this.showAppNotice('My ARTfive! We have created your account successfully. Welcome! We're happy to help you.');
+                            else this.showAppNotice('My ARTfive! We're glad to see you again. How can we help you today?');
                         }
                     } catch (error) {
                         if (this.loginRole === 'customer' || this.loginRole === 'customer_new' || this.loginRole === 'customer_verify') {
-                            this.showAppNotice('My ARTfive! We could not sign you in with those details. Please check your phone number and password and try again.');
+                            this.showAppNotice('My ARTfive! We couldn't sign you in with those details. Please check your phone number and password, then try again. We're here if you need help.');
                         } else {
                             alert(error.message || 'My ARTfive! Sign-in failed. Please check your details.');
                         }
@@ -2993,12 +2993,12 @@
                             console.warn('My ARTfive! Could not sync passenger filters to D1:', profileError.message);
                         }
                         await this.loadTicketRequestsFromStorage();
-                        this.showAppNotice('My ARTfive! We have successfully received your railway ticket request. Please wait for your booking confirmation and payment details.');
+                        this.showAppNotice('My ARTfive! We have received your railway ticket request. Our team will review your details and update you with the booking confirmation and payment information.');
                         this.activeCustOption = null;
                         this.ownerInspectCustOpt = null;
                     } catch (error) {
                         console.error('My ARTfive! Ticket request submission failed:', error);
-                        this.showAppNotice('My ARTfive! We could not submit your request right now. Please try again.');
+                        this.showAppNotice('My ARTfive! We couldn't submit your request just now. Please try again. If you still need help, our team is here for you.');
                     }
                 }
             }
