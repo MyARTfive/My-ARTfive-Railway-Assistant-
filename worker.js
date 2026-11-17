@@ -1357,8 +1357,8 @@ export default {
         if (ticketTitle.length > 180 || fileData.length > 1400000) {
           return json({ success: false, message: "Ticket file is too large. Please use a file smaller than about 1 MB." }, 413);
         }
-        const match = fileData.match(/^data:(application\/pdf|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document|application\/msword|image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
-        if (!match) return json({ success: false, message: "Accepted ticket files: PDF, DOC, DOCX, PNG, JPEG or WEBP." }, 400);
+        const match = fileData.match(/^data:(application\/pdf|image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
+        if (!match) return json({ success: false, message: "Accepted ticket files: PDF, PNG, JPEG or WEBP." }, 400);
         const customer = await env.DB.prepare(
           "SELECT id, name, phone FROM users WHERE id = ? AND role = 'customer' AND active = 1 LIMIT 1"
         ).bind(customerId).first();
