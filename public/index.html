@@ -34,6 +34,14 @@
 </head>
 <body class="h-full bg-slate-900 text-slate-100 font-sans antialiased" x-data="railwayApp()" x-init="initApp()">
 
+    <div x-show="appNotice.open" x-cloak class="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4" @keydown.escape.window="appNotice.open = false">
+        <div class="w-full max-w-sm rounded-2xl border border-emerald-500/40 bg-slate-900 p-6 shadow-2xl space-y-4" role="dialog" aria-modal="true" aria-labelledby="app-notice-title">
+            <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center"><i class="fa-solid fa-check"></i></div><h2 id="app-notice-title" class="text-lg font-extrabold text-white">My ARTfive!</h2></div>
+            <p class="text-sm leading-relaxed text-slate-200" x-text="appNotice.message"></p>
+            <button type="button" @click="appNotice.open = false" class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-3 text-sm font-bold text-white">OK</button>
+        </div>
+    </div>
+
     <!-- ================= INTRO SPLASH SCREEN ================= -->
     <div x-show="showIntroSplash" class="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-4">
         <div class="relative w-full max-w-4xl h-[85vh] rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-sky-900 via-slate-900 to-slate-950 flex flex-col items-center justify-between p-6 border border-emerald-500/30">
@@ -1865,6 +1873,11 @@
                 activeSplashIndex: 0,
                 totalSplashSlides: 4,
 
+                showAppNotice(message) {
+                    this.appNotice.message = String(message || '');
+                    this.appNotice.open = true;
+                },
+
                 initApp() {
                     const savedCms = localStorage.getItem('artfive_master_cms');
                     if (savedCms) {
@@ -2023,6 +2036,7 @@
                 showOption11Pwd: false,
 
                 currentUser: null,
+                appNotice: { open: false, message: '' },
 
                 option10Authenticated: false,
                 option10Phone: '',
@@ -2761,6 +2775,7 @@
 
                 async performLogin() {
                     const password = String(this.loginPassword || '').trim();
+                    let createdCustomerAccount = false;
                     try {
                         let result;
                         if (this.loginRole === 'owner' || this.loginRole === 'staff' || this.loginRole === 'staff_new') {
@@ -2801,6 +2816,7 @@
                                     method: 'POST',
                                     body: { name: this.loginCustomerName.trim(), phone, password }
                                 });
+                                createdCustomerAccount = true;
                             }
                             result = await this.apiRequest('/api/customer/login', {
                                 method: 'POST',
@@ -2818,8 +2834,17 @@
                         this.ownerInspectCustOpt = null;
                         this.showLoginModal = false;
                         this.loginPassword = '';
+                        if (this.currentUser && this.currentUser.role === 'customer') {
+                            if (this.loginRole === 'customer_verify') this.showAppNotice('My ARTfive! Your identity has been verified. Your tickets are ready to view.');
+                            else if (createdCustomerAccount) this.showAppNotice('My ARTfive! Your account has been created successfully. Welcome! We are delighted to serve you.');
+                            else this.showAppNotice('My ARTfive! Welcome back! We are happy to have you with us.');
+                        }
                     } catch (error) {
-                        alert(error.message || 'My ARTfive! Sign-in failed. Please check your details.');
+                        if (this.loginRole === 'customer' || this.loginRole === 'customer_new' || this.loginRole === 'customer_verify') {
+                            this.showAppNotice('My ARTfive! We could not sign you in with those details. Please check your phone number and password and try again.');
+                        } else {
+                            alert(error.message || 'My ARTfive! Sign-in failed. Please check your details.');
+                        }
                     }
                 },
 
@@ -2966,11 +2991,12 @@
                             console.warn('My ARTfive! Could not sync passenger filters to D1:', profileError.message);
                         }
                         await this.loadTicketRequestsFromStorage();
-                        alert('My ARTfive! Your railway ticket request was submitted successfully and saved centrally.');
+                        this.showAppNotice('My ARTfive! We have successfully received your railway ticket request. Please wait for your booking confirmation and payment details.');
                         this.activeCustOption = null;
                         this.ownerInspectCustOpt = null;
                     } catch (error) {
-                        alert(error.message || 'My ARTfive! Could not submit your request. Please try again.');
+                        console.error('My ARTfive! Ticket request submission failed:', error);
+                        this.showAppNotice('My ARTfive! We could not submit your request right now. Please try again.');
                     }
                 }
             }
