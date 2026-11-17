@@ -2898,10 +2898,17 @@
                     if (optNum === 8) {
                         this.loadTicketRequestsFromStorage();
                     }
-                    if (optNum === 9 || optNum === 1) {
+                    if (optNum === 9) {
+                        this.ticketLoadError = '';
+                        this.refreshCentralData()
+                            .then(() => this.loadAssignedTicketsFromDB())
+                            .catch(error => {
+                                console.warn('My ARTfive! Could not refresh customer and request filters:', error.message);
+                                this.ticketLoadError = error.message || 'Could not refresh customer and ticket information.';
+                            });
+                    } else if (optNum === 1) {
                         this.loadAssignedTicketsFromDB();
-                    }
-                    if (optNum === 4 || optNum === 9) {
+                    } else if (optNum === 4) {
                         this.refreshCentralData().catch(error => console.warn('My ARTfive! Could not refresh customer and request filters:', error.message));
                     }
                     if (optNum === 9 || optNum === 1) {
