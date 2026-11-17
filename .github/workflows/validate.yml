@@ -1,0 +1,38 @@
+name: Validate My ARTfive! Railway Assistant
+
+on:
+  push:
+    branches:
+      - feature/central-d1-ticket-sync
+  pull_request:
+    branches:
+      - main
+      - feature/central-d1-ticket-sync
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate Worker and service worker syntax
+        run: |
+          node --check worker.js
+          node --check public/pwabuilder-sw.js
+      - name: Validate inline application scripts
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const html = fs.readFileSync('public/index.html', 'utf8');
+          const scripts = [...html.matchAll(/<script\\b(?![^>]*\\bsrc=)[^>]*>([\\s\\S]*?)<\\/script>/gi)];
+          if (!scripts.length) throw new Error('No inline application scripts were found.');
+          scripts.forEach((match, index) => {
+            new vm.Script(match[1], { filename: `public/index.inline-${index + 1}.js` });
+          });
+          console.log(`Validated ${scripts.length} inline script block(s).`);
+          NODE
