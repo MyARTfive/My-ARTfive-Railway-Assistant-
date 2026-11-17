@@ -1043,6 +1043,10 @@ export default {
             UNIQUE (request_id, option_no)
           )
         `).run();
+        const ticketColumnsResult = await env.DB.prepare("PRAGMA table_info(tickets)").all();
+        const ticketColumns = new Set((ticketColumnsResult.results || []).map(column => column.name));
+        if (!ticketColumns.has("storage_key")) await env.DB.prepare("ALTER TABLE tickets ADD COLUMN storage_key TEXT").run();
+        if (!ticketColumns.has("request_id")) await env.DB.prepare("ALTER TABLE tickets ADD COLUMN request_id TEXT").run();
         const linkedTickets = await env.DB.prepare("SELECT id, storage_key FROM tickets WHERE request_id = ?").bind(id).all();
         if (!(await deleteTicketObjectsFromR2(env, linkedTickets.results || []))) {
           return json({ success: false, message: "R2 ticket storage is not connected. No request or ticket records were deleted; reconnect storage and retry." }, 503);
@@ -1186,7 +1190,7 @@ export default {
         return json({ success: true, instruction: saved, message: "My ARTfive! Payment amount and message were sent to the selected customer's dashboard option." }, 201);
       }
 
-      if (path === "/api/tickets" && (method === "GET" || method === "POST")) {
+      if (path === "/api/tickets" && ["GET", "POST", "DELETE"].includes(method)) {
         const ticketColumnsResult = await env.DB.prepare("PRAGMA table_info(tickets)").all();
         const ticketColumns = new Set((ticketColumnsResult.results || []).map(column => column.name));
         if (!ticketColumns.has("request_id")) await env.DB.prepare("ALTER TABLE tickets ADD COLUMN request_id TEXT").run();
