@@ -1956,6 +1956,11 @@
                     const isInstalledApp = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
                         window.navigator.standalone === true;
                     if (isInstalledApp) this.recordAppInstallation();
+                    // Keep centrally stored totals fresh while the dashboard remains open.
+                    setInterval(() => {
+                        this.loadPublicStats();
+                        if (this.currentUser && this.currentUser.role === 'owner') this.loadOwnerAnalysis();
+                    }, 30000);
 
                     let timer = setInterval(() => {
                         if (this.activeSplashIndex < this.totalSplashSlides - 1) {
