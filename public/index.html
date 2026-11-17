@@ -38,7 +38,7 @@
         <div class="w-full max-w-sm rounded-2xl border border-emerald-500/40 bg-slate-900 p-6 shadow-2xl space-y-4" role="dialog" aria-modal="true" aria-labelledby="app-notice-title">
             <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center"><i class="fa-solid fa-check"></i></div><h2 id="app-notice-title" class="text-lg font-extrabold text-white">My ARTfive!</h2></div>
             <p class="text-sm leading-relaxed text-slate-200" x-text="appNotice.message"></p>
-            <button type="button" @click="appNotice.open = false" class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-3 text-sm font-bold text-white">OK</button>
+            <button type="button" @click="closeAppNotice()" class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-3 text-sm font-bold text-white">OK</button>
         </div>
     </div>
 
@@ -654,7 +654,7 @@
                             <template x-if="cms.bookingQrImage"><img :src="cms.bookingQrImage" alt="Booking QR Code" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
                             <template x-if="!cms.bookingQrImage"><i class="fa-solid fa-qrcode text-emerald-400 text-5xl"></i></template>
                         </div>
-                        <button @click="showAppNotice('My ARTfive! Please complete the booking request payment. We will confirm your payment after verification.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt2ConfirmBtn"></button>
+                        <button @click="showAppNotice('My ARTfive! please complete your Railway Ticket Booking Request Payment in Option 2 💳. Our team will verify your payment.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt2ConfirmBtn"></button>
                     </div>
 
                     <!-- Customer Option 3 in Owner View -->
@@ -669,7 +669,7 @@
                             <template x-if="cms.collectionQrImage"><img :src="cms.collectionQrImage" alt="Collection QR Code" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
                             <template x-if="!cms.collectionQrImage"><i class="fa-solid fa-qrcode text-emerald-400 text-5xl"></i></template>
                         </div>
-                        <button @click="showAppNotice('My ARTfive! Please complete the ticket collection charges payment. We will confirm it after verification.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt3ConfirmBtn"></button>
+                        <button @click="showAppNotice('My ARTfive! please complete your Ticket Collection Charges Payment in Option 3 💰. Our team will verify your payment.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt3ConfirmBtn"></button>
                     </div>
 
                     <!-- Customer Option 4 in Owner View -->
@@ -1876,6 +1876,19 @@
                 showAppNotice(message) {
                     this.appNotice.message = String(message || '');
                     this.appNotice.open = true;
+                    if (this.appNoticeTimer) clearTimeout(this.appNoticeTimer);
+                    const words = this.appNotice.message.trim().split(/\s+/).filter(Boolean).length;
+                    const displayMs = Math.max(3000, Math.ceil(words / 3) * 1000);
+                    this.appNoticeTimer = setTimeout(() => {
+                        this.appNotice.open = false;
+                        this.appNoticeTimer = null;
+                    }, displayMs);
+                },
+
+                closeAppNotice() {
+                    if (this.appNoticeTimer) clearTimeout(this.appNoticeTimer);
+                    this.appNoticeTimer = null;
+                    this.appNotice.open = false;
                 },
 
                 initApp() {
@@ -2037,6 +2050,7 @@
 
                 currentUser: null,
                 appNotice: { open: false, message: '' },
+                appNoticeTimer: null,
 
                 option10Authenticated: false,
                 option10Phone: '',
@@ -2136,10 +2150,10 @@
                 notifForm: { category: 'All', customerId: '', message: '' },
                 selectedNotificationTemplate: '',
                 notificationTemplates: [
-                    'My ARTfive! We have received your railway ticket request. Our team will review your details and update you with the booking confirmation and payment information.',
-                    'My ARTfive! We have verified your booking payment. Our team is now working on your ticket booking and will update you soon.',
-                    'My ARTfive! Your ticket is ready for collection. Please complete the ticket collection charges payment, and we'll make your ticket available.',
-                    'My ARTfive! Your Tatkal booking window opens soon. Please review your passenger details so our team can help with your booking.'
+                    'My ARTfive! have received your railway ticket request successfully. Now, please visit Option 2 💳 — Railway Ticket Booking Request Payment.',
+                    'My ARTfive! have received your booking payment confirmation. Our team will verify it and continue with your ticket booking. Please wait for our update.',
+                    'My ARTfive! have booked your tickets. Now, please visit Option 3 💰 — Ticket Collection Charges Payment.',
+                    'My ARTfive! have noted your Tatkal journey. Please review your passenger details in Option 1 🚆 — Request A Railway Ticket.'
                 ],
 
                 updateForm: { title: '', desc: '' },
@@ -2837,9 +2851,9 @@
                         this.showLoginModal = false;
                         this.loginPassword = '';
                         if (this.currentUser && this.currentUser.role === 'customer') {
-                            if (this.loginRole === 'customer_verify') this.showAppNotice('My ARTfive! We have verified your details. We're ready to help you view your tickets.');
-                            else if (createdCustomerAccount) this.showAppNotice('My ARTfive! We have created your account successfully. Welcome! We're happy to help you.');
-                            else this.showAppNotice('My ARTfive! We're glad to see you again. How can we help you today?');
+                            if (this.loginRole === 'customer_verify') this.showAppNotice('My ARTfive! have verified your details. Please visit Option 4 🎫 — GET MY TICKET! to view and download your tickets.');
+                            else if (createdCustomerAccount) this.showAppNotice('My ARTfive! have created your account successfully. Welcome! We're happy to help you.');
+                            else this.showAppNotice('My ARTfive! have welcomed you back. Please choose the option you need from your Customer Dashboard.');
                         }
                     } catch (error) {
                         if (this.loginRole === 'customer' || this.loginRole === 'customer_new' || this.loginRole === 'customer_verify') {
@@ -2993,12 +3007,12 @@
                             console.warn('My ARTfive! Could not sync passenger filters to D1:', profileError.message);
                         }
                         await this.loadTicketRequestsFromStorage();
-                        this.showAppNotice('My ARTfive! We have received your railway ticket request. Our team will review your details and update you with the booking confirmation and payment information.');
+                        this.showAppNotice('My ARTfive! have received your railway ticket request successfully. Now, please visit Option 2 💳 — Railway Ticket Booking Request Payment.');
                         this.activeCustOption = null;
                         this.ownerInspectCustOpt = null;
                     } catch (error) {
                         console.error('My ARTfive! Ticket request submission failed:', error);
-                        this.showAppNotice('My ARTfive! We couldn't submit your request just now. Please try again. If you still need help, our team is here for you.');
+                        this.showAppNotice('My ARTfive! could not receive your railway ticket request just now. Please try again. Our team is here to help.');
                     }
                 }
             }
