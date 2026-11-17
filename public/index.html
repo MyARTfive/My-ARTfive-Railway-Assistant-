@@ -163,7 +163,13 @@
         <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
 
             <!-- ================= PUBLIC FIRST SCREEN ================= -->
-            <div x-show="currentDashboard === 'public'" class="space-y-8">
+            <div x-show="currentDashboard === 'public'" x-init="loadAppUpdates()" class="space-y-8">
+                <div x-show="appUpdates.length > 0" class="bg-slate-800 border border-emerald-500/30 rounded-2xl p-5 space-y-3">
+                    <h3 class="text-sm font-bold text-emerald-300">My ARTfive! Latest App Updates</h3>
+                    <template x-for="item in appUpdates.slice(0,4)" :key="'public-update-'+item.id">
+                        <div class="border-t border-slate-700 pt-3"><p class="text-sm font-bold text-white" x-text="item.title"></p><p class="text-xs text-slate-300 mt-1" x-text="item.description"></p><p class="text-[10px] text-slate-500 mt-1" x-text="new Date(Number(item.createdAt)).toLocaleString()"></p></div>
+                    </template>
+                </div>
                 <div class="relative overflow-hidden bg-gradient-to-r from-slate-800 via-slate-800 to-railway-900 border border-slate-700 rounded-3xl p-8 sm:p-12 shadow-2xl">
                     <div class="absolute -right-10 -bottom-10 opacity-10 text-emerald-500 text-9xl pointer-events-none">
                         <i class="fa-solid fa-train"></i>
@@ -1060,7 +1066,7 @@
                 </div>
 
                 <!-- Owner Option 6: New Update -->
-                <div x-show="activeMenuOption === 6" class="space-y-6">
+                <div x-show="activeMenuOption === 6" x-init="loadAppUpdates()" class="space-y-6">
                     <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
                         <h3 class="text-lg font-bold text-white" x-text="cms.ownerOpt6Name"></h3>
                         <button @click="activeMenuOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
@@ -1068,7 +1074,13 @@
                     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4">
                         <input type="text" x-model="updateForm.title" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="New Feature Title">
                         <textarea x-model="updateForm.desc" rows="3" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Describe feature..."></textarea>
-                        <button @click="alert('New feature published!'); activeMenuOption = null" class="bg-emerald-600 text-white font-bold px-5 py-2.5 rounded-lg text-sm">Publish Feature</button>
+                        <button @click="publishAppUpdate()" class="bg-emerald-600 text-white font-bold px-5 py-2.5 rounded-lg text-sm">Publish Feature</button>
+                        <div class="border-t border-slate-700 pt-3 space-y-2">
+                            <h4 class="text-sm font-bold text-white">Published Updates</h4>
+                            <template x-for="item in appUpdates" :key="'owner-update-'+item.id">
+                                <div class="bg-slate-900 rounded-lg p-3"><p class="text-sm font-bold text-emerald-300" x-text="item.title"></p><p class="text-xs text-slate-300 mt-1" x-text="item.description"></p></div>
+                            </template>
+                        </div>
                     </div>
                 </div>
 
@@ -2292,6 +2304,7 @@
                 ],
 
                 updateForm: { title: '', desc: '' },
+                appUpdates: [],
 
                 cms: {
                     headerSubtitle: '(Railway Assistant!)',
@@ -2986,6 +2999,31 @@
                 },
 
                 applyNotificationTemplate(tmpl) { if (tmpl) { this.notifForm.message = tmpl; } },
+
+                async loadAppUpdates() {
+                    try {
+                        const result = await this.apiRequest('/api/app-updates');
+                        this.appUpdates = result.updates || [];
+                    } catch (error) {
+                        console.warn('My ARTfive! App updates could not be loaded:', error.message);
+                    }
+                },
+
+                async publishAppUpdate() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    try {
+                        const result = await this.apiRequest('/api/app-updates', {
+                            method: 'POST',
+                            body: { title: this.updateForm.title, description: this.updateForm.desc }
+                        });
+                        this.updateForm.title = '';
+                        this.updateForm.desc = '';
+                        await this.loadAppUpdates();
+                        this.showAppNotice(result.message || 'My ARTfive! App update published.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not publish this app update.');
+                    }
+                },
 
                 async loadCustomerNotifications() {
                     if (!this.currentUser) return;
