@@ -1227,7 +1227,7 @@ export default {
         }
 
         const body = await readJson(request);
-        if (body.action === "verify") {
+        if (method === "POST" && body.action === "verify") {
           if (!["owner", "staff"].includes(user.role)) return json({ success: false, message: "Only the Owner or authorized Staff can verify customer payments." }, 403);
         } else if (user.role !== "owner") {
           return json({ success: false, message: "Only the Owner can manage customer payment instructions." }, 403);
