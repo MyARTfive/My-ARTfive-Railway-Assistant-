@@ -342,7 +342,11 @@
                         <button @click="activeMenuOption = null" class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3.5 py-2 rounded-lg">Back to Options</button>
                     </div>
                     <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4">
-                        <p class="text-xs text-emerald-400"><i class="fa-solid fa-arrows-rotate"></i> Messages sent here immediately appear inside Customer Dashboard → Option 1 (My ARTfive! Enquiry Box).</p>
+                        <p class="text-xs text-emerald-400"><i class="fa-solid fa-arrows-rotate"></i> Messages are stored centrally for the selected customer and appear in Customer Dashboard Option 1.</p>
+                        <select x-model="paymentForm.customerId" @change="loadCustomerEnquiryChat(paymentForm.customerId)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                            <option value="">-- Select customer conversation --</option>
+                            <template x-for="cust in customers" :key="'chat-customer-'+cust.id"><option :value="cust.id" x-text="cust.name + ' (' + (cust.phone || 'No phone') + ')'"></option></template>
+                        </select>
                         <div class="bg-slate-900 p-4 rounded-xl h-64 overflow-y-auto space-y-3 border border-slate-700">
                             <template x-for="msg in customerEnquiryMessages" :key="msg.id">
                                 <div class="p-3 rounded-lg text-xs" :class="msg.sender === 'My ARTfive!' ? 'bg-emerald-900/30 border border-emerald-500/30 ml-8' : 'bg-slate-800 border border-slate-700 mr-8'">
@@ -1567,7 +1571,7 @@
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt2Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt2Desc"></p>
                     </div>
-                    <div @click="activeStaffOption = 3" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                    <div @click="activeStaffOption = 3; loadStaffChat()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-comments"></i></div>
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt3Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt3Desc"></p>
@@ -2155,12 +2159,8 @@
                 customerChatEnabled: true,
                 newCustomerEnquiryText: '',
                 customerReplyText: '',
-                customerEnquiryMessages: [
-                    { id: 1, sender: 'My ARTfive!', text: 'Welcome to My ARTfive! How can we assist today?', time: '09:00 AM' }
-                ],
-                staffChatMessages: [
-                    { id: 1, sender: 'Staff', text: 'Ready for document dispatch.', time: '10:30 AM', attachment: '' }
-                ],
+                customerEnquiryMessages: [],
+                staffChatMessages: [],
                 newStaffChatText: '',
 
                 toggleCustomerChatState() {
@@ -2168,33 +2168,54 @@
                     localStorage.setItem('artfive_customer_chat_enabled', String(this.customerChatEnabled));
                 },
 
-                sendOwnerCustomerChat() {
-                    if (!this.newCustomerEnquiryText.trim()) return;
-                    this.customerEnquiryMessages.push({
-                        id: Date.now(),
-                        sender: 'My ARTfive!',
-                        text: this.newCustomerEnquiryText.trim(),
-                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    });
-                    localStorage.setItem('artfive_customer_enquiry_chat', JSON.stringify(this.customerEnquiryMessages));
-                    this.newCustomerEnquiryText = '';
+                async loadCustomerEnquiryChat(customerId = '') {
+                    if (!this.currentUser) return;
+                    const targetId = this.currentUser.role === 'customer' ? this.currentUser.id : (customerId || this.paymentForm.customerId || '');
+                    if (!targetId) { this.customerEnquiryMessages = []; return; }
+                    try {
+                        const result = await this.apiRequest('/api/customer-enquiry?customerId=' + encodeURIComponent(targetId));
+                        this.customerEnquiryMessages = (result.messages || []).map(msg => ({ ...msg, time: new Date(Number(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
+                    } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not load the enquiry conversation.'); }
                 },
 
-                sendCustomerEnquiryReply() {
-                    if (!this.customerReplyText.trim()) return;
-                    const senderName = (this.currentUser && this.currentUser.name) ? this.currentUser.name : 'Customer';
-                    const replyText = this.customerReplyText.trim();
-                    const brandedReply = this.currentUser && this.currentUser.role !== 'customer'
-                        ? (/^My ARTfive!/i.test(replyText) ? replyText : 'My ARTfive! ' + replyText)
-                        : replyText;
-                    this.customerEnquiryMessages.push({
-                        id: Date.now(),
-                        sender: senderName,
-                        text: brandedReply,
-                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    });
-                    localStorage.setItem('artfive_customer_enquiry_chat', JSON.stringify(this.customerEnquiryMessages));
-                    this.customerReplyText = '';
+                async sendOwnerCustomerChat() {
+                    const message = String(this.newCustomerEnquiryText || '').trim();
+                    const customerId = this.paymentForm.customerId;
+                    if (!message) return;
+                    if (!customerId) return this.showAppNotice('My ARTfive! Please select a customer conversation before sending a message.');
+                    try {
+                        await this.apiRequest('/api/customer-enquiry', { method: 'POST', body: { customerId, message } });
+                        this.newCustomerEnquiryText = '';
+                        await this.loadCustomerEnquiryChat(customerId);
+                    } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not send the enquiry message.'); }
+                },
+
+                async sendCustomerEnquiryReply() {
+                    const message = String(this.customerReplyText || '').trim();
+                    if (!message) return;
+                    try {
+                        await this.apiRequest('/api/customer-enquiry', { method: 'POST', body: { message } });
+                        this.customerReplyText = '';
+                        await this.loadCustomerEnquiryChat();
+                    } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not send your enquiry message.'); }
+                },
+
+                async loadStaffChat() {
+                    if (!this.currentUser || !['owner', 'staff'].includes(this.currentUser.role)) return;
+                    try {
+                        const result = await this.apiRequest('/api/staff-chat');
+                        this.staffChatMessages = (result.messages || []).map(msg => ({ ...msg, time: new Date(Number(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
+                    } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not load Staff Chat.'); }
+                },
+
+                async sendStaffChatMessage() {
+                    const message = String(this.newStaffChatText || '').trim();
+                    if (!message) return;
+                    try {
+                        await this.apiRequest('/api/staff-chat', { method: 'POST', body: { message } });
+                        this.newStaffChatText = '';
+                        await this.loadStaffChat();
+                    } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not send the Staff Chat message.'); }
                 },
 
                 notifForm: { category: 'All', customerId: '', message: '' },
@@ -3036,6 +3057,7 @@
                         return;
                     }
                     this.currentDashboard = 'customer';
+                    if (optNum === 1) this.loadCustomerEnquiryChat();
                     if (optNum === 2 || optNum === 3) {
                         const ownRequests = this.customerPaymentRequests();
                         if (!this.customerPaymentRequestId || !ownRequests.some(req => String(req.id) === String(this.customerPaymentRequestId))) this.customerPaymentRequestId = ownRequests.length ? ownRequests[0].id : '';
