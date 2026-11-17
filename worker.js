@@ -134,6 +134,14 @@ async function ensureEngagementTables(env) {
       user_agent TEXT
     )
   `).run();
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS apk_download_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      download_url TEXT NOT NULL,
+      updated_by TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `).run();
 }
 
 function publicUser(user) {
@@ -212,8 +220,17 @@ export default {
     const ip = request.headers.get("CF-Connecting-IP") || "unknown";
 
     if (path === "/download/app" && method === "GET") {
-      const configuredUrl = String(env.APK_DOWNLOAD_URL || "").trim();
-      if (!configuredUrl) return new Response("My ARTfive! APK download is not configured yet.", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+      await env.DB.prepare(`
+        CREATE TABLE IF NOT EXISTS apk_download_settings (
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          download_url TEXT NOT NULL,
+          updated_by TEXT NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
+      `).run();
+      const downloadSetting = await env.DB.prepare("SELECT download_url FROM apk_download_settings WHERE id = 1").first();
+      const configuredUrl = String(downloadSetting?.download_url || "").trim();
+      if (!configuredUrl) return new Response("My ARTfive! APK download is not configured yet. Please contact the My ARTfive! team.", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
       let target;
       try {
         target = new URL(configuredUrl);
@@ -349,6 +366,33 @@ export default {
           ratings: Number(ratings?.total || 0),
           downloads: Number(downloads?.total || 0)
         });
+      }
+
+      if (path === "/api/owner/apk-download-settings" && (method === "GET" || method === "POST")) {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the Owner can manage the APK download link." }, 403);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS apk_download_settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            download_url TEXT NOT NULL,
+            updated_by TEXT NOT NULL,
+            updated_at INTEGER NOT NULL
+          )
+        `).run();
+        if (method === "GET") {
+          const row = await env.DB.prepare("SELECT download_url AS downloadUrl FROM apk_download_settings WHERE id = 1").first();
+          return json({ success: true, downloadUrl: row?.downloadUrl || "" });
+        }
+        const body = await readJson(request);
+        const downloadUrl = String(body.downloadUrl || "").trim();
+        if (!downloadUrl || downloadUrl.length > 2000) return json({ success: false, message: "Paste the direct HTTPS APK download URL." }, 400);
+        let parsed;
+        try { parsed = new URL(downloadUrl); } catch { return json({ success: false, message: "Enter a valid HTTPS download URL." }, 400); }
+        if (parsed.protocol !== "https:") return json({ success: false, message: "Only HTTPS download URLs are accepted." }, 400);
+        await env.DB.prepare(
+          "INSERT INTO apk_download_settings (id, download_url, updated_by, updated_at) VALUES (1, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET download_url = excluded.download_url, updated_by = excluded.updated_by, updated_at = excluded.updated_at"
+        ).bind(downloadUrl, owner.id, now).run();
+        return json({ success: true, downloadUrl, message: "My ARTfive! APK download link saved. Share the tracked app link with customers." });
       }
 
       if (path === "/api/customer-chat-settings" && (method === "GET" || method === "POST")) {
