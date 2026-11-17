@@ -1416,10 +1416,19 @@ export default {
         if (!ticketPaymentColumns.has("verified_by")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN verified_by TEXT").run();
         if (!ticketPaymentColumns.has("verified_at")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN verified_at INTEGER").run();
         const collectionPayment = await env.DB.prepare(
-          "SELECT payment_status FROM customer_payment_instructions WHERE request_id = ? AND customer_id = ? AND option_no = 3 LIMIT 1"
+          "SELECT id, payment_status FROM customer_payment_instructions WHERE request_id = ? AND customer_id = ? AND option_no = 3 LIMIT 1"
         ).bind(requestId, customerId).first();
-        if (!collectionPayment || collectionPayment.payment_status !== "verified") {
-          return json({ success: false, message: "Ticket upload is locked until the Owner verifies this request's Option 3 Ticket Collection Charges Payment." }, 409);
+        if (body.confirmOption3Payment === true) {
+          if (!collectionPayment) {
+            return json({ success: false, message: "My ARTfive! Option 3 payment details were not found for this request. Please check the selected request and payment record." }, 409);
+          }
+          if (collectionPayment.payment_status !== "verified") {
+            await env.DB.prepare(
+              "UPDATE customer_payment_instructions SET payment_status = 'verified', verified_by = ?, verified_at = ?, updated_at = ? WHERE request_id = ? AND customer_id = ? AND option_no = 3"
+            ).bind(user.id, now, now, requestId, customerId).run();
+          }
+        } else if (!collectionPayment || collectionPayment.payment_status !== "verified") {
+          return json({ success: false, message: "My ARTfive! Please confirm that the Option 3 payment has been received before uploading this ticket." }, 409);
         }
         const id = crypto.randomUUID();
         let storageKey = null;
