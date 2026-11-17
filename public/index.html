@@ -469,7 +469,7 @@
                             <div class="space-y-3">
                                 <p class="text-xs font-bold text-slate-300">Choose Upload Method:</p>
                                 <input type="file" x-ref="staffFile" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" @change="handleFileUpload($event)" class="hidden">
-                                <input type="file" x-ref="staffImage" accept="image/*" @change="handleFileUpload($event)" class="hidden">
+                                <input type="file" x-ref="staffImage" accept="image/png,image/jpeg,image/webp" @change="handleFileUpload($event)" class="hidden">
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <button @click="$refs.staffFile.click()" type="button" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-3.5 text-xs text-emerald-300 font-bold flex items-center justify-center gap-2 transition shadow">
                                         <i class="fa-solid fa-file-arrow-up text-base"></i> Upload file
@@ -906,7 +906,7 @@
                                     <div><label class="block text-xs font-bold text-slate-300 mb-1">Confirm Payment Button Text</label><input type="text" x-model="cms.payOpt2ConfirmBtn" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2 text-xs text-white"></div>
                                     <div>
                                         <label class="block text-xs font-bold text-slate-300 mb-1">Upload Booking QR Photo</label>
-                                        <input type="file" accept="image/*" @change="handleQrUpload($event, 'booking')" class="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500">
+                                        <input type="file" accept="image/png,image/jpeg,image/webp" @change="handleQrUpload($event, 'booking')" class="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500">
                                         <template x-if="cms.bookingQrImage">
                                             <div class="mt-2 flex items-center gap-3">
                                                 <img :src="cms.bookingQrImage" class="h-20 w-20 object-cover rounded-lg border border-slate-600">
@@ -923,7 +923,7 @@
                                     <div><label class="block text-xs font-bold text-slate-300 mb-1">Confirm Collection Button Text</label><input type="text" x-model="cms.payOpt3ConfirmBtn" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2 text-xs text-white"></div>
                                     <div>
                                         <label class="block text-xs font-bold text-slate-300 mb-1">Upload Collection QR Photo</label>
-                                        <input type="file" accept="image/*" @change="handleQrUpload($event, 'collection')" class="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500">
+                                        <input type="file" accept="image/png,image/jpeg,image/webp" @change="handleQrUpload($event, 'collection')" class="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500">
                                         <template x-if="cms.collectionQrImage">
                                             <div class="mt-2 flex items-center gap-3">
                                                 <img :src="cms.collectionQrImage" class="h-20 w-20 object-cover rounded-lg border border-slate-600">
@@ -1134,7 +1134,7 @@
                         <div class="space-y-3">
                             <label class="block text-xs font-bold text-slate-400 mb-1">Choose Upload Method</label>
                             <input type="file" x-ref="ownerFile" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" @change="handleFileUpload($event)" class="hidden">
-                            <input type="file" x-ref="ownerImage" accept="image/*" @change="handleFileUpload($event)" class="hidden">
+                            <input type="file" x-ref="ownerImage" accept="image/png,image/jpeg,image/webp" @change="handleFileUpload($event)" class="hidden">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <button @click="$refs.ownerFile.click()" type="button" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-4 text-xs text-emerald-300 font-bold flex items-center justify-center gap-2 transition shadow">
                                     <i class="fa-solid fa-file-arrow-up text-lg"></i> Upload file
@@ -1618,7 +1618,7 @@
                         <div class="space-y-3">
                             <label class="block text-xs font-bold text-slate-400 mb-1">Choose Upload Method</label>
                             <input type="file" x-ref="staffDashFile" accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword" @change="handleFileUpload($event)" class="hidden">
-                            <input type="file" x-ref="staffDashImage" accept="image/*" @change="handleFileUpload($event)" class="hidden">
+                            <input type="file" x-ref="staffDashImage" accept="image/png,image/jpeg,image/webp" @change="handleFileUpload($event)" class="hidden">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <button @click="$refs.staffDashFile.click()" type="button" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-4 text-xs text-emerald-300 font-bold flex items-center justify-center gap-2 transition shadow">
                                     <i class="fa-solid fa-file-arrow-up text-lg"></i> Upload file
@@ -2647,14 +2647,30 @@
                 handleFileUpload(event) {
                     const file = event.target.files[0];
                     if (!file) return;
+                    const allowedTypes = [
+                        'application/pdf',
+                        'application/msword',
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        'image/png',
+                        'image/jpeg',
+                        'image/webp'
+                    ];
+                    if (!allowedTypes.includes(file.type)) {
+                        this.showAppNotice('My ARTfive! Please choose a PDF, DOC, DOCX, PNG, JPEG or WEBP ticket file.');
+                        event.target.value = '';
+                        return;
+                    }
+                    if (file.size > 1024 * 1024) {
+                        this.showAppNotice('My ARTfive! Please choose a ticket file smaller than 1 MB.');
+                        event.target.value = '';
+                        return;
+                    }
                     this.uploadForm.ticketTitle = file.name;
-                    
+                    this.uploadForm.fileData = null;
                     const reader = new FileReader();
-                    reader.onload = (e) => {
-                        this.uploadForm.fileData = e.target.result;
-                    };
+                    reader.onload = (e) => { this.uploadForm.fileData = e.target.result; };
+                    reader.onerror = () => this.showAppNotice('My ARTfive! The selected ticket file could not be read. Please try again.');
                     reader.readAsDataURL(file);
-
                     if (!this.uploadForm.customerId && this.customers.length > 0) {
                         this.uploadForm.customerId = this.customers[0].id;
                     }
