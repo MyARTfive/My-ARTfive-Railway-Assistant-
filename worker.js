@@ -541,6 +541,28 @@ export default {
           await ensureEngagementTables(env);
           recipients = await env.DB.prepare("SELECT DISTINCT u.id FROM users u JOIN customer_engagement e ON e.customer_id = u.id WHERE u.role = 'customer' AND u.active = 1 AND e.action = 'subscribe'").all();
         } else if (category === "Pending") {
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS customer_payment_instructions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              option_no INTEGER NOT NULL CHECK (option_no IN (2, 3)),
+              amount_paise INTEGER NOT NULL CHECK (amount_paise > 0),
+              message TEXT NOT NULL,
+              updated_by TEXT NOT NULL,
+              created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL,
+              payment_status TEXT NOT NULL DEFAULT 'pending',
+              verified_by TEXT,
+              verified_at INTEGER,
+              UNIQUE (request_id, option_no)
+            )
+          `).run();
+          const columnsResult = await env.DB.prepare("PRAGMA table_info(customer_payment_instructions)").all();
+          const columns = new Set((columnsResult.results || []).map(column => column.name));
+          if (!columns.has("payment_status")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'pending'").run();
+          if (!columns.has("verified_by")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN verified_by TEXT").run();
+          if (!columns.has("verified_at")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN verified_at INTEGER").run();
           recipients = await env.DB.prepare(
             "SELECT DISTINCT u.id FROM users u JOIN requests r ON r.customer_id = u.id WHERE u.role = 'customer' AND u.active = 1 AND NOT EXISTS (SELECT 1 FROM customer_payment_instructions p WHERE p.request_id = r.id AND p.option_no = 3 AND p.payment_status = 'verified')"
           ).all();
