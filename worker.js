@@ -745,6 +745,29 @@ export default {
         return json({ success: true, message: "My ARTfive! Manager password reset successfully. Your existing Manager phone number is unchanged. Verify again using the new password." });
       }
 
+      if (path === "/api/owner/manager/code-draft" && (method === "GET" || method === "POST")) {
+        const owner = await getManagerVerifiedOwner(request, env, now);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required to access code drafts." }, 403);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS manager_code_drafts (
+            owner_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            source_code TEXT NOT NULL,
+            updated_at INTEGER NOT NULL
+          )
+        `).run();
+        if (method === "GET") {
+          const row = await env.DB.prepare("SELECT source_code AS sourceCode, updated_at AS updatedAt FROM manager_code_drafts WHERE owner_id = ? LIMIT 1").bind(owner.id).first();
+          return json({ success: true, sourceCode: row?.sourceCode || "", updatedAt: row?.updatedAt || null });
+        }
+        const body = await readJson(request);
+        const sourceCode = String(body.sourceCode || "");
+        if (!sourceCode.trim() || sourceCode.length > 500000) return json({ success: false, message: "Enter code up to 500,000 characters." }, 400);
+        await env.DB.prepare(
+          "INSERT INTO manager_code_drafts (owner_id, source_code, updated_at) VALUES (?, ?, ?) ON CONFLICT(owner_id) DO UPDATE SET source_code = excluded.source_code, updated_at = excluded.updated_at"
+        ).bind(owner.id, sourceCode, now).run();
+        return json({ success: true, message: "My ARTfive! Code draft saved securely. Production deployment has NOT been performed." });
+      }
+
       if (path === "/api/owner/control/visitors" && method === "GET") {
         const owner = await getManagerVerifiedOwner(request, env, now);
         if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required for Control." }, 403);
