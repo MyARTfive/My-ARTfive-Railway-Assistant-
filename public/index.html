@@ -3223,7 +3223,7 @@
                                 body: { phone, password, ticketAccess: this.loginRole === 'customer_verify' }
                             });
                         }
-                        if (this.loginRole === 'customer_verify') this.ticketAccessToken = String(result.ticketAccessToken || '');
+                        this.ticketAccessToken = this.loginRole === 'customer_verify' ? String(result.ticketAccessToken || '') : '';
                         this.currentUser = result.user;
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
                         this.offlineMode = false;
@@ -3257,6 +3257,7 @@
                 async logout() {
                     try { await this.apiRequest('/api/logout', { method: 'POST' }); } catch (e) {}
                     this.currentUser = null;
+                    this.ticketAccessToken = '';
                     localStorage.removeItem('artfive_last_signed_in_profile');
                     this.offlineMode = false;
                     this.ticketRequests = [];
