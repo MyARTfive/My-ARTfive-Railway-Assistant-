@@ -536,6 +536,83 @@ export default {
         return json({ success: true, customers: result.results || [] });
       }
 
+      if (path === "/api/customer-payments" && (method === "GET" || method === "POST" || method === "DELETE")) {
+        const user = await getSessionUser(request, env, now);
+        if (!user) return json({ success: false, message: "Please sign in to continue." }, 401);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS customer_payment_instructions (
+            id TEXT PRIMARY KEY,
+            request_id TEXT NOT NULL,
+            customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            option_no INTEGER NOT NULL CHECK (option_no IN (2, 3)),
+            amount_paise INTEGER NOT NULL CHECK (amount_paise > 0),
+            message TEXT NOT NULL,
+            updated_by TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            UNIQUE (request_id, option_no)
+          )
+        `).run();
+        await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_customer_payment_instructions_customer ON customer_payment_instructions(customer_id, option_no, updated_at DESC)").run();
+
+        if (method === "GET") {
+          let result;
+          if (user.role === "customer") {
+            result = await env.DB.prepare(
+              "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, updated_at AS updatedAt FROM customer_payment_instructions WHERE customer_id = ? ORDER BY updated_at DESC"
+            ).bind(user.id).all();
+          } else if (user.role === "owner" || user.role === "staff") {
+            result = await env.DB.prepare(
+              "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, updated_at AS updatedAt FROM customer_payment_instructions ORDER BY updated_at DESC"
+            ).all();
+          } else return json({ success: false, message: "Access denied." }, 403);
+          return json({ success: true, instructions: result.results || [] });
+        }
+
+        if (user.role !== "owner") return json({ success: false, message: "Only the Owner can manage customer payment instructions." }, 403);
+        const body = await readJson(request);
+        const requestId = String(body.requestId || "").trim();
+        if (!requestId) return json({ success: false, message: "Select the customer's ticket request." }, 400);
+        const requestRow = await env.DB.prepare(
+          "SELECT id, customer_id FROM requests WHERE id = ? LIMIT 1"
+        ).bind(requestId).first();
+        if (!requestRow) return json({ success: false, message: "The selected ticket request was not found." }, 404);
+
+        if (method === "DELETE") {
+          const optionNo = Number(body.optionNo);
+          if (![2, 3].includes(optionNo)) return json({ success: false, message: "Choose Customer Option 2 or 3." }, 400);
+          const deleted = await env.DB.prepare(
+            "DELETE FROM customer_payment_instructions WHERE request_id = ? AND option_no = ?"
+          ).bind(requestId, optionNo).run();
+          return json({ success: true, deleted: deleted.meta ? deleted.meta.changes || 0 : 0, message: "My ARTfive! Payment instructions were removed." });
+        }
+
+        const optionNo = Number(body.optionNo);
+        const amount = Number(body.amount);
+        const amountPaise = Math.round(amount * 100);
+        let message = String(body.message || "").trim();
+        if (![2, 3].includes(optionNo)) return json({ success: false, message: "Choose Customer Option 2 or 3." }, 400);
+        if (!Number.isFinite(amount) || amount <= 0 || amountPaise > 100000000000) return json({ success: false, message: "Enter a valid payment amount." }, 400);
+        if (!message) return json({ success: false, message: "Write a payment message before sending." }, 400);
+        if (!/^My ARTfive!/i.test(message)) message = "My ARTfive! " + message;
+        if (message.length > 2000) return json({ success: false, message: "The message is too long." }, 400);
+        const id = crypto.randomUUID();
+        await env.DB.prepare(`
+          INSERT INTO customer_payment_instructions
+            (id, request_id, customer_id, option_no, amount_paise, message, updated_by, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(request_id, option_no) DO UPDATE SET
+            amount_paise = excluded.amount_paise,
+            message = excluded.message,
+            updated_by = excluded.updated_by,
+            updated_at = excluded.updated_at
+        `).bind(id, requestId, requestRow.customer_id, optionNo, amountPaise, message, user.id, now, now).run();
+        const saved = await env.DB.prepare(
+          "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, updated_at AS updatedAt FROM customer_payment_instructions WHERE request_id = ? AND option_no = ? LIMIT 1"
+        ).bind(requestId, optionNo).first();
+        return json({ success: true, instruction: saved, message: "My ARTfive! Payment amount and message were sent to the selected customer's dashboard option." }, 201);
+      }
+
       if (path === "/api/tickets" && method === "GET") {
         const user = await getSessionUser(request, env, now);
         if (!user) return json({ success: false, message: "Please sign in to continue." }, 401);
