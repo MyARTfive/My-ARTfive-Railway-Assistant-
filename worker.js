@@ -1310,6 +1310,40 @@ export default {
         return json({ success: true, instruction: saved, message: "My ARTfive! Payment amount and message were sent to the selected customer's dashboard option." }, 201);
       }
 
+      if (path === "/api/ticket-payment-verification" && (method === "GET" || method === "POST")) {
+        const user = await getSessionUser(request, env, now);
+        if (!user || !["owner", "staff"].includes(user.role)) {
+          return json({ success: false, message: "Owner or Staff sign-in is required." }, 403);
+        }
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS ticket_payment_verifications (
+            request_id TEXT PRIMARY KEY,
+            customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            verified_by TEXT NOT NULL,
+            verified_at INTEGER NOT NULL
+          )
+        `).run();
+        if (method === "GET") {
+          const result = await env.DB.prepare(
+            "SELECT request_id AS requestId, customer_id AS customerId, 1 AS verified, verified_by AS verifiedBy, verified_at AS verifiedAt FROM ticket_payment_verifications"
+          ).all();
+          return json({ success: true, verifications: result.results || [] });
+        }
+        if (user.role !== "owner") return json({ success: false, message: "Only the Owner can confirm ticket collection payment." }, 403);
+        const body = await readJson(request);
+        const customerId = String(body.customerId || "").trim();
+        const requestId = String(body.requestId || "").trim();
+        if (!customerId || !requestId) return json({ success: false, message: "Select the customer and exact ticket request." }, 400);
+        const requestRow = await env.DB.prepare(
+          "SELECT id FROM requests WHERE id = ? AND customer_id = ? LIMIT 1"
+        ).bind(requestId, customerId).first();
+        if (!requestRow) return json({ success: false, message: "The selected ticket request does not belong to this customer." }, 404);
+        await env.DB.prepare(
+          "INSERT INTO ticket_payment_verifications (request_id, customer_id, verified_by, verified_at) VALUES (?, ?, ?, ?) ON CONFLICT(request_id) DO UPDATE SET customer_id = excluded.customer_id, verified_by = excluded.verified_by, verified_at = excluded.verified_at"
+        ).bind(requestId, customerId, user.id, now).run();
+        return json({ success: true, message: "My ARTfive! Payment confirmation saved. Ticket upload is now unlocked." });
+      }
+
       if (path === "/api/tickets" && ["GET", "POST", "DELETE"].includes(method)) {
         const ticketColumnsResult = await env.DB.prepare("PRAGMA table_info(tickets)").all();
         const ticketColumns = new Set((ticketColumnsResult.results || []).map(column => column.name));
@@ -1368,32 +1402,18 @@ export default {
         ).bind(requestId, customerId).first();
         if (!requestRow) return json({ success: false, message: "The selected request does not belong to this customer." }, 404);
         await env.DB.prepare(`
-          CREATE TABLE IF NOT EXISTS customer_payment_instructions (
-            id TEXT PRIMARY KEY,
-            request_id TEXT NOT NULL,
+          CREATE TABLE IF NOT EXISTS ticket_payment_verifications (
+            request_id TEXT PRIMARY KEY,
             customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            option_no INTEGER NOT NULL CHECK (option_no IN (2, 3)),
-            amount_paise INTEGER NOT NULL CHECK (amount_paise > 0),
-            message TEXT NOT NULL,
-            updated_by TEXT NOT NULL,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
-            payment_status TEXT NOT NULL DEFAULT 'pending',
-            verified_by TEXT,
-            verified_at INTEGER,
-            UNIQUE (request_id, option_no)
+            verified_by TEXT NOT NULL,
+            verified_at INTEGER NOT NULL
           )
         `).run();
-        const ticketPaymentColumnsResult = await env.DB.prepare("PRAGMA table_info(customer_payment_instructions)").all();
-        const ticketPaymentColumns = new Set((ticketPaymentColumnsResult.results || []).map(column => column.name));
-        if (!ticketPaymentColumns.has("payment_status")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'pending'").run();
-        if (!ticketPaymentColumns.has("verified_by")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN verified_by TEXT").run();
-        if (!ticketPaymentColumns.has("verified_at")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN verified_at INTEGER").run();
-        const collectionPayment = await env.DB.prepare(
-          "SELECT id, payment_status FROM customer_payment_instructions WHERE request_id = ? AND customer_id = ? AND option_no = 3 LIMIT 1"
+        const paymentConfirmation = await env.DB.prepare(
+          "SELECT request_id FROM ticket_payment_verifications WHERE request_id = ? AND customer_id = ? LIMIT 1"
         ).bind(requestId, customerId).first();
-        if (body.confirmOption3Payment !== true || !collectionPayment || collectionPayment.payment_status !== "verified") {
-          return json({ success: false, message: "My ARTfive! Ticket upload is locked until the Owner or authorized Staff manually marks the Option 3 payment as received (✅)." }, 409);
+        if (!paymentConfirmation) {
+          return json({ success: false, message: "My ARTfive! Ticket upload is locked until the Owner manually marks the payment received (✅)." }, 409);
         }
         const id = crypto.randomUUID();
         await env.DB.prepare(
