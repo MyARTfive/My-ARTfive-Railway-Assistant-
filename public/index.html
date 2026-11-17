@@ -34,7 +34,7 @@
 </head>
 <body class="h-full bg-slate-900 text-slate-100 font-sans antialiased" x-data="railwayApp()" x-init="initApp()">
 
-    <div x-show="appNotice.open" x-cloak class="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4" @keydown.escape.window="appNotice.open = false">
+    <div x-show="appNotice.open" x-cloak class="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4" @keydown.escape.window="closeAppNotice()">
         <div class="w-full max-w-sm rounded-2xl border border-emerald-500/40 bg-slate-900 p-6 shadow-2xl space-y-4" role="dialog" aria-modal="true" aria-labelledby="app-notice-title">
             <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center"><i class="fa-solid fa-check"></i></div><h2 id="app-notice-title" class="text-lg font-extrabold text-white">My ARTfive!</h2></div>
             <p class="text-sm leading-relaxed text-slate-200" x-text="appNotice.message"></p>
