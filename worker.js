@@ -351,9 +351,32 @@ export default {
         });
       }
 
+      if (path === "/api/customer-chat-settings" && (method === "GET" || method === "POST")) {
+        const user = await getSessionUser(request, env, now);
+        if (!user) return json({ success: false, message: "Please sign in to continue." }, 401);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS customer_chat_settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            enabled INTEGER NOT NULL DEFAULT 1,
+            updated_by TEXT,
+            updated_at INTEGER NOT NULL
+          )
+        `).run();
+        await env.DB.prepare("INSERT INTO customer_chat_settings (id, enabled, updated_at) VALUES (1, 1, ?) ON CONFLICT(id) DO NOTHING").bind(now).run();
+        if (method === "GET") {
+          const row = await env.DB.prepare("SELECT enabled FROM customer_chat_settings WHERE id = 1").first();
+          return json({ success: true, enabled: Number(row?.enabled ?? 1) === 1 });
+        }
+        if (user.role !== "owner") return json({ success: false, message: "Only the Owner can change customer chat access." }, 403);
+        const body = await readJson(request);
+        const enabled = body.enabled === true ? 1 : 0;
+        await env.DB.prepare("UPDATE customer_chat_settings SET enabled = ?, updated_by = ?, updated_at = ? WHERE id = 1").bind(enabled, user.id, now).run();
+        return json({ success: true, enabled: enabled === 1, message: enabled ? "My ARTfive! Customer enquiry replies are enabled." : "My ARTfive! Customer enquiry replies are paused." });
+      }
+
       if (path === "/api/customer-enquiry" && (method === "GET" || method === "POST")) {
         const user = await getSessionUser(request, env, now);
-        if (!user) return json({ success: false, message: "Please sign in to use My ARTfive! Enquiry." }, 401);
+        if (!user || !["owner", "customer"].includes(user.role)) return json({ success: false, message: "Only the Owner and the signed-in customer can use this enquiry conversation." }, 403);
         await env.DB.prepare(`
           CREATE TABLE IF NOT EXISTS customer_enquiry_messages (
             id TEXT PRIMARY KEY,
@@ -375,6 +398,10 @@ export default {
             "SELECT id, sender_role AS senderRole, sender_name AS sender, message AS text, created_at AS createdAt FROM customer_enquiry_messages WHERE customer_id = ? ORDER BY created_at ASC LIMIT 300"
           ).bind(targetCustomerId).all();
           return json({ success: true, messages: rows.results || [] });
+        }
+        if (user.role === "customer") {
+          const chatSetting = await env.DB.prepare("SELECT enabled FROM customer_chat_settings WHERE id = 1").first();
+          if (chatSetting && Number(chatSetting.enabled) !== 1) return json({ success: false, message: "My ARTfive! Customer replies are temporarily paused. You can still view existing messages." }, 403);
         }
         const messageText = String(body.message || "").trim();
         if (!messageText || messageText.length > 2000) return json({ success: false, message: "Enter a message up to 2,000 characters." }, 400);
