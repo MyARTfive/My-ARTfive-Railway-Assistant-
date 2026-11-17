@@ -2876,8 +2876,8 @@
                     }
                 },
 
-                async saveTicketToLocalStorage(ticketObj) {
-                    // Ticket files are now stored centrally through the Worker API, never in browser localStorage.
+                async saveTicketToD1(ticketObj) {
+                    // Ticket files are stored only in the central D1 database through the Worker API.
                     return this.apiRequest('/api/tickets', { method: 'POST', body: ticketObj });
                 },
 
@@ -3610,7 +3610,7 @@
                         return;
                     }
                     try {
-                        await this.saveTicketToLocalStorage({
+                        await this.saveTicketToD1({
                             customerId: this.uploadForm.customerId,
                             requestId: this.uploadForm.requestId,
                             ticketTitle: this.uploadForm.ticketTitle,
