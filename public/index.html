@@ -1320,7 +1320,7 @@
                     <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
                         <div>
                             <h3 class="text-lg font-bold text-white" x-text="cms.ownerOpt11Name"></h3>
-                            <p class="text-xs text-emerald-400">Secure Single-Owner Source Code Manager (Protected by Phone Number, Password & Forgot Password).</p>
+                            <p class="text-xs text-emerald-400">Secure Single-Owner Code Draft Manager (Protected by Owner and Manager verification).</p>
                         </div>
                         <button @click="activeMenuOption = null; option11Authenticated = false" class="bg-slate-700 text-white text-xs px-3.5 py-2 rounded-lg">Back</button>
                     </div>
@@ -1332,7 +1332,7 @@
                                     <i class="fa-solid fa-shield-halved"></i>
                                 </div>
                                 <h4 class="font-bold text-white text-lg" x-text="hasOption11Account() ? 'Option 11 Security Verification' : 'Create Option 11 Owner Password'"></h4>
-                                <p class="text-xs text-slate-400" x-text="hasOption11Account() ? 'Enter your registered Phone number and Password to access and deploy app code.' : 'One-time setup (Single Owner Only): Create your permanent Phone Number and Password for Option 11.'"></p>
+                                <p class="text-xs text-slate-400" x-text="hasOption11Account() ? 'Enter your registered Phone number and Password to access and save protected code drafts.' : 'One-time setup (Single Owner Only): Create your permanent Phone Number and Password for Option 11.'"></p>
                             </div>
                             <div class="space-y-4">
                                 <div>
@@ -2417,7 +2417,7 @@
                     ownerOpt9Name: 'UPLOAD TICKET FROM MOBILE',
                     ownerOpt9Desc: 'Upload large PDF/photo directly from phone storage & assign to customer.',
                     ownerOpt11Name: 'My ARTfive! Manager!',
-                    ownerOpt11Desc: 'Secured with phone number & password. Live code editor and deployment manager.',
+                    ownerOpt11Desc: 'Secured with phone number & password. Protected code draft manager; production deployment integration is not connected yet.',
                     ownerOpt12Name: 'BACK TO MENU',
                     ownerOpt12Desc: 'Return to public portal and home screen.'
                 },
