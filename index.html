@@ -311,11 +311,6 @@
                             <h3 class="font-bold text-white text-base mb-1" x-text="cms.ownerOpt9Name"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.ownerOpt9Desc"></p>
                         </div>
-                        <div @click="ownerSelectOption(10)" class="bg-slate-800 hover:bg-slate-750 border border-amber-500/40 hover:border-amber-400 p-5 rounded-xl cursor-pointer transition shadow group">
-                            <div class="flex items-center justify-between mb-3"><span class="text-xs font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg">OPTION 10</span><i class="fa-solid fa-users-gear text-amber-300 text-xl"></i></div>
-                            <h3 class="font-bold text-white text-base mb-1">CONTROL — DELETE ID</h3>
-                            <p class="text-xs text-slate-400">View and permanently delete registered Staff and Customer accounts.</p>
-                        </div>
                         <div @click="ownerSelectOption(11)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-xl cursor-pointer transition shadow group">
                             <div class="flex items-center justify-between mb-3"><span class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg">OPTION 11</span><i class="fa-solid fa-code text-emerald-400 text-xl"></i></div>
                             <h3 class="font-bold text-white text-base mb-1" x-text="cms.ownerOpt11Name"></h3>
@@ -1137,86 +1132,6 @@
                     </div>
                 </div>
 
-                <!-- Owner Option 10: Control — Delete ID (D1 account management) -->
-                <div x-show="activeMenuOption === 10" class="space-y-6">
-                    <div class="flex flex-wrap justify-between items-center gap-3 bg-slate-800 p-4 rounded-xl border border-amber-500/30">
-                        <div>
-                            <h3 class="text-lg font-bold text-white">CONTROL — DELETE ID</h3>
-                            <p class="text-xs text-slate-400">Manage registered Staff Dashboard and Customer Dashboard accounts.</p>
-                        </div>
-                        <div class="flex gap-2">
-                            <button x-show="accountControlVerified" @click="refreshAccountControl()" class="bg-sky-600 hover:bg-sky-500 text-white text-xs px-3 py-2 rounded-lg"><i class="fa-solid fa-rotate"></i> Refresh</button>
-                            <button @click="closeAccountControl()" class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-2 rounded-lg">Back</button>
-                        </div>
-                    </div>
-
-                    <template x-if="!accountControlVerified">
-                        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md mx-auto space-y-4">
-                            <div class="text-center">
-                                <i class="fa-solid fa-shield-halved text-amber-300 text-3xl"></i>
-                                <h4 class="text-white font-bold mt-2">Manager Security Verification</h4>
-                                <p class="text-xs text-slate-400 mt-1">Verify your Manager phone number and password to access account records. First-time setup requires a password of at least 12 characters.</p>
-                            </div>
-                            <div>
-                                <label class="block text-xs text-slate-300 font-bold mb-1">Manager phone number</label>
-                                <input type="tel" x-model="accountControlPhone" autocomplete="username" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-sm text-white" placeholder="Enter Manager phone number">
-                            </div>
-                            <div>
-                                <label class="block text-xs text-slate-300 font-bold mb-1">Manager password</label>
-                                <input type="password" x-model="accountControlPassword" autocomplete="current-password" @keyup.enter="verifyAccountControl()" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-sm text-white" placeholder="Enter Manager password">
-                            </div>
-                            <p x-show="accountControlError" x-text="accountControlError" class="text-xs text-red-300"></p>
-                            <button @click="verifyAccountControl()" :disabled="accountControlBusy" class="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-sm" x-text="accountControlBusy ? 'Verifying…' : 'Verify & Open Control'"></button>
-                        </div>
-                    </template>
-
-                    <template x-if="accountControlVerified">
-                        <div class="space-y-5">
-                            <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-300 bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-3">
-                                <span><i class="fa-solid fa-circle-check"></i> Manager verified. Account lists refresh automatically every 15 seconds.</span>
-                                <span x-text="'Last refreshed: ' + accountControlLastRefresh"></span>
-                            </div>
-                            <p x-show="accountControlError" x-text="accountControlError" class="text-xs text-red-300 bg-red-950/30 border border-red-500/30 p-3 rounded-lg"></p>
-
-                            <section class="bg-slate-800 border border-sky-500/30 rounded-2xl p-4 space-y-3">
-                                <div class="flex items-center justify-between gap-2">
-                                    <h4 class="font-bold text-sky-300">STAFF DASHBOARD ACCOUNTS</h4>
-                                    <span class="text-xs text-slate-400" x-text="staffAccountList.length + ' Staff'"></span>
-                                </div>
-                                <template x-for="account in staffAccountList" :key="account.id">
-                                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
-                                        <div class="min-w-0">
-                                            <p class="font-bold text-white text-sm break-words" x-text="account.name"></p>
-                                            <p class="text-xs text-slate-300" x-text="'Phone: ' + account.phone"></p>
-                                            <p class="text-xs text-slate-500">Password: •••••••• (hidden)</p>
-                                        </div>
-                                        <button @click="deleteAccountControlId(account)" class="shrink-0 bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-trash"></i> Permanent Delete</button>
-                                    </div>
-                                </template>
-                                <p x-show="staffAccountList.length === 0" class="text-xs text-slate-500 text-center py-3">No Staff Dashboard accounts found.</p>
-                            </section>
-
-                            <section class="bg-slate-800 border border-emerald-500/30 rounded-2xl p-4 space-y-3">
-                                <div class="flex items-center justify-between gap-2">
-                                    <h4 class="font-bold text-emerald-300">CUSTOMER DASHBOARD ACCOUNTS</h4>
-                                    <span class="text-xs text-slate-400" x-text="customerAccountList.length + ' Customers'"></span>
-                                </div>
-                                <template x-for="account in customerAccountList" :key="account.id">
-                                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
-                                        <div class="min-w-0">
-                                            <p class="font-bold text-white text-sm break-words" x-text="account.name"></p>
-                                            <p class="text-xs text-slate-300" x-text="'Phone: ' + account.phone"></p>
-                                            <p class="text-xs text-slate-500">Password: •••••••• (hidden)</p>
-                                        </div>
-                                        <button @click="deleteAccountControlId(account)" class="shrink-0 bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-trash"></i> Permanent Delete</button>
-                                    </div>
-                                </template>
-                                <p x-show="customerAccountList.length === 0" class="text-xs text-slate-500 text-center py-3">No Customer Dashboard accounts found.</p>
-                            </section>
-                        </div>
-                    </template>
-                </div>
-
                 <!-- Owner Option 11: Manager (Protected Single-Owner Setup & Verification) -->
                 <div x-show="activeMenuOption === 11" class="space-y-6">
                     <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
@@ -2000,16 +1915,6 @@
 
                 currentUser: null,
 
-                accountControlVerified: false,
-                accountControlPhone: '',
-                accountControlPassword: '',
-                accountControlBusy: false,
-                accountControlError: '',
-                accountControlLastRefresh: 'Not refreshed yet',
-                accountControlRefreshTimer: null,
-                staffAccountList: [],
-                customerAccountList: [],
-
                 option11Authenticated: false,
                 option11Phone: '',
                 option11Password: '',
@@ -2432,82 +2337,7 @@
                     if (type === 'to') this.toSuggestions = filtered;
                 },
 
-                async verifyAccountControl() {
-                    if (!this.currentUser || this.currentUser.role !== 'owner') {
-                        this.accountControlError = 'Only the signed-in Owner can access Control.';
-                        return;
-                    }
-                    const phone = this.accountControlPhone.trim();
-                    const password = this.accountControlPassword;
-                    if (!phone || !password) {
-                        this.accountControlError = 'Enter your Manager phone number and password.';
-                        return;
-                    }
-                    this.accountControlBusy = true;
-                    this.accountControlError = '';
-                    try {
-                        await this.apiRequest('/api/owner/manager/verify', { method: 'POST', body: { phone, password } });
-                        this.accountControlVerified = true;
-                        this.accountControlPassword = '';
-                        await this.refreshAccountControl();
-                        if (this.accountControlRefreshTimer) clearInterval(this.accountControlRefreshTimer);
-                        this.accountControlRefreshTimer = setInterval(() => {
-                            if (this.activeMenuOption === 10 && this.accountControlVerified) this.refreshAccountControl();
-                        }, 15000);
-                    } catch (error) {
-                        this.accountControlError = error.message || 'Manager verification failed.';
-                    } finally {
-                        this.accountControlBusy = false;
-                    }
-                },
-
-                async refreshAccountControl() {
-                    if (!this.accountControlVerified) return;
-                    try {
-                        const result = await this.apiRequest('/api/owner/control/customer-accounts');
-                        const accounts = Array.isArray(result.customers) ? result.customers : [];
-                        this.staffAccountList = accounts.filter(account => account.role === 'staff');
-                        this.customerAccountList = accounts.filter(account => account.role === 'customer');
-                        this.accountControlLastRefresh = new Date().toLocaleTimeString();
-                        this.accountControlError = '';
-                    } catch (error) {
-                        this.accountControlError = error.message || 'Could not refresh account lists.';
-                    }
-                },
-
-                async deleteAccountControlId(account) {
-                    if (!account || !account.id || !['staff', 'customer'].includes(account.role)) return;
-                    const type = account.role === 'staff' ? 'Staff' : 'Customer';
-                    if (!confirm('My ARTfive! Permanently delete this ' + type + ' account? This cannot be undone. The account owner may register again later.')) return;
-                    try {
-                        await this.apiRequest('/api/owner/control/customer-accounts/delete', {
-                            method: 'POST',
-                            body: { accountId: account.id }
-                        });
-                        await this.refreshAccountControl();
-                        alert('My ARTfive! The selected ' + type + ' account was permanently deleted.');
-                    } catch (error) {
-                        this.accountControlError = error.message || 'Account deletion failed.';
-                    }
-                },
-
-                closeAccountControl() {
-                    if (this.accountControlRefreshTimer) {
-                        clearInterval(this.accountControlRefreshTimer);
-                        this.accountControlRefreshTimer = null;
-                    }
-                    this.accountControlVerified = false;
-                    this.accountControlPhone = '';
-                    this.accountControlPassword = '';
-                    this.accountControlError = '';
-                    this.activeMenuOption = null;
-                },
-
                 ownerSelectOption(optNum) {
-                    if (this.accountControlRefreshTimer && optNum !== 10) {
-                        clearInterval(this.accountControlRefreshTimer);
-                        this.accountControlRefreshTimer = null;
-                    }
                     this.activeMenuOption = optNum;
                     this.ownerInspectStaffOpt = null;
                     this.ownerInspectCustOpt = null;
@@ -2521,17 +2351,6 @@
                         if (this.customers.length > 0 && !this.uploadForm.customerId) {
                             this.uploadForm.customerId = this.customers[0].id;
                         }
-                    }
-                    if (optNum === 10) {
-                        this.accountControlVerified = false;
-                        this.accountControlPhone = '';
-                        this.accountControlPassword = '';
-                        this.accountControlError = '';
-                        this.staffAccountList = [];
-                        this.customerAccountList = [];
-                        this.accountControlLastRefresh = 'Not refreshed yet';
-                        if (this.accountControlRefreshTimer) clearInterval(this.accountControlRefreshTimer);
-                        this.accountControlRefreshTimer = null;
                     }
                     if (optNum === 11) {
                         this.option11Phone = '';
