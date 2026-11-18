@@ -490,6 +490,19 @@ export default {
         const statements = cleanup
           .filter(([table]) => tables.has(table))
           .map(([table, where, values]) => env.DB.prepare("DELETE FROM " + table + " WHERE " + where).bind(...values));
+
+        // Preserve customer-facing records when a staff account is deleted by transferring
+        // uploader/sender/creator references to the verified Owner before removing the account.
+        if (tables.has("tickets")) {
+          statements.push(env.DB.prepare("UPDATE tickets SET uploaded_by = ? WHERE uploaded_by = ?").bind(owner.id, customerId));
+        }
+        if (tables.has("customer_notifications")) {
+          statements.push(env.DB.prepare("UPDATE customer_notifications SET sender_id = ? WHERE sender_id = ?").bind(owner.id, customerId));
+        }
+        if (tables.has("app_updates")) {
+          statements.push(env.DB.prepare("UPDATE app_updates SET created_by = ? WHERE created_by = ?").bind(owner.id, customerId));
+        }
+
         statements.push(
           env.DB.prepare("DELETE FROM users WHERE id = ? AND role IN ('customer', 'staff')").bind(customerId)
         );
