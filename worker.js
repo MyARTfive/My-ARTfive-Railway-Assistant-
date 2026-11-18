@@ -1463,11 +1463,11 @@ export default {
         const ticket = await env.DB.prepare("SELECT id FROM tickets WHERE id = ? LIMIT 1").bind(id).first();
         if (!ticket) return json({ success: false, message: "Ticket was not found." }, 404);
         await ensureTicketNotificationColumns(env);
-        await env.DB.batch([
+        const deleteResults = await env.DB.batch([
           env.DB.prepare("DELETE FROM customer_notifications WHERE ticket_id = ?").bind(id),
           env.DB.prepare("DELETE FROM tickets WHERE id = ?").bind(id)
         ]);
-        const deletion = { meta: { changes: 1 } };
+        const deletion = deleteResults[1];
         if (!deletion.meta || deletion.meta.changes !== 1) return json({ success: false, message: "Ticket could not be permanently deleted." }, 500);
         return json({ success: true, message: "My ARTfive! Ticket file and its stored file data were permanently deleted from D1." });
       }
