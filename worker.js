@@ -1234,6 +1234,7 @@ export default {
         ).bind(requestId).first();
         if (!requestRow) return json({ success: false, message: "The selected ticket request was not found." }, 404);
         const selectedCustomerId = String(body.customerId || "").trim();
+        if (user.role === "owner" && !selectedCustomerId && body.action !== "verify") return json({ success: false, message: "My ARTfive! Select the exact customer ID before sending or unsending a notification." }, 400);
         if (selectedCustomerId && selectedCustomerId !== String(requestRow.customer_id)) {
           return json({ success: false, message: "My ARTfive! The selected ticket request does not belong to the selected customer. Please choose that customer's request and send again." }, 400);
         }
@@ -1261,7 +1262,7 @@ export default {
             "UPDATE customer_payment_instructions SET payment_status = 'verified', verified_by = ?, verified_at = ?, message = ?, updated_at = ? WHERE request_id = ? AND option_no = ?"
           ).bind(user.id, now, verifiedMessage, now, requestId, optionNo).run();
           const verified = await env.DB.prepare(
-            "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, payment_status AS paymentStatus, verified_at AS verifiedAt, updated_at AS updatedAt FROM customer_payment_instructions WHERE request_id = ? AND option_no = ? LIMIT 1"
+            "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, payment_status AS paymentStatus, verified_at AS verifiedAt, updated_at AS updatedAt, is_active AS isActive FROM customer_payment_instructions WHERE request_id = ? AND option_no = ? LIMIT 1"
           ).bind(requestId, optionNo).first();
           return json({ success: true, instruction: verified, message: "My ARTfive! Payment marked as manually verified." });
         }
@@ -1290,6 +1291,7 @@ export default {
             (id, request_id, customer_id, option_no, amount_paise, message, updated_by, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(request_id, option_no) DO UPDATE SET
+            customer_id = excluded.customer_id,
             amount_paise = excluded.amount_paise,
             message = excluded.message,
             updated_by = excluded.updated_by,
