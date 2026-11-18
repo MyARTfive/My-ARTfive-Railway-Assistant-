@@ -1,3 +1,4 @@
+// Backend redeploy trigger: Option 2 verification is not required to send Option 3 notifications.
 
 const PASSWORD_ITERATIONS = 100000;
 const SESSION_DAYS = 7;
