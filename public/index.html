@@ -1575,15 +1575,27 @@
                 <div x-show="activeCustOption === 2" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
                     <p class="text-xs text-slate-300" x-text="cms.payOpt2Instruction"></p>
-                    <template x-for="instruction in customerPaymentInstructions(2)" :key="'custpay2-'+instruction.id">
-                        <div class="rounded-xl border border-emerald-500/30 bg-slate-900 p-4 space-y-3">
-                            <p class="text-xs font-bold text-emerald-300" x-text="customerPaymentRequestLabel(instruction.requestId)"></p>
-                            <p class="text-xs text-slate-400">Your Railway Ticket Booking Request Payment</p>
-                            <p class="text-2xl font-extrabold text-emerald-300" x-text="manualPayAmount(instruction.amountPaise)"></p>
-                            <p class="text-xs font-bold" :class="instruction.paymentStatus === 'verified' ? 'text-emerald-400' : 'text-amber-300'" x-text="instruction.paymentStatus === 'verified' ? 'Payment verified' : 'Payment pending verification'"></p>
-                            <p class="text-sm text-white whitespace-pre-wrap" x-text="instruction.message"></p>
+                    <section class="w-full min-w-0 rounded-xl border-2 border-emerald-500/50 bg-slate-900 p-4 space-y-3" aria-label="Customer Option 2 personal notification and payment details">
+                        <div class="border-b border-slate-700 pb-2">
+                            <p class="text-sm font-extrabold text-emerald-300">My ARTfive! Personal Payment Notification</p>
+                            <p class="text-[11px] text-slate-400">Your private Option 2 notification appears only in this box.</p>
                         </div>
-                    </template>
+                        <template x-for="instruction in customerPaymentInstructions(2)" :key="'custpay2-'+instruction.id">
+                            <div class="w-full min-w-0 rounded-lg border border-emerald-500/30 bg-slate-800 p-3 space-y-2">
+                                <p class="text-xs font-bold text-emerald-300 break-words" x-text="customerPaymentRequestLabel(instruction.requestId)"></p>
+                                <p class="text-xs text-slate-400">Your Railway Ticket Booking Request Payment</p>
+                                <p class="text-2xl font-extrabold text-emerald-300 break-words" x-text="manualPayAmount(instruction.amountPaise)"></p>
+                                <p class="text-xs font-bold" :class="instruction.paymentStatus === 'verified' ? 'text-emerald-400' : 'text-amber-300'" x-text="instruction.paymentStatus === 'verified' ? 'Payment verified' : 'Payment pending verification'"></p>
+                                <div class="w-full min-w-0 rounded-lg border border-sky-500/40 bg-slate-950 p-3">
+                                    <p class="text-[11px] font-bold uppercase tracking-wide text-sky-300 mb-2">Your notification</p>
+                                    <p class="text-sm leading-relaxed text-white whitespace-pre-wrap break-words" style="overflow-wrap:anywhere" x-text="instruction.message"></p>
+                                </div>
+                            </div>
+                        </template>
+                        <template x-if="customerPaymentInstructions(2).length === 0">
+                            <p class="text-sm leading-relaxed text-amber-200">My ARTfive! Your personal Option 2 payment notification and charges will appear in this box when our team sends them.</p>
+                        </template>
+                    </section>
                     <template x-if="customerPaymentInstructions(2).length === 0">
                         <div class="rounded-xl border border-amber-500/30 bg-slate-900 p-4 text-sm text-amber-200">My ARTfive! Your Railway Ticket Booking Request Payment amount and personal payment message will appear here when our team sends them. Please wait for our notification before making this payment.</div>
                     </template>
@@ -1604,18 +1616,36 @@
                 <div x-show="activeCustOption === 3" x-effect="if (activeCustOption === 3) loadCustomerNotifications()" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
                     <p class="text-xs text-slate-300" x-text="cms.payOpt3Instruction"></p>
-                    <template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 3)" :key="'ticket-option3-note-'+note.id">
-                        <div class="rounded-xl border border-sky-500/40 bg-slate-900 p-4 text-sm text-sky-200 whitespace-pre-wrap" x-text="note.message"></div>
-                    </template>
-                    <template x-for="instruction in customerPaymentInstructions(3)" :key="'custpay3-'+instruction.id">
-                        <div class="rounded-xl border border-emerald-500/30 bg-slate-900 p-4 space-y-3">
-                            <p class="text-xs font-bold text-emerald-300" x-text="customerPaymentRequestLabel(instruction.requestId)"></p>
-                            <p class="text-xs text-slate-400">Your Ticket Collection Charges</p>
-                            <p class="text-2xl font-extrabold text-emerald-300" x-text="formatPaymentAmount(instruction.amountPaise)"></p>
-                            <p class="text-xs font-bold" :class="instruction.paymentStatus === 'verified' ? 'text-emerald-400' : 'text-amber-300'" x-text="instruction.paymentStatus === 'verified' ? 'Payment verified' : 'Payment pending verification'"></p>
-                            <p class="text-sm text-white whitespace-pre-wrap" x-text="instruction.message"></p>
+                    <section class="w-full min-w-0 rounded-xl border-2 border-sky-500/50 bg-slate-900 p-4 space-y-2" aria-label="Customer Option 3 automatic ticket notification">
+                        <p class="text-sm font-extrabold text-sky-300">My ARTfive! Ticket Update</p>
+                        <template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 3)" :key="'ticket-option3-note-'+note.id">
+                            <div class="w-full min-w-0 rounded-lg border border-sky-500/40 bg-slate-950 p-3">
+                                <p class="text-sm leading-relaxed text-sky-100 whitespace-pre-wrap break-words" style="overflow-wrap:anywhere" role="status" aria-live="polite" x-text="note.message"></p>
+                            </div>
+                        </template>
+                        <p x-if="false"></p>
+                    </section>
+                    <section class="w-full min-w-0 rounded-xl border-2 border-emerald-500/50 bg-slate-900 p-4 space-y-3" aria-label="Customer Option 3 personal notification and payment details">
+                        <div class="border-b border-slate-700 pb-2">
+                            <p class="text-sm font-extrabold text-emerald-300">My ARTfive! Personal Payment Notification</p>
+                            <p class="text-[11px] text-slate-400">Your private Option 3 notification appears only in this box.</p>
                         </div>
-                    </template>
+                        <template x-for="instruction in customerPaymentInstructions(3)" :key="'custpay3-'+instruction.id">
+                            <div class="w-full min-w-0 rounded-lg border border-emerald-500/30 bg-slate-800 p-3 space-y-2">
+                                <p class="text-xs font-bold text-emerald-300 break-words" x-text="customerPaymentRequestLabel(instruction.requestId)"></p>
+                                <p class="text-xs text-slate-400">Your Ticket Collection Charges</p>
+                                <p class="text-2xl font-extrabold text-emerald-300 break-words" x-text="manualPayAmount(instruction.amountPaise)"></p>
+                                <p class="text-xs font-bold" :class="instruction.paymentStatus === 'verified' ? 'text-emerald-400' : 'text-amber-300'" x-text="instruction.paymentStatus === 'verified' ? 'Payment verified' : 'Payment pending verification'"></p>
+                                <div class="w-full min-w-0 rounded-lg border border-sky-500/40 bg-slate-950 p-3">
+                                    <p class="text-[11px] font-bold uppercase tracking-wide text-sky-300 mb-2">Your notification</p>
+                                    <p class="text-sm leading-relaxed text-white whitespace-pre-wrap break-words" style="overflow-wrap:anywhere" x-text="instruction.message"></p>
+                                </div>
+                            </div>
+                        </template>
+                        <template x-if="customerPaymentInstructions(3).length === 0">
+                            <p class="text-sm leading-relaxed text-amber-200">My ARTfive! Your personal Option 3 payment notification and charges will appear in this box when our team sends them.</p>
+                        </template>
+                    </section>
                     <template x-if="customerPaymentInstructions(3).length === 0">
                         <div class="rounded-xl border border-amber-500/30 bg-slate-900 p-4 text-sm text-amber-200">My ARTfive! Your Ticket Collection Charges and personal payment message will appear here after our team completes your booking. Please wait for our notification. Do not make this payment before receiving our message.</div>
                     </template>
