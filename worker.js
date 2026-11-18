@@ -1241,15 +1241,22 @@ export default {
 
         if (body.action === "unsend") {
           const optionNo = Number(body.optionNo);
+          const instructionId = String(body.instructionId || "").trim();
+          const amount = Number(body.amount);
+          const amountPaise = Math.round(amount * 100);
+          const message = String(body.message || "").trim();
           if (![2, 3].includes(optionNo)) return json({ success: false, message: "Choose Customer Option 2 or 3." }, 400);
+          if (!instructionId || !Number.isFinite(amount) || amount <= 0 || !message) {
+            return json({ success: false, message: "My ARTfive! Select the exact sent notification and enter its amount before unsending." }, 400);
+          }
           const deleted = await env.DB.prepare(
-            "DELETE FROM customer_payment_instructions WHERE request_id = ? AND option_no = ? AND customer_id = ?"
-          ).bind(requestId, optionNo, requestRow.customer_id).run();
+            "DELETE FROM customer_payment_instructions WHERE id = ? AND request_id = ? AND option_no = ? AND customer_id = ? AND amount_paise = ? AND message = ?"
+          ).bind(instructionId, requestId, optionNo, requestRow.customer_id, amountPaise, message).run();
           const deletedCount = deleted.meta ? Number(deleted.meta.changes || 0) : 0;
           if (deletedCount < 1) {
-            return json({ success: false, deleted: 0, message: "My ARTfive! No saved manual notification was found for that customer's selected dashboard option." }, 404);
+            return json({ success: false, deleted: 0, message: "My ARTfive! The selected notification, customer, option or amount did not match the saved D1 record. Nothing was deleted." }, 409);
           }
-          return json({ success: true, deleted: deletedCount, message: "My ARTfive! The selected manual notification and amount have been permanently deleted from D1. The saved UPI number and QR code remain available." });
+          return json({ success: true, deleted: deletedCount, message: "My ARTfive! The selected notification and amount have been permanently deleted from D1 and the customer dashboard. Your UPI number and QR code remain unchanged." });
         }
 
         if (body.action === "verify") {
