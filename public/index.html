@@ -2086,12 +2086,15 @@
                 activeSplashIndex: 0,
                 totalSplashSlides: 4,
 
-                showAppNotice(message) {
+                showAppNotice(message, durationMs = null) {
                     this.appNotice.message = String(message || '');
                     this.appNotice.open = true;
                     if (this.appNoticeTimer) clearTimeout(this.appNoticeTimer);
                     const words = this.appNotice.message.trim().split(/\s+/).filter(Boolean).length;
-                    const displayMs = Math.max(3000, Math.ceil(words / 3) * 1000);
+                    const requestedDuration = Number(durationMs);
+                    const displayMs = Number.isFinite(requestedDuration) && requestedDuration > 0
+                        ? requestedDuration
+                        : Math.max(3000, Math.ceil(words / 3) * 1000);
                     this.appNoticeTimer = setTimeout(() => {
                         this.appNotice.open = false;
                         this.appNoticeTimer = null;
@@ -4094,7 +4097,7 @@
                             console.warn('My ARTfive! Could not sync passenger filters to D1:', profileError.message);
                         }
                         await this.loadTicketRequestsFromStorage();
-                        this.showAppNotice('My ARTfive! have received your railway ticket request successfully. Now, please visit Option 2 💳 — Railway Ticket Booking Request Payment.');
+                        this.showAppNotice('My ARTfive! have received your railway ticket request form successfully! Please visit Customer Dashboard Option 2 to view the details of your ticket booking payment charges.', 2500);
                         this.activeCustOption = null;
                         this.ownerInspectCustOpt = null;
                     } catch (error) {
