@@ -446,6 +446,64 @@ export default {
         });
       }
 
+      if (path === "/api/owner/control/customer-accounts" && method === "GET") {
+        const owner = await getManagerVerifiedOwner(request, env, now);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required to view customer accounts." }, 403);
+        const result = await env.DB.prepare(
+          "SELECT id, name, phone, created_at AS createdAt, active FROM users WHERE role = 'customer' ORDER BY created_at DESC, name COLLATE NOCASE"
+        ).all();
+        return json({ success: true, customers: result.results || [] });
+      }
+
+      if (path === "/api/owner/control/customer-accounts/delete" && method === "POST") {
+        const owner = await getManagerVerifiedOwner(request, env, now);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required to delete customer accounts." }, 403);
+        const body = await readJson(request);
+        const customerId = String(body.customerId || "").trim();
+        if (!customerId) return json({ success: false, message: "Select a customer account to delete." }, 400);
+        const customer = await env.DB.prepare(
+          "SELECT id, name, phone FROM users WHERE id = ? AND role = 'customer' LIMIT 1"
+        ).bind(customerId).first();
+        if (!customer) return json({ success: false, message: "The customer account was not found. Refresh the list and try again." }, 404);
+
+        // Delete only this customer's records. Keep owner/staff accounts, shared settings,
+        // visitor/security logs, and all other customers' records untouched.
+        const tableResult = await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table'"
+        ).all();
+        const tables = new Set((tableResult.results || []).map(row => row.name));
+        const cleanup = [
+          ["tickets", "customer_id = ?", [customerId]],
+          ["requests", "customer_id = ?", [customerId]],
+          ["customer_enquiry_messages", "customer_id = ? OR sender_id = ?", [customerId, customerId]],
+          ["customer_notifications", "customer_id = ?", [customerId]],
+          ["customer_payment_instructions", "customer_id = ?", [customerId]],
+          ["ticket_payment_verifications", "customer_id = ?", [customerId]],
+          ["customer_ticket_access", "customer_id = ?", [customerId]],
+          ["customer_passenger_profiles", "customer_id = ?", [customerId]],
+          ["customer_engagement", "customer_id = ?", [customerId]],
+          ["password_change_requests", "user_id = ?", [customerId]],
+          ["sessions", "user_id = ?", [customerId]]
+        ];
+        const statements = cleanup
+          .filter(([table]) => tables.has(table))
+          .map(([table, where, values]) => env.DB.prepare("DELETE FROM " + table + " WHERE " + where).bind(...values));
+        statements.push(
+          env.DB.prepare("DELETE FROM users WHERE id = ? AND role = 'customer'").bind(customerId)
+        );
+        const results = await env.DB.batch(statements);
+        const deletedAccount = results[results.length - 1];
+        if (!Number(deletedAccount?.meta?.changes || 0)) {
+          return json({ success: false, message: "The customer account could not be deleted. Refresh and try again." }, 409);
+        }
+        await logSecurity(env, ip, "customer_account_deleted", "Owner permanently deleted customer account " + customerId, now);
+        return json({
+          success: true,
+          customerId,
+          message: "My ARTfive! Customer ID was permanently deleted from D1. This phone number can sign up again later."
+        });
+      }
+
       if (path === "/api/owner/apk-download-settings" && (method === "GET" || method === "POST")) {
         const owner = await getSessionUser(request, env, now);
         if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the Owner can manage the APK download link." }, 403);
