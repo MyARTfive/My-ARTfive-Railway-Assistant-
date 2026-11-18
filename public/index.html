@@ -2130,6 +2130,15 @@
                         if (this.currentUser && this.currentUser.role === 'customer') this.loadCustomerNotifications();
                     }, 30000);
 
+                    // Keep ticket notifications in open customer Options 3 and 4 current.
+                    setInterval(() => {
+                        if (this.currentUser && this.currentUser.role === 'customer' &&
+                            this.currentDashboard === 'customer' &&
+                            (this.activeCustOption === 3 || this.activeCustOption === 4)) {
+                            this.loadCustomerNotifications();
+                        }
+                    }, 5000);
+
                     // Refresh only the open chat conversation; chat history stays in D1.
                     setInterval(() => {
                         if (this.currentUser && this.currentUser.role === 'customer' && this.currentDashboard === 'customer' && this.activeCustOption === 1) this.loadCustomerEnquiryChat();
