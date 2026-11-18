@@ -241,7 +241,39 @@ function isSameOrigin(request) {
   catch { return false; }
 }
 
+async function purgeExpiredChatMessages(env, now = Date.now()) {
+  const cutoff = now - 24 * 60 * 60 * 1000;
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS customer_enquiry_messages (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      sender_id TEXT NOT NULL REFERENCES users(id),
+      sender_role TEXT NOT NULL CHECK (sender_role IN ('owner','staff','customer')),
+      sender_name TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )
+  `).run();
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS staff_chat_messages (
+      id TEXT PRIMARY KEY,
+      sender_id TEXT NOT NULL REFERENCES users(id),
+      sender_role TEXT NOT NULL CHECK (sender_role IN ('owner','staff')),
+      sender_name TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )
+  `).run();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM staff_chat_messages WHERE created_at <= ?").bind(cutoff),
+    env.DB.prepare("DELETE FROM customer_enquiry_messages WHERE created_at <= ?").bind(cutoff)
+  ]);
+}
+
 export default {
+  async scheduled(controller, env, ctx) {
+    await purgeExpiredChatMessages(env, Date.now());
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
@@ -487,6 +519,7 @@ export default {
             created_at INTEGER NOT NULL
           )
         `).run();
+        await purgeExpiredChatMessages(env, now);
         const body = method === "POST" ? await readJson(request) : {};
         const targetCustomerId = user.role === "customer" ? user.id : String(body.customerId || url.searchParams.get("customerId") || "").trim();
         if (!targetCustomerId) return json({ success: false, message: "Select the customer enquiry conversation." }, 400);
@@ -527,6 +560,7 @@ export default {
             created_at INTEGER NOT NULL
           )
         `).run();
+        await purgeExpiredChatMessages(env, now);
         if (method === "GET") {
           const rows = await env.DB.prepare(
             "SELECT id, sender_role AS senderRole, sender_name AS sender, message AS text, created_at AS createdAt FROM staff_chat_messages ORDER BY created_at ASC LIMIT 300"
