@@ -2793,7 +2793,8 @@
                     if (!query) return this.customers || [];
                     return (this.customers || []).filter(customer =>
                         String(customer.name || '').toLowerCase().includes(query) ||
-                        String(customer.phone || '').toLowerCase().includes(query)
+                        String(customer.phone || '').toLowerCase().includes(query) ||
+                        String(customer.id || '').toLowerCase().includes(query)
                     );
                 },
 
