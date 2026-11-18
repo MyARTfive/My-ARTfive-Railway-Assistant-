@@ -1411,17 +1411,8 @@ export default {
           return json({ success: false, message: "My ARTfive! Ticket upload is locked until the Owner manually marks the payment received (✅)." }, 409);
         }
         const id = crypto.randomUUID();
-        // Consume this request's one-time payment confirmation in the same D1 batch
-        // as the ticket insert. A successful ticket send therefore requires a fresh
-        // Owner confirmation before another ticket can be sent for this request.
-        await env.DB.batch([
-          env.DB.prepare(
-            "INSERT INTO tickets (id, request_id, customer_id, customer_name, customer_phone, ticket_title, mime_type, file_data, payment_confirmed, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
-          ).bind(id, requestId, customer.id, customer.name, customer.phone, ticketTitle, match[1], fileData, user.id, now),
-          env.DB.prepare(
-            "DELETE FROM ticket_payment_verifications WHERE request_id = ? AND customer_id = ?"
-          ).bind(requestId, customerId)
-        ]);
+        // Notification creation is part of the successful ticket-send transaction.
+        // If any insert fails, the ticket and its payment-confirmation consumption roll back too.
         await env.DB.prepare(`
           CREATE TABLE IF NOT EXISTS customer_notifications (
             id TEXT PRIMARY KEY,
@@ -1444,10 +1435,22 @@ export default {
           }
         ];
         const notificationExpiry = now + 15 * 60 * 1000;
-        for (const ticketMessage of ticketMessages) {
-          await env.DB.prepare(
+        // Keep the ticket, one-time payment confirmation and both notifications atomic.
+        const sendResults = await env.DB.batch([
+          env.DB.prepare(
+            "INSERT INTO tickets (id, request_id, customer_id, customer_name, customer_phone, ticket_title, mime_type, file_data, payment_confirmed, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
+          ).bind(id, requestId, customer.id, customer.name, customer.phone, ticketTitle, match[1], fileData, user.id, now),
+          env.DB.prepare(
+            "DELETE FROM ticket_payment_verifications WHERE request_id = ? AND customer_id = ?"
+          ).bind(requestId, customerId),
+          ...ticketMessages.map(ticketMessage => env.DB.prepare(
             "INSERT INTO customer_notifications (id, customer_id, sender_id, message, created_at, ticket_id, target_option, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-          ).bind(crypto.randomUUID(), customer.id, user.id, ticketMessage.message, now, id, ticketMessage.targetOption, notificationExpiry).run();
+          ).bind(crypto.randomUUID(), customer.id, user.id, ticketMessage.message, now, id, ticketMessage.targetOption, notificationExpiry))
+        ]);
+        if (!sendResults[0]?.meta || sendResults[0].meta.changes !== 1 ||
+            !sendResults[2]?.meta || sendResults[2].meta.changes !== 1 ||
+            !sendResults[3]?.meta || sendResults[3].meta.changes !== 1) {
+          return json({ success: false, message: "My ARTfive! Ticket and notifications could not be saved together. Please try again." }, 500);
         }
         return json({ success: true, id, message: "My ARTfive! Ticket uploaded and made available in Customer Option 4." }, 201);
       }
