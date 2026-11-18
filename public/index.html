@@ -2405,6 +2405,7 @@
                 option10CustomerAccounts: [],
                 option10CustomerSearch: '',
                 option10CustomerLoading: false,
+                option10AccountsRefreshTimer: null,
                 passwordRecoveryOpen: false,
                 passwordRecoveryRole: 'customer',
                 passwordRecoveryPhone: '',
@@ -3352,6 +3353,14 @@
                         this.option10BlockedCount = Number(result.blockedCount || 0);
                         await this.loadOption10PasswordRequests();
                         await this.loadOption10CustomerAccounts();
+                        // Keep the two D1 account lists current while the Owner's Control panel is open.
+                        if (!this.option10AccountsRefreshTimer) {
+                            this.option10AccountsRefreshTimer = window.setInterval(() => {
+                                if (this.currentUser && this.currentUser.role === 'owner' && this.option10Authenticated) {
+                                    this.loadOption10CustomerAccounts();
+                                }
+                            }, 15000);
+                        }
                     } catch (error) {
                         this.option10Authenticated = false;
                         alert(error.message || 'My ARTfive! Could not load visitor activity. Please verify Manager access again.');
@@ -3993,6 +4002,10 @@
 
                 async logout() {
                     try { await this.apiRequest('/api/logout', { method: 'POST' }); } catch (e) {}
+                    if (this.option10AccountsRefreshTimer) {
+                        window.clearInterval(this.option10AccountsRefreshTimer);
+                        this.option10AccountsRefreshTimer = null;
+                    }
                     this.currentUser = null;
                     this.ownerPreviewMode = false;
                     this.ticketAccessToken = '';
