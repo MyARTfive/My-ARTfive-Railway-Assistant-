@@ -1152,23 +1152,8 @@ export default {
         const body = await readJson(request);
         const id = String(body.id || "").trim();
         if (!id) return json({ success: false, message: "Request ID is required." }, 400);
-        await env.DB.prepare(`
-          CREATE TABLE IF NOT EXISTS customer_payment_instructions (
-            id TEXT PRIMARY KEY,
-            request_id TEXT NOT NULL,
-            customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            option_no INTEGER NOT NULL CHECK (option_no IN (2, 3)),
-            amount_paise INTEGER NOT NULL CHECK (amount_paise > 0),
-            message TEXT NOT NULL,
-            updated_by TEXT NOT NULL,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
-            UNIQUE (request_id, option_no)
-          )
-        `).run();
-        // Request deletion is independent from ticket delivery. Sent tickets remain in D1
-        // and in the customer's Option 4 until the Owner deletes them through /api/tickets.
-        await env.DB.prepare("DELETE FROM customer_payment_instructions WHERE request_id = ?").bind(id).run();
+        // Option 8 deletes only the selected request form row from D1.
+        // It must not delete payment instructions, uploaded tickets, or ticket file data.
         const result = await env.DB.prepare("DELETE FROM requests WHERE id = ?").bind(id).run();
         if (!result.meta || result.meta.changes === 0) return json({ success: false, message: "Ticket request was not found." }, 404);
         return json({ success: true, message: "Ticket request deleted." });
