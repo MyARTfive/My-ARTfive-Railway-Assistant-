@@ -1621,7 +1621,7 @@
                 </div>
 
                 <!-- Customer Option 3: Ticket Collection Charges -->
-                <div x-show="activeCustOption === 3" x-effect="if (activeCustOption === 3) { loadCustomerNotifications(); loadCustomerPaymentInstructions(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
+                <div x-show="activeCustOption === 3" x-effect="if (activeCustOption === 3) { loadCustomerNotifications(); loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); } else { stopCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Both Option 3 message types appear together -->
@@ -3300,7 +3300,7 @@
                     if (!this.paymentForm.requestId) return this.showAppNotice('My ARTfive! This customer has no ticket request yet.');
                     if (!this.paymentForm.amount || Number(this.paymentForm.amount) <= 0 || !String(this.paymentForm.message || '').trim()) return this.showAppNotice('My ARTfive! Enter the payment amount and choose or edit a notification.');
                     try {
-                        const result = await this.apiRequest('/api/customer-payments', { method: 'POST', body: { requestId: this.paymentForm.requestId, optionNo: Number(this.paymentForm.optionNo), amount: Number(this.paymentForm.amount), message: this.paymentForm.message } });
+                        const result = await this.apiRequest('/api/customer-payments', { method: 'POST', body: { requestId: this.paymentForm.requestId, customerId: this.paymentForm.customerId, optionNo: Number(this.paymentForm.optionNo), amount: Number(this.paymentForm.amount), message: this.paymentForm.message } });
                         const refreshed = await this.apiRequest('/api/customer-payments');
                         this.paymentInstructions = refreshed.instructions || [];
                         this.showAppNotice(result.message || 'My ARTfive! Manual notification sent to the selected customer.');
@@ -3493,13 +3493,34 @@
                     }
                 },
 
+                customerPaymentPollingTimer: null,
+                customerPaymentInstructionsLoading: false,
+                startCustomerPaymentInstructionPolling() {
+                    if (!this.currentUser || this.currentUser.role !== 'customer' || this.customerPaymentPollingTimer) return;
+                    this.customerPaymentPollingTimer = setInterval(() => {
+                        if (!this.currentUser || this.currentUser.role !== 'customer' || this.activeCustOption !== 3) {
+                            this.stopCustomerPaymentInstructionPolling();
+                            return;
+                        }
+                        this.loadCustomerPaymentInstructions();
+                    }, 2000);
+                },
+                stopCustomerPaymentInstructionPolling() {
+                    if (this.customerPaymentPollingTimer) {
+                        clearInterval(this.customerPaymentPollingTimer);
+                        this.customerPaymentPollingTimer = null;
+                    }
+                },
                 async loadCustomerPaymentInstructions() {
-                    if (!this.currentUser || this.currentUser.role !== 'customer') return;
+                    if (!this.currentUser || this.currentUser.role !== 'customer' || this.customerPaymentInstructionsLoading) return;
+                    this.customerPaymentInstructionsLoading = true;
                     try {
                         const result = await this.apiRequest('/api/customer-payments');
                         this.paymentInstructions = result.instructions || [];
                     } catch (error) {
                         console.warn('My ARTfive! Payment notifications could not be loaded:', error.message);
+                    } finally {
+                        this.customerPaymentInstructionsLoading = false;
                     }
                 },
 
