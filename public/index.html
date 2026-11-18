@@ -767,27 +767,28 @@
                     <div class="bg-slate-800 p-5 sm:p-6 rounded-xl border border-slate-700 space-y-5">
                         <div>
                             <label class="block text-xs font-bold text-slate-300 mb-1">1. Choose Individual Customer ID</label>
-                            <input type="search" x-model="customerSearch" placeholder="Search registered customer name, phone or ID..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
+                            <input type="search" x-model="manualNotificationCustomerSearch" placeholder="Search registered customer name, phone or ID..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
                             <select x-model="paymentForm.customerId" @change="selectManualNotificationCustomer()" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
                                 <option value="">-- Choose registered customer --</option>
-                                <template x-for="cust in filteredCustomers()" :key="'manual-note-customer-'+cust.id">
-                                    <option :value="cust.id" x-text="cust.name + ' — ' + (cust.phone || 'No phone') + ' — ID: ' + cust.id"></option>
+                                <template x-for="cust in filteredManualNotificationCustomers()" :key="'manual-note-customer-'+cust.id">
+                                    <option :value="String(cust.id)" x-text="cust.name + ' — ' + (cust.phone || 'No phone') + ' — ID: ' + cust.id"></option>
                                 </template>
                             </select>
+                            <p x-show="paymentForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(paymentForm.customerId)); return c ? 'Selected customer: ' + c.name + ' (' + c.phone + ') — ID: ' + c.id : ''; })()"></p>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-300 mb-1">2. Select Customer Dashboard</label>
-                            <select x-model="paymentForm.optionNo" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
+                            <select x-model="paymentForm.optionNo" @change="paymentForm.optionNo = String($event.target.value)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
                                 <option value="2">Customer Dashboard Option 2 — Railway Ticket Booking Request Payment</option>
                                 <option value="3">Customer Dashboard Option 3 — Ticket Collection Charges Payment</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-300 mb-1">3. Choose Your Notification &amp; Edit</label>
-                            <select @change="applyManualNotificationTemplate($event.target.value)" class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
+                            <select x-model="manualNotificationTemplateIndex" @change="applyManualNotificationTemplate($event.target.value)" class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
                                 <option value="">-- Choose a permanent notification --</option>
                                 <template x-for="(tmpl, idx) in manualNotificationTemplates" :key="'manual-template-'+idx">
-                                    <option :value="idx" x-text="(idx + 1) + '. ' + tmpl.title"></option>
+                                    <option :value="String(idx)" x-text="(idx + 1) + '. ' + tmpl.title"></option>
                                 </template>
                             </select>
                             <textarea x-model="paymentForm.message" rows="5" placeholder="Choose a permanent notification or write/edit the message here..." class="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white"></textarea>
@@ -2610,6 +2611,8 @@
                 ticketPaymentVerifications: [],
                 ownerPaymentStatusRefreshing: false,
                 paymentForm: { customerId: '', requestId: '', optionNo: '2', amount: '', message: '' },
+                manualNotificationCustomerSearch: '',
+                manualNotificationTemplateIndex: '',
                 manualNotificationTemplates: [
                     { title: 'Ticket request confirmed', message: 'My ARTfive! Confirmed your ticket request. Your ticket booking charges are now available in Customer Dashboard Option 2. Please pay the displayed charges to confirm your ticket booking with us!' },
                     { title: 'Confirmed ticket booked', message: 'My ARTfive! Successfully booked your confirmed ticket. To get your ticket in Customer Dashboard Option 4, you need to complete your service charges payment displayed in Customer Dashboard Option 3. This will confirm with us to send your ticket!' },
@@ -3276,15 +3279,30 @@
                     'My ARTfive! have received and manually verified your payment. Thank you.'
                 ],
 
+                filteredManualNotificationCustomers() {
+                    const query = String(this.manualNotificationCustomerSearch || '').trim().toLowerCase();
+                    const customers = this.customers || [];
+                    if (!query) return customers;
+                    return customers.filter(customer =>
+                        String(customer.name || '').toLowerCase().includes(query) ||
+                        String(customer.phone || '').toLowerCase().includes(query) ||
+                        String(customer.id || '').toLowerCase().includes(query)
+                    );
+                },
                 selectManualNotificationCustomer() {
+                    this.paymentForm.customerId = String(this.paymentForm.customerId || '');
                     this.paymentForm.requestId = '';
                     const requests = this.paymentRequestsForCustomer().slice().sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
                     this.paymentForm.requestId = requests.length ? String(requests[0].id) : '';
                     this.paymentForm.amount = '';
                     this.paymentForm.message = '';
+                    this.manualNotificationTemplateIndex = '';
                 },
                 applyManualNotificationTemplate(value) {
-                    const index = Number(value);
+                    const selected = String(value ?? '');
+                    this.manualNotificationTemplateIndex = selected;
+                    if (selected === '') return;
+                    const index = Number(selected);
                     if (Number.isInteger(index) && this.manualNotificationTemplates[index]) {
                         this.paymentForm.message = this.manualNotificationTemplates[index].message;
                     }
