@@ -1572,7 +1572,7 @@
                 </div>
 
                 <!-- Customer Option 2: Booking Request Payment -->
-                <div x-show="activeCustOption === 2" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
+                <div x-show="activeCustOption === 2" x-effect="if (activeCustOption === 2) loadCustomerPaymentInstructions()" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Personal message notification -->
@@ -1621,7 +1621,7 @@
                 </div>
 
                 <!-- Customer Option 3: Ticket Collection Charges -->
-                <div x-show="activeCustOption === 3" x-effect="if (activeCustOption === 3) loadCustomerNotifications()" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
+                <div x-show="activeCustOption === 3" x-effect="if (activeCustOption === 3) { loadCustomerNotifications(); loadCustomerPaymentInstructions(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Both Option 3 message types appear together -->
@@ -3330,8 +3330,13 @@
                     return (this.paymentInstructions || []).find(item => String(item.requestId) === String(this.customerPaymentRequestId) && Number(item.optionNo) === Number(optionNo)) || null;
                 },
                 customerPaymentInstructions(optionNo) {
-                    const ownRequestIds = new Set(this.customerPaymentRequests().map(req => String(req.id)));
-                    return (this.paymentInstructions || []).filter(item => Number(item.optionNo) === Number(optionNo) && ownRequestIds.has(String(item.requestId)) && item.isActive !== false && Number(item.isActive) !== 0);
+                    // The customer-payments API already scopes customer results to the signed-in customer.
+                    // Do not hide a saved notification just because the local ticket-request list is stale.
+                    return (this.paymentInstructions || []).filter(item =>
+                        Number(item.optionNo) === Number(optionNo) &&
+                        item.isActive !== false &&
+                        Number(item.isActive) !== 0
+                    );
                 },
                 customerPaymentRequestLabel(requestId) {
                     const request = this.customerPaymentRequests().find(req => String(req.id) === String(requestId));
