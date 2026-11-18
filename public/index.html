@@ -1592,7 +1592,7 @@
 
                     <!-- Box 2: Payment amount -->
                     <section class="w-full rounded-xl border border-emerald-500/40 bg-slate-900 p-4 space-y-2" aria-label="Option 2 payment amount">
-                        <p class="text-xs font-bold uppercase tracking-wide text-emerald-300">Pay Amount</p>
+                        <p class="text-xs font-bold uppercase tracking-wide text-emerald-300">Pay Rs:</p>
                         <template x-for="instruction in customerPaymentInstructions(2)" :key="'custpay2-amount-'+instruction.id">
                             <p class="text-2xl font-extrabold text-white" x-text="manualPayAmount(instruction.amountPaise)"></p>
                         </template>
@@ -1646,7 +1646,7 @@
 
                     <!-- Box 2: Payment amount -->
                     <section class="w-full rounded-xl border border-emerald-500/40 bg-slate-900 p-4 space-y-2" aria-label="Option 3 payment amount">
-                        <p class="text-xs font-bold uppercase tracking-wide text-emerald-300">Pay Amount</p>
+                        <p class="text-xs font-bold uppercase tracking-wide text-emerald-300">Pay Rs:</p>
                         <template x-for="instruction in customerPaymentInstructions(3)" :key="'custpay3-amount-'+instruction.id">
                             <p class="text-2xl font-extrabold text-white" x-text="manualPayAmount(instruction.amountPaise)"></p>
                         </template>
