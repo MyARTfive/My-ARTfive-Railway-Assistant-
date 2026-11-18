@@ -2134,14 +2134,9 @@
                         } catch (e) {}
                     }
 
-                    const savedEnquiryMsgs = localStorage.getItem('artfive_customer_enquiry_chat');
-                    if (savedEnquiryMsgs) {
-                        try {
-                            this.customerEnquiryMessages = JSON.parse(savedEnquiryMsgs);
-                        } catch (e) {}
-                    }
-
-                    const savedChatToggle = localStorage.getItem('artfive_customer_chat_enabled');
+                    // Chat history is server-authoritative; clear any legacy device cache.
+                    localStorage.removeItem('artfive_customer_enquiry_chat');
+                    this.customerEnquiryMessages = [];
                     if (savedChatToggle !== null) {
                         this.customerChatEnabled = savedChatToggle === 'true';
                     }
