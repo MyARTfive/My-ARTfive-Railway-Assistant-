@@ -1198,15 +1198,13 @@ export default {
             UNIQUE (request_id, option_no)
           )
         `).run();
-        const paymentColumnsResult = await env.DB.prepare("PRAGMA table_info(customer_payment_instructions)").all();
-        const paymentColumns = new Set((paymentColumnsResult.results || []).map(column => column.name));
-        if (!paymentColumns.has("is_active")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1").run();
         await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_customer_payment_instructions_customer ON customer_payment_instructions(customer_id, option_no, updated_at DESC)").run();
         const paymentColumnsResult = await env.DB.prepare("PRAGMA table_info(customer_payment_instructions)").all();
         const paymentColumns = new Set((paymentColumnsResult.results || []).map(column => column.name));
         if (!paymentColumns.has("payment_status")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'pending'").run();
         if (!paymentColumns.has("verified_by")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN verified_by TEXT").run();
         if (!paymentColumns.has("verified_at")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN verified_at INTEGER").run();
+        if (!paymentColumns.has("is_active")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1").run();
 
         if (method === "GET") {
           let result;
