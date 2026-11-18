@@ -1198,6 +1198,9 @@ export default {
             UNIQUE (request_id, option_no)
           )
         `).run();
+        const paymentColumnsResult = await env.DB.prepare("PRAGMA table_info(customer_payment_instructions)").all();
+        const paymentColumns = new Set((paymentColumnsResult.results || []).map(column => column.name));
+        if (!paymentColumns.has("is_active")) await env.DB.prepare("ALTER TABLE customer_payment_instructions ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1").run();
         await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_customer_payment_instructions_customer ON customer_payment_instructions(customer_id, option_no, updated_at DESC)").run();
         const paymentColumnsResult = await env.DB.prepare("PRAGMA table_info(customer_payment_instructions)").all();
         const paymentColumns = new Set((paymentColumnsResult.results || []).map(column => column.name));
@@ -1209,11 +1212,11 @@ export default {
           let result;
           if (user.role === "customer") {
             result = await env.DB.prepare(
-              "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, payment_status AS paymentStatus, verified_at AS verifiedAt, updated_at AS updatedAt FROM customer_payment_instructions WHERE customer_id = ? ORDER BY updated_at DESC"
+              "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, payment_status AS paymentStatus, verified_at AS verifiedAt, updated_at AS updatedAt, is_active AS isActive FROM customer_payment_instructions WHERE customer_id = ? AND is_active = 1 ORDER BY updated_at DESC"
             ).bind(user.id).all();
           } else if (user.role === "owner" || user.role === "staff") {
             result = await env.DB.prepare(
-              "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, payment_status AS paymentStatus, verified_at AS verifiedAt, updated_at AS updatedAt FROM customer_payment_instructions ORDER BY updated_at DESC"
+              "SELECT id, request_id AS requestId, customer_id AS customerId, option_no AS optionNo, amount_paise AS amountPaise, message, payment_status AS paymentStatus, verified_at AS verifiedAt, updated_at AS updatedAt, is_active AS isActive FROM customer_payment_instructions ORDER BY updated_at DESC"
             ).all();
           } else return json({ success: false, message: "Access denied." }, 403);
           return json({ success: true, instructions: result.results || [] });
@@ -1231,6 +1234,15 @@ export default {
           "SELECT id, customer_id FROM requests WHERE id = ? LIMIT 1"
         ).bind(requestId).first();
         if (!requestRow) return json({ success: false, message: "The selected ticket request was not found." }, 404);
+
+        if (body.action === "unsend") {
+          const optionNo = Number(body.optionNo);
+          if (![2, 3].includes(optionNo)) return json({ success: false, message: "Choose Customer Option 2 or 3." }, 400);
+          const hidden = await env.DB.prepare(
+            "UPDATE customer_payment_instructions SET is_active = 0, updated_by = ?, updated_at = ? WHERE request_id = ? AND option_no = ? AND customer_id = ?"
+          ).bind(user.id, now, requestId, optionNo, requestRow.customer_id).run();
+          return json({ success: true, hidden: hidden.meta ? hidden.meta.changes || 0 : 0, message: "My ARTfive! The selected manual notification and amount are now hidden. The saved UPI number and QR code remain available." });
+        }
 
         if (body.action === "verify") {
           const optionNo = Number(body.optionNo);
@@ -1297,6 +1309,7 @@ export default {
             payment_status = 'pending',
             verified_by = NULL,
             verified_at = NULL,
+            is_active = 1,
             updated_at = excluded.updated_at
         `).bind(id, requestId, requestRow.customer_id, optionNo, amountPaise, message, user.id, now, now).run();
         const saved = await env.DB.prepare(
