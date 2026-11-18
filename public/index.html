@@ -1746,7 +1746,7 @@
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt2Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt2Desc"></p>
                     </div>
-                    <div @click="activeStaffOption = 3; if (!ownerPreviewMode) loadStaffChat()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                    <div @click="activeStaffOption = 3; loadStaffChat()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-comments"></i></div>
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt3Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt3Desc"></p>
@@ -2570,7 +2570,7 @@
                     formToStnLabel: 'Destination Station',
                     formDateLabel: 'Journey Date',
                     formClassLabel: 'Travel Class',
-                    formEnquiryLabel: 'My ARTfive! Enquiry Box',
+                    formEnquiryLabel: 'My ARTfive! Inquiry Box (Optional)',
                     formSubmitBtn: 'Submit Ticket Request',
                     payOpt2Instruction: 'Copy the UPI number below or scan the QR code to complete your Railway Ticket Booking Request Payment.',
                     payOpt2ConfirmBtn: 'Confirm Payment Submission',
@@ -2590,16 +2590,16 @@
                     staffOpt1Desc: 'Review passenger requests and inspect full request forms.',
                     staffOpt2Title: '2. Upload Ticket from Mobile',
                     staffOpt2Desc: 'Upload large PDF or photo and assign directly to customer.',
-                    staffOpt3Title: '3. Staff Chat Box',
-                    staffOpt3Desc: 'Direct communication channel with Owner.',
+                    staffOpt3Title: '3. My ARTfive! Chatbox',
+                    staffOpt3Desc: 'Your direct conversation with My ARTfive!.',
 
                     ownerBadgeText: 'Administrator Master Control',
                     ownerDashTitle: 'My dashboard',
                     ownerDashSubtitle: 'Full administrative access across staff, customers, analytics, ticket uploads, and Master CMS.',
-                    ownerChat1Title: 'Customer Enquiry Box',
-                    ownerChat1Desc: 'Manage customer chat & toggle customer messaging ON/OFF.',
-                    ownerChat2Title: 'Staff Chat Box',
-                    ownerChat2Desc: 'Direct chat with staff supporting PDF and photo uploads.',
+                    ownerChat1Title: 'Customer Inquiry Box',
+                    ownerChat1Desc: 'Manage optional customer enquiries and toggle customer messaging ON/OFF.',
+                    ownerChat2Title: 'Staff Chatbox',
+                    ownerChat2Desc: 'Your direct conversation with staff through the Staff Dashboard My ARTfive! Chatbox.',
                     ownerOpt1Name: 'VIEW STAFF DASHBOARD',
                     ownerOpt1Desc: 'View all Staff Dashboard options directly.',
                     ownerOpt2Name: 'VIEW CUSTOMER DASHBOARD',
