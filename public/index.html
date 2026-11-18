@@ -3298,7 +3298,6 @@
                             this.uploadForm.requestId = '';
                             this.uploadCustomerFilter = '';
                         }
-                        if (String(this.customerPaymentRequestId) === String(customer.id)) this.customerPaymentRequestId = '';
                         await this.refreshCentralData();
                         this.showAppNotice(result.message || 'My ARTfive! Customer account permanently deleted.');
                     } catch (error) {
