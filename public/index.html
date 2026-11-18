@@ -768,7 +768,7 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-300 mb-1">1. Choose Individual Customer ID</label>
                             <input type="search" x-model="manualNotificationCustomerSearch" placeholder="Search registered customer name, phone or ID..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
-                            <select x-model="paymentForm.customerId" @change="selectManualNotificationCustomer()" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
+                            <select x-model="paymentForm.customerId" @change="selectManualNotificationCustomer(); selectedManualNotificationId = ''; paymentForm.requestId = ''; paymentForm.message = ''; paymentForm.amount = ''; manualNotificationTemplateIndex = '';" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
                                 <option value="">-- Choose registered customer --</option>
                                 <template x-for="cust in filteredManualNotificationCustomers()" :key="'manual-note-customer-'+cust.id">
                                     <option :value="String(cust.id)" x-text="cust.name + ' — ' + (cust.phone || 'No phone') + ' — ID: ' + cust.id"></option>
@@ -778,7 +778,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-300 mb-1">2. Select Customer Dashboard</label>
-                            <select x-model="paymentForm.optionNo" @change="paymentForm.optionNo = String($event.target.value)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
+                            <select x-model="paymentForm.optionNo" @change="paymentForm.optionNo = String($event.target.value); selectedManualNotificationId = ''; paymentForm.requestId = ''; paymentForm.message = ''; paymentForm.amount = ''; manualNotificationTemplateIndex = '';" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
                                 <option value="2">Customer Dashboard Option 2 — Railway Ticket Booking Request Payment</option>
                                 <option value="3">Customer Dashboard Option 3 — Ticket Collection Charges Payment</option>
                             </select>
@@ -795,7 +795,17 @@
                             <p class="text-[11px] text-slate-400 mt-1">Editing this message does not change the permanently saved templates.</p>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-300 mb-1">4. Total Charges to Be Paid!</label>
+                            <label class="block text-xs font-bold text-slate-300 mb-1">4. Select an Already Sent Notification to Unsend</label>
+                            <select x-model="selectedManualNotificationId" @change="selectExistingManualNotification($event.target.value)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
+                                <option value="">-- Choose the exact sent notification --</option>
+                                <template x-for="item in existingManualNotificationsForSelection()" :key="'sent-manual-note-'+item.id">
+                                    <option :value="String(item.id)" x-text="customerPaymentRequestLabel(item.requestId) + ' — ' + manualPayAmount(item.amountPaise) + ' — ' + item.message"></option>
+                                </template>
+                            </select>
+                            <p class="text-[11px] text-slate-400 mt-1">Choose the exact notification already saved for this customer and dashboard option. Its message, request and amount will be loaded below for confirmation.</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 mb-1">5. Total Charges to Be Paid!</label>
                             <div class="flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-700 px-3">
                                 <span class="font-bold text-emerald-300">Rs:-</span>
                                 <input type="number" min="0.01" step="0.01" x-model="paymentForm.amount" placeholder="Enter amount, e.g. 50" class="w-full bg-transparent p-3 text-sm text-white outline-none">
@@ -803,7 +813,7 @@
                             <p class="text-xs text-emerald-300 mt-2" x-show="paymentForm.amount">Customer payment amount preview: <strong x-text="'Pay Rs:' + paymentForm.amount"></strong></p>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-300 mb-2">5. Send and Unsend</label>
+                            <label class="block text-xs font-bold text-slate-300 mb-2">6. Send and Unsend</label>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <button @click="sendManualCustomerNotification()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-3 rounded-lg text-sm"><i class="fa-solid fa-paper-plane"></i> SEND</button>
                                 <button @click="unsendManualCustomerNotification()" class="bg-red-700 hover:bg-red-600 text-white font-bold px-4 py-3 rounded-lg text-sm"><i class="fa-solid fa-circle-xmark"></i> UNSEND</button>
@@ -2611,6 +2621,7 @@
                 ticketPaymentVerifications: [],
                 ownerPaymentStatusRefreshing: false,
                 paymentForm: { customerId: '', requestId: '', optionNo: '2', amount: '', message: '' },
+                selectedManualNotificationId: '',
                 manualNotificationCustomerSearch: '',
                 manualNotificationTemplateIndex: '',
                 manualNotificationTemplates: [
@@ -3332,15 +3343,35 @@
                     const requests = this.paymentRequestsForCustomer().slice().sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
                     this.paymentForm.requestId = requests.length ? String(requests[0].id) : '';
                 },
+                existingManualNotificationsForSelection() {
+                    return (this.paymentInstructions || []).filter(item =>
+                        String(item.customerId) === String(this.paymentForm.customerId) &&
+                        Number(item.optionNo) === Number(this.paymentForm.optionNo) &&
+                        item.isActive !== false && Number(item.isActive) !== 0
+                    );
+                },
+                selectExistingManualNotification(instructionId) {
+                    const selected = this.existingManualNotificationsForSelection().find(item => String(item.id) === String(instructionId));
+                    if (!selected) return;
+                    this.paymentForm.requestId = String(selected.requestId);
+                    this.paymentForm.message = String(selected.message || '');
+                    this.paymentForm.amount = (Number(selected.amountPaise || 0) / 100).toFixed(2);
+                    this.manualNotificationTemplateIndex = '';
+                },
                 async unsendManualCustomerNotification() {
                     if (!this.currentUser || this.currentUser.role !== 'owner') return this.showAppNotice('My ARTfive! Owner sign-in is required.');
                     if (!this.paymentForm.customerId) return this.showAppNotice('My ARTfive! Please choose the customer first.');
                     this.selectManualNotificationCustomerIfNeeded();
                     if (!this.paymentForm.requestId) return this.showAppNotice('My ARTfive! This customer has no ticket request yet.');
                     try {
-                        const result = await this.apiRequest('/api/customer-payments', { method: 'POST', body: { action: 'unsend', requestId: this.paymentForm.requestId, customerId: this.paymentForm.customerId, optionNo: Number(this.paymentForm.optionNo) } });
+                        const result = await this.apiRequest('/api/customer-payments', { method: 'POST', body: { action: 'unsend', instructionId: this.selectedManualNotificationId, requestId: this.paymentForm.requestId, customerId: this.paymentForm.customerId, optionNo: Number(this.paymentForm.optionNo), amount: Number(this.paymentForm.amount), message: this.paymentForm.message } });
                         const refreshed = await this.apiRequest('/api/customer-payments');
                         this.paymentInstructions = refreshed.instructions || [];
+                        this.selectedManualNotificationId = '';
+                        this.paymentForm.requestId = '';
+                        this.paymentForm.message = '';
+                        this.paymentForm.amount = '';
+                        this.manualNotificationTemplateIndex = '';
                         this.showAppNotice(result.message || 'My ARTfive! The selected manual notification has been unsent.');
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not unsend the manual notification.'); }
                 },
