@@ -1572,7 +1572,7 @@
                 </div>
 
                 <!-- Customer Option 2: Booking Request Payment -->
-                <div x-show="activeCustOption === 2" x-effect="if (activeCustOption === 2) loadCustomerPaymentInstructions()" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
+                <div x-show="activeCustOption === 2" x-effect="if (activeCustOption === 2) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); } else { stopCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Personal message notification -->
@@ -3301,6 +3301,8 @@
                     if (!this.paymentForm.amount || Number(this.paymentForm.amount) <= 0 || !String(this.paymentForm.message || '').trim()) return this.showAppNotice('My ARTfive! Enter the payment amount and choose or edit a notification.');
                     try {
                         const result = await this.apiRequest('/api/customer-payments', { method: 'POST', body: { requestId: this.paymentForm.requestId, customerId: this.paymentForm.customerId, optionNo: Number(this.paymentForm.optionNo), amount: Number(this.paymentForm.amount), message: this.paymentForm.message } });
+                        if (!result.instruction || String(result.instruction.customerId) !== String(this.paymentForm.customerId) || Number(result.instruction.optionNo) !== Number(this.paymentForm.optionNo)) throw new Error('My ARTfive! The saved notification did not match the selected customer and dashboard option.');
+                        this.paymentInstructions = [result.instruction, ...(this.paymentInstructions || []).filter(item => !(String(item.requestId) === String(result.instruction.requestId) && Number(item.optionNo) === Number(result.instruction.optionNo)))];
                         const refreshed = await this.apiRequest('/api/customer-payments');
                         this.paymentInstructions = refreshed.instructions || [];
                         this.showAppNotice(result.message || 'My ARTfive! Manual notification sent to the selected customer.');
@@ -3317,7 +3319,7 @@
                     this.selectManualNotificationCustomerIfNeeded();
                     if (!this.paymentForm.requestId) return this.showAppNotice('My ARTfive! This customer has no ticket request yet.');
                     try {
-                        const result = await this.apiRequest('/api/customer-payments', { method: 'POST', body: { action: 'unsend', requestId: this.paymentForm.requestId, optionNo: Number(this.paymentForm.optionNo) } });
+                        const result = await this.apiRequest('/api/customer-payments', { method: 'POST', body: { action: 'unsend', requestId: this.paymentForm.requestId, customerId: this.paymentForm.customerId, optionNo: Number(this.paymentForm.optionNo) } });
                         const refreshed = await this.apiRequest('/api/customer-payments');
                         this.paymentInstructions = refreshed.instructions || [];
                         this.showAppNotice(result.message || 'My ARTfive! The selected manual notification has been unsent.');
