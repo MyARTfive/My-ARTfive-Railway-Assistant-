@@ -1377,16 +1377,16 @@
                             <div class="bg-slate-800 border border-rose-500/40 rounded-xl p-4 space-y-3">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <div>
-                                        <h4 class="font-bold text-white">Delete ID — Customer Accounts</h4>
-                                        <p class="text-xs text-slate-400">Find any registered customer account and permanently delete that account and its customer data from D1 and the app.</p>
+                                        <h4 class="font-bold text-white">Delete ID — Customer & Staff Accounts</h4>
+                                        <p class="text-xs text-slate-400">Find any registered Customer ID or Staff ID and permanently delete that account and its associated data from D1 and the app.</p>
                                     </div>
                                     <button @click="loadOption10CustomerAccounts()" :disabled="option10CustomerLoading" class="bg-sky-700 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-lg">
                                         <i class="fa-solid fa-rotate mr-1"></i> Refresh IDs
                                     </button>
                                 </div>
-                                <input type="search" x-model="option10CustomerSearch" placeholder="Filter by customer name, phone number or ID..." class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-sm text-white">
+                                <input type="search" x-model="option10CustomerSearch" placeholder="Filter by name, phone number or Customer/Staff ID..." class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-sm text-white">
                                 <div class="flex justify-between text-xs text-slate-400">
-                                    <span x-text="option10CustomerAccounts.length + ' registered customer accounts'"></span>
+                                    <span x-text="option10CustomerAccounts.length + ' registered accounts'"></span>
                                     <span x-text="filteredOption10CustomerAccounts().length + ' shown'"></span>
                                 </div>
                                 <template x-if="option10CustomerLoading"><p class="text-sm text-slate-400 py-3">Loading customer IDs...</p></template>
@@ -1400,7 +1400,7 @@
                                                 <div class="min-w-0">
                                                     <p class="font-bold text-white" x-text="customer.name"></p>
                                                     <p class="text-xs text-slate-300" x-text="'Phone: ' + (customer.phone || 'Not provided')"></p>
-                                                    <p class="text-xs text-slate-500 break-all" x-text="'Customer ID: ' + customer.id"></p>
+                                                    <p class="text-xs text-slate-500 break-all" x-text="(customer.role === 'staff' ? 'Staff ID: ' : 'Customer ID: ') + customer.id"></p>
                                                     <p class="text-xs text-slate-500" x-text="'Signed up: ' + new Date(customer.createdAt).toLocaleString()"></p>
                                                 </div>
                                                 <span class="text-xs font-bold text-emerald-300" x-text="Number(customer.active) === 1 ? 'ACTIVE' : 'INACTIVE'"></span>
@@ -1413,7 +1413,7 @@
                                         </div>
                                     </template>
                                 </div>
-                                <p class="text-xs text-rose-300">Warning: deletion permanently removes this customer's sign-in account, sessions, ticket requests, uploaded tickets, payment records, notifications, inquiry messages, passenger filters and engagement counts. This cannot be undone. The same phone number may register again as a new account.</p>
+                                <p class="text-xs text-rose-300">Warning: deletion permanently removes the selected Customer or Staff account and its associated records. Customer deletion also removes that customer's requests, uploaded tickets, payment records, notifications, inquiry messages, passenger filters and engagement counts. Staff deletion removes that staff member's sessions and authored chat messages. The same phone number may register again later.</p>
                             </div>
                             <p class="text-xs text-slate-500">Privacy note: names are shown only when the visitor is signed in. Location is approximate and depends on Cloudflare availability; a website cannot identify a visitor's real name or exact home address automatically. Blocking is by IP address, so shared networks may affect multiple people.</p>
                         </div>
@@ -3277,11 +3277,11 @@
                     if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated || !customer) return;
                     const customerName = String(customer.name || 'this customer');
                     const customerPhone = String(customer.phone || 'No phone number');
-                    if (!confirm('My ARTfive! Permanently delete the customer account for ' + customerName + ' (' + customerPhone + ')? This removes their account, sessions, requests, tickets, payment records, notifications and customer messages from D1. This cannot be undone. They may sign up again later.')) return;
+                    if (!confirm('My ARTfive! Permanently delete the ' + (customer.role === 'staff' ? 'STAFF' : 'CUSTOMER') + ' account for ' + customerName + ' (' + customerPhone + ')? This permanently removes the selected account and its associated data. For a customer this includes requests, tickets, payments and customer messages; for staff this includes staff chat messages and sessions. This cannot be undone. They may sign up again later.')) return;
                     try {
                         const result = await this.apiRequest('/api/owner/control/customer-accounts/delete', {
                             method: 'POST',
-                            body: { customerId: customer.id }
+                            body: { accountId: customer.id }
                         });
                         this.option10CustomerAccounts = (this.option10CustomerAccounts || []).filter(item => String(item.id) !== String(customer.id));
                         this.customers = (this.customers || []).filter(item => String(item.id) !== String(customer.id));
