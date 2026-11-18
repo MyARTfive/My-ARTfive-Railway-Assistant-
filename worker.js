@@ -1233,6 +1233,10 @@ export default {
           "SELECT id, customer_id FROM requests WHERE id = ? LIMIT 1"
         ).bind(requestId).first();
         if (!requestRow) return json({ success: false, message: "The selected ticket request was not found." }, 404);
+        const selectedCustomerId = String(body.customerId || "").trim();
+        if (selectedCustomerId && selectedCustomerId !== String(requestRow.customer_id)) {
+          return json({ success: false, message: "My ARTfive! The selected ticket request does not belong to the selected customer. Please choose that customer's request and send again." }, 400);
+        }
 
         if (body.action === "unsend") {
           const optionNo = Number(body.optionNo);
