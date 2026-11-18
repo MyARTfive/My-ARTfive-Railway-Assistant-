@@ -1249,14 +1249,6 @@ export default {
             "SELECT id, payment_status AS paymentStatus FROM customer_payment_instructions WHERE request_id = ? AND option_no = ? LIMIT 1"
           ).bind(requestId, optionNo).first();
           if (!instruction) return json({ success: false, message: "Send the payment amount and instructions before verifying payment." }, 404);
-          if (optionNo === 3) {
-            const bookingPayment = await env.DB.prepare(
-              "SELECT payment_status FROM customer_payment_instructions WHERE request_id = ? AND option_no = 2 LIMIT 1"
-            ).bind(requestId).first();
-            if (!bookingPayment || bookingPayment.payment_status !== "verified") {
-              return json({ success: false, message: "Verify Customer Option 2 booking-request payment before verifying Option 3." }, 409);
-            }
-          }
           const verifiedMessage = optionNo === 2
             ? "My ARTfive! have successfully received your Railway Ticket Booking Request Payment. Our team will now process your ticket booking."
             : "My ARTfive! have successfully received your ticket payment. Please visit: 🎫 Option 4 — GET MY TICKET! to collect and download your ticket after our team uploads it.";
@@ -1279,14 +1271,6 @@ export default {
         }
 
         const optionNo = Number(body.optionNo);
-        if (optionNo === 3) {
-          const bookingPayment = await env.DB.prepare(
-            "SELECT payment_status FROM customer_payment_instructions WHERE request_id = ? AND option_no = 2 LIMIT 1"
-          ).bind(requestId).first();
-          if (!bookingPayment || bookingPayment.payment_status !== "verified") {
-            return json({ success: false, message: "Complete and verify Customer Option 2 booking-request payment before sending Option 3 ticket charges." }, 409);
-          }
-        }
         const amount = Number(body.amount);
         const amountPaise = Math.round(amount * 100);
         let message = String(body.message || "").trim();
