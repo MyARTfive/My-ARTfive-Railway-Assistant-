@@ -448,7 +448,7 @@ export default {
 
       if (path === "/api/owner/control/customer-accounts" && method === "GET") {
         const owner = await getManagerVerifiedOwner(request, env, now);
-        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required to view customer accounts." }, 403);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required to view registered accounts." }, 403);
         const result = await env.DB.prepare(
           "SELECT id, name, phone, role, created_at AS createdAt, active FROM users WHERE role IN ('customer', 'staff') ORDER BY created_at DESC, role, name COLLATE NOCASE"
         ).all();
@@ -457,17 +457,16 @@ export default {
 
       if (path === "/api/owner/control/customer-accounts/delete" && method === "POST") {
         const owner = await getManagerVerifiedOwner(request, env, now);
-        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required to delete customer accounts." }, 403);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required to delete registered accounts." }, 403);
         const body = await readJson(request);
         const customerId = String(body.accountId || body.customerId || "").trim();
         if (!customerId) return json({ success: false, message: "Select a Customer ID or Staff ID to delete." }, 400);
         const customer = await env.DB.prepare(
           "SELECT id, name, phone, role FROM users WHERE id = ? AND role IN ('customer', 'staff') LIMIT 1"
         ).bind(customerId).first();
-        if (!customer) return json({ success: false, message: "The customer account was not found. Refresh the list and try again." }, 404);
+        if (!customer) return json({ success: false, message: "The selected account was not found. Refresh the list and try again." }, 404);
 
-        // Delete only this customer's records. Keep owner/staff accounts, shared settings,
-        // visitor/security logs, and all other customers' records untouched.
+        // Delete only records belonging to this selected customer or staff account. Keep owner accounts, shared settings, visitor/security logs, and unrelated accounts untouched.
         const tableResult = await env.DB.prepare(
           "SELECT name FROM sqlite_master WHERE type = 'table'"
         ).all();
@@ -497,13 +496,13 @@ export default {
         const results = await env.DB.batch(statements);
         const deletedAccount = results[results.length - 1];
         if (!Number(deletedAccount?.meta?.changes || 0)) {
-          return json({ success: false, message: "The customer account could not be deleted. Refresh and try again." }, 409);
+          return json({ success: false, message: "The selected account could not be deleted. Refresh and try again." }, 409);
         }
         await logSecurity(env, ip, "account_id_deleted", "Owner permanently deleted registered account " + customerId, now);
         return json({
           success: true,
           customerId,
-          message: "My ARTfive! The selected Customer ID or Staff ID was permanently deleted from D1. A customer or staff member may register again later if the app allows it."
+          message: "My ARTfive! The selected account was permanently deleted from D1. The person may register again later."
         });
       }
 
