@@ -2682,6 +2682,7 @@
                     const response = await fetch(path, {
                         method: options.method || 'GET',
                         credentials: 'same-origin',
+                        cache: 'no-store',
                         headers: requestHeaders,
                         body: options.body ? JSON.stringify(options.body) : undefined
                     });
@@ -3350,10 +3351,14 @@
                     return (this.paymentInstructions || []).find(item => String(item.requestId) === String(this.customerPaymentRequestId) && Number(item.optionNo) === Number(optionNo)) || null;
                 },
                 customerPaymentInstructions(optionNo) {
-                    // The customer-payments API already scopes customer results to the signed-in customer.
-                    // Do not hide a saved notification just because the local ticket-request list is stale.
+                    // Strictly isolate each manual payment notice by signed-in customer AND dashboard option.
+                    // A notice saved for Option 3 must never render in Option 2, or vice versa.
+                    const selectedOption = Number(optionNo);
+                    const signedInCustomerId = String(this.currentUser && this.currentUser.id || '');
+                    if (![2, 3].includes(selectedOption) || !signedInCustomerId) return [];
                     return (this.paymentInstructions || []).filter(item =>
-                        Number(item.optionNo) === Number(optionNo) &&
+                        String(item.customerId) === signedInCustomerId &&
+                        Number(item.optionNo) === selectedOption &&
                         item.isActive !== false &&
                         Number(item.isActive) !== 0
                     );
