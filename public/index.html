@@ -1449,14 +1449,18 @@
 
             <!-- ================= 2. CUSTOMER DASHBOARD ================= -->
             <div x-show="currentDashboard === 'customer'" class="space-y-6">
+                <div x-show="ownerPreviewMode" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-950/30 p-4">
+                    <p class="text-xs text-amber-100">My ARTfive! You are viewing the live Customer Dashboard layout in read-only preview mode. Customer sign-in and private account data remain protected.</p>
+                    <button type="button" @click="closeOwnerDashboardPreview()" class="rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold text-white">Back to My Dashboard</button>
+                </div>
                 <div class="bg-gradient-to-r from-slate-800 to-railway-900 border border-slate-700 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <span class="bg-railway-500/20 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full uppercase" x-text="cms.custBadgeText"></span>
-                        <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1" x-text="'Welcome, ' + (currentUser ? currentUser.name : 'Customer')"></h2>
-                        <p class="text-xs text-slate-400 mt-1" x-text="'Phone: ' + (currentUser ? currentUser.phone : '')"></p>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1" x-text="ownerPreviewMode ? 'Customer Dashboard Preview' : 'Welcome, ' + (currentUser ? currentUser.name : 'Customer')"></h2>
+                        <p x-show="!ownerPreviewMode" class="text-xs text-slate-400 mt-1" x-text="'Phone: ' + (currentUser ? currentUser.phone : '')"></p>
                     </div>
-                    <button @click="logout()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow flex items-center gap-2">
-                        <i class="fa-solid fa-right-from-bracket"></i> <span x-text="cms.logoutBtnText"></span>
+                    <button @click="ownerPreviewMode ? closeOwnerDashboardPreview() : logout()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow flex items-center gap-2">
+                        <i class="fa-solid fa-right-from-bracket"></i> <span x-text="ownerPreviewMode ? 'Back to My Dashboard' : cms.logoutBtnText"></span>
                     </button>
                 </div>
 
@@ -1549,7 +1553,7 @@
                             <!-- Synced My ARTfive! Live Enquiry Box -->
                             <div class="sm:col-span-2 border-t border-slate-700 pt-4 space-y-3">
                                 <label class="block text-xs font-bold text-emerald-400"><i class="fa-solid fa-comments"></i> <span x-text="cms.formEnquiryLabel"></span></label>
-                                <div class="bg-slate-900/90 border border-emerald-500/30 rounded-xl p-3 space-y-2 max-h-44 overflow-y-auto">
+                                <div x-show="!ownerPreviewMode" class="bg-slate-900/90 border border-emerald-500/30 rounded-xl p-3 space-y-2 max-h-44 overflow-y-auto">
                                     <div class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
                                         <span><i class="fa-solid fa-headset"></i> Live Messages from My ARTfive!</span>
                                         <span x-text="customerChatEnabled ? 'Reply Enabled' : 'View Only'" class="px-2 py-0.5 rounded bg-slate-800 text-slate-300"></span>
@@ -1564,7 +1568,7 @@
                                         </div>
                                     </template>
                                 </div>
-                                <div x-show="customerChatEnabled" class="flex gap-2">
+                                <div x-show="customerChatEnabled && !ownerPreviewMode" class="flex gap-2">
                                     <input type="text" x-model="customerReplyText" @keyup.enter="sendCustomerEnquiryReply()" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg p-2 text-xs text-white" placeholder="Reply directly to My ARTfive! chat...">
                                     <button type="button" @click="sendCustomerEnquiryReply()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold">Send Chat</button>
                                 </div>
@@ -1580,7 +1584,7 @@
                 </div>
 
                 <!-- Customer Option 2: Booking Request Payment -->
-                <div x-show="activeCustOption === 2" x-effect="if (activeCustOption === 2) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
+                <div x-show="activeCustOption === 2" x-effect="if (!ownerPreviewMode && activeCustOption === 2) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Personal message notification -->
@@ -1629,17 +1633,17 @@
                 </div>
 
                 <!-- Customer Option 3: Ticket Collection Charges -->
-                <div x-show="activeCustOption === 3" x-effect="if (activeCustOption === 3) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
+                <div x-show="activeCustOption === 3" x-effect="if (!ownerPreviewMode && activeCustOption === 3) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Both Option 3 message types appear together -->
                     <section class="w-full min-w-0 rounded-xl border-2 border-sky-500/50 bg-slate-900 p-4 space-y-3" aria-label="Option 3 message notifications">
                         <p class="text-sm font-extrabold text-sky-300">My ARTfive! Message Notification</p>
-                        <template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 3)" :key="'ticket-option3-note-'+note.id">
+                        <div x-show="!ownerPreviewMode"><template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 3)" :key="'ticket-option3-note-'+note.id">
                             <div class="w-full min-w-0 rounded-lg border border-sky-500/40 bg-slate-950 p-3">
                                 <p class="text-sm leading-relaxed text-sky-100 whitespace-pre-wrap break-words" style="overflow-wrap:anywhere" role="status" aria-live="polite" x-text="note.message"></p>
                             </div>
-                        </template>
+                        </template></div>
                         <template x-for="instruction in customerPaymentInstructions(3)" :key="'custpay3-message-'+instruction.id">
                             <div class="w-full min-w-0 rounded-lg border border-emerald-500/30 bg-slate-800 p-3 space-y-2">
                                 <p class="text-xs font-bold text-emerald-300 break-words" x-text="customerPaymentRequestLabel(instruction.requestId)"></p>
@@ -1683,16 +1687,17 @@
                 </div>
 
                 <!-- Customer Option 4: My Tickets -->
-                <div x-show="activeCustOption === 4" x-effect="if (activeCustOption === 4) loadCustomerNotifications()" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-2xl mx-auto">
+                <div x-show="activeCustOption === 4" x-effect="if (!ownerPreviewMode && activeCustOption === 4) loadCustomerNotifications()" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-2xl mx-auto">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                         <h3 class="font-bold text-white text-lg" x-text="cms.custOpt4Title"></h3>
                         <button @click="activeCustOption = null; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <p class="text-xs text-slate-300" x-text="cms.myTicketsInstruction"></p>
-                    <template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 4)" :key="'ticket-option4-note-'+note.id">
+                    <p x-show="ownerPreviewMode" class="rounded-lg border border-amber-500/30 bg-amber-950/30 p-3 text-xs text-amber-100">My ARTfive! Private tickets can only be viewed after the customer's own Option 4 sign-in. This owner preview shows the page layout only.</p>
+                    <div x-show="!ownerPreviewMode"><template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 4)" :key="'ticket-option4-note-'+note.id">
                         <div class="sticky top-2 z-20 pointer-events-none rounded-xl border border-emerald-500/40 bg-slate-900/95 p-3 text-sm text-emerald-200 whitespace-pre-wrap shadow-lg" role="status" aria-live="polite" x-text="note.message"></div>
-                    </template>
-                    <div class="space-y-3">
+                    </template></div>
+                    <div x-show="!ownerPreviewMode" class="space-y-3">
                         <template x-for="tkt in getMyAssignedTickets()" :key="tkt.id">
                             <div class="bg-slate-700/50 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs gap-3">
                                 <div>
@@ -1715,29 +1720,33 @@
 
             <!-- ================= 3. STAFF DASHBOARD ================= -->
             <div x-show="currentDashboard === 'staff'" class="space-y-6">
+                <div x-show="ownerPreviewMode" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-950/30 p-4">
+                    <p class="text-xs text-amber-100">My ARTfive! You are viewing the live Staff Dashboard layout in read-only preview mode. Staff permissions and sign-in remain unchanged.</p>
+                    <button type="button" @click="closeOwnerDashboardPreview()" class="rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold text-white">Back to My Dashboard</button>
+                </div>
                 <div class="bg-gradient-to-r from-sky-900/60 to-slate-800 border border-sky-500/30 rounded-2xl p-6 shadow-xl flex justify-between items-center">
                     <div>
                         <span class="bg-sky-500/20 text-sky-400 text-xs font-bold px-3 py-1 rounded-full uppercase" x-text="cms.staffBadgeText"></span>
                         <h2 class="text-2xl font-extrabold text-white mt-1" x-text="cms.staffDashTitle"></h2>
                         <p class="text-xs text-slate-300 mt-1" x-text="cms.staffDashSubtitle"></p>
                     </div>
-                    <button @click="logout()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow flex items-center gap-2">
-                        <i class="fa-solid fa-right-from-bracket"></i> <span x-text="cms.logoutBtnText"></span>
+                    <button @click="ownerPreviewMode ? closeOwnerDashboardPreview() : logout()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow flex items-center gap-2">
+                        <i class="fa-solid fa-right-from-bracket"></i> <span x-text="ownerPreviewMode ? 'Back to My Dashboard' : cms.logoutBtnText"></span>
                     </button>
                 </div>
 
                 <div x-show="activeStaffOption === null" class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                    <div @click="activeStaffOption = 1; loadTicketRequestsFromStorage()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                    <div @click="activeStaffOption = 1; if (!ownerPreviewMode) loadTicketRequestsFromStorage()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-file-lines"></i></div>
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt1Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt1Desc"></p>
                     </div>
-                    <div @click="activeStaffOption = 2; loadAssignedTicketsFromDB()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                    <div @click="activeStaffOption = 2; if (!ownerPreviewMode) loadAssignedTicketsFromDB()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-cloud-arrow-up"></i></div>
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt2Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt2Desc"></p>
                     </div>
-                    <div @click="activeStaffOption = 3; loadStaffChat()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                    <div @click="activeStaffOption = 3; if (!ownerPreviewMode) loadStaffChat()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-comments"></i></div>
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt3Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt3Desc"></p>
@@ -1753,7 +1762,7 @@
                                 <p class="text-slate-300" x-text="'Route: ' + req.fromStation + ' ➔ ' + req.toStation"></p>
                                 <div class="flex gap-2 flex-wrap">
                                     <button @click="openFullRequestFormModal(req)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded font-bold transition">View Full Request Form</button>
-                                    <button @click="openTicketUploadForRequest(req, true)" class="bg-sky-700 hover:bg-sky-600 text-white px-3 py-1.5 rounded font-bold transition">Send Ticket to This Customer</button>
+                                    <button x-show="!ownerPreviewMode" @click="openTicketUploadForRequest(req, true)" class="bg-sky-700 hover:bg-sky-600 text-white px-3 py-1.5 rounded font-bold transition">Send Ticket to This Customer</button>
                                 </div>
                             </div>
                         </template>
@@ -1781,7 +1790,7 @@
                         </div>
                             <p class="text-xs text-emerald-300">Upload is allowed only after the Owner or authorized Staff manually verifies Option 3 payment.</p>
 
-                        <div class="space-y-3">
+                        <div x-show="!ownerPreviewMode" class="space-y-3">
                             <label class="block text-xs font-bold text-slate-400 mb-1">Choose Upload Method</label>
                             <input type="file" x-ref="staffDashFile" accept=".pdf,application/pdf" @change="handleFileUpload($event)" class="hidden">
                             <input type="file" x-ref="staffDashImage" accept="image/png,image/jpeg,image/webp" @change="handleFileUpload($event)" class="hidden">
@@ -1798,7 +1807,7 @@
                             </div>
                         </div>
 
-                        <button @click="uploadAndAssignTicket()" class="w-full bg-sky-600 text-white font-bold py-3 rounded-xl text-sm">Upload & Assign File</button>
+                        <button x-show="!ownerPreviewMode" @click="uploadAndAssignTicket()" class="w-full bg-sky-600 text-white font-bold py-3 rounded-xl text-sm">Upload & Assign File</button>
                     </div>
                     <div class="border-t border-slate-700 pt-4 space-y-3">
                         <div class="flex items-center justify-between">
@@ -1831,8 +1840,8 @@
                         </template>
                     </div>
                     <div class="flex gap-2">
-                        <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage('Staff')" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Type message as Staff...">
-                        <button @click="sendStaffChatMessage('Staff')" class="bg-sky-600 text-white px-4 py-2.5 rounded-lg text-xs font-bold">Send</button>
+                        <input x-show="!ownerPreviewMode" type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage('Staff')" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Type message as Staff...">
+                        <button x-show="!ownerPreviewMode" @click="sendStaffChatMessage('Staff')" class="bg-sky-600 text-white px-4 py-2.5 rounded-lg text-xs font-bold">Send</button>
                     </div>
                 </div>
             </div>
@@ -2294,6 +2303,7 @@
                 },
 
                 currentDashboard: 'public',
+                ownerPreviewMode: false,
                 activeMenuOption: null,
                 activeCustOption: null,
                 activeStaffOption: null,
@@ -2479,6 +2489,7 @@
                 },
 
                 async sendCustomerEnquiryReply() {
+                    if (this.ownerPreviewMode) { this.showAppNotice('My ARTfive! Customer replies are disabled in Owner preview.'); return; }
                     const message = String(this.customerReplyText || '').trim();
                     if (!message) return;
                     try {
@@ -2497,6 +2508,7 @@
                 },
 
                 async sendStaffChatMessage() {
+                    if (this.ownerPreviewMode) { this.showAppNotice('My ARTfive! Staff messages cannot be sent from Owner preview.'); return; }
                     const message = String(this.newStaffChatText || '').trim();
                     if (!message) return;
                     try {
@@ -2751,6 +2763,7 @@
                     try {
                         const result = await this.apiRequest('/api/me');
                         this.currentUser = result.user;
+                        this.ownerPreviewMode = false;
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
                         this.offlineMode = false;
                         await this.refreshCentralData();
@@ -2908,6 +2921,10 @@
                 },
 
                 openTicketUploadForRequest(request, staffMode = false) {
+                    if (this.ownerPreviewMode) {
+                        this.showAppNotice('My ARTfive! Ticket assignment is disabled in Owner preview.');
+                        return;
+                    }
                     if (!request || !request.customerId) {
                         alert('My ARTfive! This request is not linked to a registered customer account.');
                         return;
@@ -3040,7 +3057,33 @@
                     if (type === 'to') this.toSuggestions = filtered;
                 },
 
+                closeOwnerDashboardPreview() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    this.ownerPreviewMode = false;
+                    this.currentDashboard = 'owner';
+                    this.activeMenuOption = null;
+                    this.activeStaffOption = null;
+                    this.activeCustOption = null;
+                    this.ticketAccessToken = '';
+                    this.assignedTickets = [];
+                    this.stopCustomerPaymentInstructionPolling();
+                },
+
                 ownerSelectOption(optNum) {
+                    if (optNum === 1 || optNum === 2) {
+                        if (!this.currentUser || this.currentUser.role !== 'owner') {
+                            this.showAppNotice('My ARTfive! Only the signed-in Owner can preview these dashboards.');
+                            return;
+                        }
+                        this.ownerPreviewMode = true;
+                        this.currentDashboard = optNum === 1 ? 'staff' : 'customer';
+                        this.activeMenuOption = null;
+                        this.activeStaffOption = null;
+                        this.activeCustOption = null;
+                        this.ownerInspectStaffOpt = null;
+                        this.ownerInspectCustOpt = null;
+                        return;
+                    }
                     if (optNum === 10 && (!this.currentUser || this.currentUser.role !== 'owner')) {
                         alert('Access denied. Only the signed-in Owner can open Control.');
                         return;
@@ -3784,6 +3827,7 @@
                         }
                         this.ticketAccessToken = this.loginRole === 'customer_verify' ? String(result.ticketAccessToken || '') : '';
                         this.currentUser = result.user;
+                        this.ownerPreviewMode = false;
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
                         this.offlineMode = false;
                         this.currentDashboard = this.currentUser.role === 'owner' ? 'owner' :
@@ -3835,6 +3879,7 @@
                 async logout() {
                     try { await this.apiRequest('/api/logout', { method: 'POST' }); } catch (e) {}
                     this.currentUser = null;
+                    this.ownerPreviewMode = false;
                     this.ticketAccessToken = '';
                     localStorage.removeItem('artfive_last_signed_in_profile');
                     this.offlineMode = false;
@@ -3856,6 +3901,7 @@
                 },
 
                 goHome() { 
+                    this.ownerPreviewMode = false;
                     this.ticketAccessToken = '';
                     this.assignedTickets = [];
                     this.currentDashboard = 'public'; 
@@ -3867,6 +3913,12 @@
                 },
 
                 async selectCustomerOption(optNum) {
+                    if (this.ownerPreviewMode && this.currentUser && this.currentUser.role === 'owner') {
+                        this.ticketAccessToken = '';
+                        this.assignedTickets = [];
+                        this.activeCustOption = optNum;
+                        return;
+                    }
                     if (optNum === 4) {
                         this.ticketAccessToken = '';
                         this.assignedTickets = [];
@@ -3893,6 +3945,10 @@
                 },
 
                 async uploadAndAssignTicket() {
+                    if (this.ownerPreviewMode) {
+                        this.showAppNotice('My ARTfive! Ticket uploads are disabled in Owner preview.');
+                        return;
+                    }
                     if (!this.uploadForm.customerId || !this.uploadForm.requestId || !this.uploadForm.ticketTitle || !this.uploadForm.fileData) {
                         alert('My ARTfive! Select the customer, exact ticket request and ticket file.');
                         return;
@@ -4051,6 +4107,10 @@
                 },
 
                 async submitTicketRequest() {
+                    if (this.ownerPreviewMode) {
+                        this.showAppNotice('My ARTfive! Ticket requests cannot be submitted from the Owner preview.');
+                        return;
+                    }
                     if (!this.currentUser || this.currentUser.role !== 'customer') {
                         this.showAppNotice('My ARTfive! Please sign in to your customer account to continue.');
                         this.openLoginModal('customer');
