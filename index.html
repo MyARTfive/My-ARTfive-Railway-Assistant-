@@ -1731,6 +1731,14 @@
             </div>
         </div>
 
+        <!-- Customer Option 1 request-success notification only -->
+        <div x-cloak x-show="customerRequestSuccessVisible"
+             x-transition.opacity
+             role="status" aria-live="polite"
+             class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-2rem)] max-w-xl rounded-xl border border-emerald-400/50 bg-slate-950 px-4 py-3 text-center text-sm font-semibold text-white shadow-2xl">
+            <span x-text="customerRequestSuccessMessage"></span>
+        </div>
+
         <!-- FOOTER -->
         <footer class="bg-slate-800 border-t border-slate-700 py-4 px-6 text-center text-xs text-slate-400">
             <p x-text="cms.footerText"></p>
@@ -1745,6 +1753,9 @@
                 showIntroSplash: true,
                 activeSplashIndex: 0,
                 totalSplashSlides: 4,
+                customerRequestSuccessMessage: '',
+                customerRequestSuccessVisible: false,
+                customerRequestSuccessTimer: null,
 
                 initApp() {
                     const savedCms = localStorage.getItem('artfive_master_cms');
@@ -2655,7 +2666,12 @@
                     try {
                         await this.apiRequest('/api/requests', { method: 'POST', body: { data: requestData } });
                         await this.loadTicketRequestsFromStorage();
-                        alert('My ARTfive! Your railway ticket request was submitted successfully and saved centrally.');
+                        this.customerRequestSuccessMessage = 'My ARTfive! have received your railway ticket request form successfully! Please visit Customer Dashboard Option 2 to view the details of your ticket booking payment charges.';
+                        this.customerRequestSuccessVisible = true;
+                        clearTimeout(this.customerRequestSuccessTimer);
+                        this.customerRequestSuccessTimer = setTimeout(() => {
+                            this.customerRequestSuccessVisible = false;
+                        }, 3500);
                         this.activeCustOption = null;
                         this.ownerInspectCustOpt = null;
                     } catch (error) {
