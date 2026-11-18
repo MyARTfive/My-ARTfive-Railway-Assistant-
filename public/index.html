@@ -1625,6 +1625,9 @@
                 <div x-show="activeCustOption === 3" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
                     <p class="text-xs text-slate-300" x-text="cms.payOpt3Instruction"></p>
+                    <template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 3)" :key="'ticket-option3-note-'+note.id">
+                        <div class="rounded-xl border border-sky-500/40 bg-slate-900 p-4 text-sm text-sky-200 whitespace-pre-wrap" x-text="note.message"></div>
+                    </template>
                     <template x-for="instruction in customerPaymentInstructions(3)" :key="'custpay3-'+instruction.id">
                         <div class="rounded-xl border border-emerald-500/30 bg-slate-900 p-4 space-y-3">
                             <p class="text-xs font-bold text-emerald-300" x-text="customerPaymentRequestLabel(instruction.requestId)"></p>
@@ -1657,6 +1660,9 @@
                         <button @click="activeCustOption = null; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <p class="text-xs text-slate-300" x-text="cms.myTicketsInstruction"></p>
+                    <template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 4)" :key="'ticket-option4-note-'+note.id">
+                        <div class="rounded-xl border border-emerald-500/40 bg-slate-900 p-4 text-sm text-emerald-200 whitespace-pre-wrap" x-text="note.message"></div>
+                    </template>
                     <div class="space-y-3">
                         <template x-for="tkt in getMyAssignedTickets()" :key="tkt.id">
                             <div class="bg-slate-700/50 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs gap-3">
