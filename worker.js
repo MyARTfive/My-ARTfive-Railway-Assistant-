@@ -1427,7 +1427,7 @@ export default {
         const ticketMessages = [
           {
             targetOption: 3,
-            message: "My ARTfive! have uploaded your railway ticket successfully. It is now available in 🎫 Option 4 — GET MY TICKET! Please sign in with the same phone number and password used when you created your customer account."
+            message: "My ARTfive! have uploaded your railway ticket successfully. It is now available in customer dashboard 🎫 Option 4 — GET MY TICKET! Please sign in with the same phone number and password used when you created your customer account."
           },
           {
             targetOption: 4,
