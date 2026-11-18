@@ -1242,10 +1242,10 @@ export default {
         if (body.action === "unsend") {
           const optionNo = Number(body.optionNo);
           if (![2, 3].includes(optionNo)) return json({ success: false, message: "Choose Customer Option 2 or 3." }, 400);
-          const hidden = await env.DB.prepare(
-            "UPDATE customer_payment_instructions SET is_active = 0, updated_by = ?, updated_at = ? WHERE request_id = ? AND option_no = ? AND customer_id = ?"
-          ).bind(user.id, now, requestId, optionNo, requestRow.customer_id).run();
-          return json({ success: true, hidden: hidden.meta ? hidden.meta.changes || 0 : 0, message: "My ARTfive! The selected manual notification and amount are now hidden. The saved UPI number and QR code remain available." });
+          const deleted = await env.DB.prepare(
+            "DELETE FROM customer_payment_instructions WHERE request_id = ? AND option_no = ? AND customer_id = ?"
+          ).bind(requestId, optionNo, requestRow.customer_id).run();
+          return json({ success: true, deleted: deleted.meta ? deleted.meta.changes || 0 : 0, message: "My ARTfive! The selected manual notification and amount have been permanently removed from D1. The saved UPI number and QR code remain available." });
         }
 
         if (body.action === "verify") {
