@@ -1572,7 +1572,7 @@
                 </div>
 
                 <!-- Customer Option 2: Booking Request Payment -->
-                <div x-show="activeCustOption === 2" x-effect="if (activeCustOption === 2) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); } else { stopCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
+                <div x-show="activeCustOption === 2" x-effect="if (activeCustOption === 2) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Personal message notification -->
@@ -1621,7 +1621,7 @@
                 </div>
 
                 <!-- Customer Option 3: Ticket Collection Charges -->
-                <div x-show="activeCustOption === 3" x-effect="if (activeCustOption === 3) { loadCustomerNotifications(); loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); } else { stopCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
+                <div x-show="activeCustOption === 3" x-effect="if (activeCustOption === 3) { loadCustomerNotifications(); loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Both Option 3 message types appear together -->
@@ -3500,7 +3500,7 @@
                 startCustomerPaymentInstructionPolling() {
                     if (!this.currentUser || this.currentUser.role !== 'customer' || this.customerPaymentPollingTimer) return;
                     this.customerPaymentPollingTimer = setInterval(() => {
-                        if (!this.currentUser || this.currentUser.role !== 'customer' || this.activeCustOption !== 3) {
+                        if (!this.currentUser || this.currentUser.role !== 'customer' || ![2, 3].includes(Number(this.activeCustOption))) {
                             this.stopCustomerPaymentInstructionPolling();
                             return;
                         }
