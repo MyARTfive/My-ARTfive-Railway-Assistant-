@@ -1245,7 +1245,11 @@ export default {
           const deleted = await env.DB.prepare(
             "DELETE FROM customer_payment_instructions WHERE request_id = ? AND option_no = ? AND customer_id = ?"
           ).bind(requestId, optionNo, requestRow.customer_id).run();
-          return json({ success: true, deleted: deleted.meta ? deleted.meta.changes || 0 : 0, message: "My ARTfive! The selected manual notification and amount have been permanently removed from D1. The saved UPI number and QR code remain available." });
+          const deletedCount = deleted.meta ? Number(deleted.meta.changes || 0) : 0;
+          if (deletedCount < 1) {
+            return json({ success: false, deleted: 0, message: "My ARTfive! No saved manual notification was found for that customer's selected dashboard option." }, 404);
+          }
+          return json({ success: true, deleted: deletedCount, message: "My ARTfive! The selected manual notification and amount have been permanently deleted from D1. The saved UPI number and QR code remain available." });
         }
 
         if (body.action === "verify") {
