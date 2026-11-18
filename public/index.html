@@ -1266,7 +1266,7 @@
                             <h3 class="text-lg font-bold text-white">Option 10 — Control</h3>
                             <p class="text-xs text-amber-300">Owner-only visitor activity and access control. Manager verification required.</p>
                         </div>
-                        <button @click="activeMenuOption = null; option10Authenticated = false; option10Password = ''" class="bg-slate-700 text-white text-xs px-3.5 py-2 rounded-lg">Back</button>
+                        <button @click="activeMenuOption = null; option10Authenticated = false; option10Password = ''; if (option10AccountsRefreshTimer) { window.clearInterval(option10AccountsRefreshTimer); option10AccountsRefreshTimer = null; }" class="bg-slate-700 text-white text-xs px-3.5 py-2 rounded-lg">Back</button>
                     </div>
 
                     <template x-if="!option10Authenticated">
@@ -2403,7 +2403,6 @@
                 option10Loading: false,
                 option10PasswordRequests: [],
                 option10CustomerAccounts: [],
-                option10CustomerSearch: '',
                 option10CustomerLoading: false,
                 option10AccountsRefreshTimer: null,
                 passwordRecoveryOpen: false,
@@ -3281,20 +3280,9 @@
                     }
                 },
 
-                filteredOption10CustomerAccounts() {
-                    const query = String(this.option10CustomerSearch || '').trim().toLowerCase();
-                    const accounts = this.option10CustomerAccounts || [];
-                    if (!query) return accounts;
-                    return accounts.filter(customer =>
-                        String(customer.name || '').toLowerCase().includes(query) ||
-                        String(customer.phone || '').toLowerCase().includes(query) ||
-                        String(customer.id || '').toLowerCase().includes(query)
-                    );
-                },
-
                 async deleteOption10CustomerAccount(customer) {
                     if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated || !customer) return;
-                    const customerName = String(customer.name || 'this customer');
+                    const customerName = String(customer.name || 'this account');
                     const customerPhone = String(customer.phone || 'No phone number');
                     if (!confirm('My ARTfive! Permanently delete the ' + (customer.role === 'staff' ? 'STAFF' : 'CUSTOMER') + ' account for ' + customerName + ' (' + customerPhone + ')? This permanently removes the selected account and its associated data. For a customer this includes requests, tickets, payments and customer messages; for staff this includes staff chat messages and sessions. This cannot be undone. They may sign up again later.')) return;
                     try {
@@ -3318,9 +3306,10 @@
                             this.uploadCustomerFilter = '';
                         }
                         await this.refreshCentralData();
-                        this.showAppNotice(result.message || 'My ARTfive! Customer account permanently deleted.');
+                        // This notice is shown only in the Owner's dashboard; no message or notification is sent to the deleted account.
+                        this.showAppNotice(result.message || 'My ARTfive! Selected account permanently deleted.');
                     } catch (error) {
-                        this.showAppNotice(error.message || 'My ARTfive! Could not delete this customer account.');
+                        this.showAppNotice(error.message || 'My ARTfive! Could not delete this account.');
                     }
                 },
 
@@ -3356,7 +3345,7 @@
                         // Keep the two D1 account lists current while the Owner's Control panel is open.
                         if (!this.option10AccountsRefreshTimer) {
                             this.option10AccountsRefreshTimer = window.setInterval(() => {
-                                if (this.currentUser && this.currentUser.role === 'owner' && this.option10Authenticated) {
+                                if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 10 && this.option10Authenticated) {
                                     this.loadOption10CustomerAccounts();
                                 }
                             }, 15000);
