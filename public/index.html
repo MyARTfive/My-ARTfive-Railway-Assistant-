@@ -1374,6 +1374,47 @@
                                     </template>
                                 </div>
                             </div>
+                            <div class="bg-slate-800 border border-rose-500/40 rounded-xl p-4 space-y-3">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div>
+                                        <h4 class="font-bold text-white">Delete ID — Customer Accounts</h4>
+                                        <p class="text-xs text-slate-400">Find any registered customer account and permanently delete that account and its customer data from D1 and the app.</p>
+                                    </div>
+                                    <button @click="loadOption10CustomerAccounts()" :disabled="option10CustomerLoading" class="bg-sky-700 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-lg">
+                                        <i class="fa-solid fa-rotate mr-1"></i> Refresh IDs
+                                    </button>
+                                </div>
+                                <input type="search" x-model="option10CustomerSearch" placeholder="Filter by customer name, phone number or ID..." class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-sm text-white">
+                                <div class="flex justify-between text-xs text-slate-400">
+                                    <span x-text="option10CustomerAccounts.length + ' registered customer accounts'"></span>
+                                    <span x-text="filteredOption10CustomerAccounts().length + ' shown'"></span>
+                                </div>
+                                <template x-if="option10CustomerLoading"><p class="text-sm text-slate-400 py-3">Loading customer IDs...</p></template>
+                                <template x-if="!option10CustomerLoading && filteredOption10CustomerAccounts().length === 0">
+                                    <p class="text-sm text-slate-400 py-3">No matching customer accounts found.</p>
+                                </template>
+                                <div class="space-y-2">
+                                    <template x-for="customer in filteredOption10CustomerAccounts()" :key="customer.id">
+                                        <div class="bg-slate-900 border border-slate-700 rounded-lg p-3 space-y-2">
+                                            <div class="flex flex-wrap justify-between gap-2">
+                                                <div class="min-w-0">
+                                                    <p class="font-bold text-white" x-text="customer.name"></p>
+                                                    <p class="text-xs text-slate-300" x-text="'Phone: ' + (customer.phone || 'Not provided')"></p>
+                                                    <p class="text-xs text-slate-500 break-all" x-text="'Customer ID: ' + customer.id"></p>
+                                                    <p class="text-xs text-slate-500" x-text="'Signed up: ' + new Date(customer.createdAt).toLocaleString()"></p>
+                                                </div>
+                                                <span class="text-xs font-bold text-emerald-300" x-text="Number(customer.active) === 1 ? 'ACTIVE' : 'INACTIVE'"></span>
+                                            </div>
+                                            <div class="flex justify-end">
+                                                <button @click="deleteOption10CustomerAccount(customer)" class="bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2 rounded-lg">
+                                                    <i class="fa-solid fa-trash mr-1"></i> Permanently Delete ID
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                                <p class="text-xs text-rose-300">Warning: deletion permanently removes this customer's sign-in account, sessions, ticket requests, uploaded tickets, payment records, notifications, inquiry messages, passenger filters and engagement counts. This cannot be undone. The same phone number may register again as a new account.</p>
+                            </div>
                             <p class="text-xs text-slate-500">Privacy note: names are shown only when the visitor is signed in. Location is approximate and depends on Cloudflare availability; a website cannot identify a visitor's real name or exact home address automatically. Blocking is by IP address, so shared networks may affect multiple people.</p>
                         </div>
                     </template>
@@ -2343,6 +2384,9 @@
                 option10BlockedCount: 0,
                 option10Loading: false,
                 option10PasswordRequests: [],
+                option10CustomerAccounts: [],
+                option10CustomerSearch: '',
+                option10CustomerLoading: false,
                 passwordRecoveryOpen: false,
                 passwordRecoveryRole: 'customer',
                 passwordRecoveryPhone: '',
@@ -3205,6 +3249,63 @@
                     this.option10PasswordRequests = result.requests || [];
                 },
 
+                async loadOption10CustomerAccounts() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated) return;
+                    this.option10CustomerLoading = true;
+                    try {
+                        const result = await this.apiRequest('/api/owner/control/customer-accounts');
+                        this.option10CustomerAccounts = result.customers || [];
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not load customer IDs.');
+                    } finally {
+                        this.option10CustomerLoading = false;
+                    }
+                },
+
+                filteredOption10CustomerAccounts() {
+                    const query = String(this.option10CustomerSearch || '').trim().toLowerCase();
+                    const accounts = this.option10CustomerAccounts || [];
+                    if (!query) return accounts;
+                    return accounts.filter(customer =>
+                        String(customer.name || '').toLowerCase().includes(query) ||
+                        String(customer.phone || '').toLowerCase().includes(query) ||
+                        String(customer.id || '').toLowerCase().includes(query)
+                    );
+                },
+
+                async deleteOption10CustomerAccount(customer) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated || !customer) return;
+                    const customerName = String(customer.name || 'this customer');
+                    const customerPhone = String(customer.phone || 'No phone number');
+                    if (!confirm('My ARTfive! Permanently delete the customer account for ' + customerName + ' (' + customerPhone + ')? This removes their account, sessions, requests, tickets, payment records, notifications and customer messages from D1. This cannot be undone. They may sign up again later.')) return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/control/customer-accounts/delete', {
+                            method: 'POST',
+                            body: { customerId: customer.id }
+                        });
+                        this.option10CustomerAccounts = (this.option10CustomerAccounts || []).filter(item => String(item.id) !== String(customer.id));
+                        this.customers = (this.customers || []).filter(item => String(item.id) !== String(customer.id));
+                        localStorage.setItem('artfive_customers', JSON.stringify(this.customers));
+                        this.ticketRequests = (this.ticketRequests || []).filter(item => String(item.customerId) !== String(customer.id));
+                        this.assignedTickets = (this.assignedTickets || []).filter(item => String(item.customerId) !== String(customer.id));
+                        this.paymentInstructions = (this.paymentInstructions || []).filter(item => String(item.customerId) !== String(customer.id));
+                        this.ticketPaymentVerifications = (this.ticketPaymentVerifications || []).filter(item => String(item.customerId) !== String(customer.id));
+                        if (String(this.paymentForm.customerId) === String(customer.id)) {
+                            this.paymentForm = { customerId: '', requestId: '', optionNo: '2', amount: '', message: '' };
+                        }
+                        if (String(this.uploadForm.customerId) === String(customer.id)) {
+                            this.uploadForm.customerId = '';
+                            this.uploadForm.requestId = '';
+                            this.uploadCustomerFilter = '';
+                        }
+                        if (String(this.customerPaymentRequestId) === String(customer.id)) this.customerPaymentRequestId = '';
+                        await this.refreshCentralData();
+                        this.showAppNotice(result.message || 'My ARTfive! Customer account permanently deleted.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not delete this customer account.');
+                    }
+                },
+
                 async decidePasswordChangeRequest(requestItem, decision) {
                     if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated) return;
                     const actionLabel = decision === 'approve' ? 'approve' : 'reject';
@@ -3233,6 +3334,7 @@
                         this.option10Totals = result.totals || { visitors: 0, visits: 0 };
                         this.option10BlockedCount = Number(result.blockedCount || 0);
                         await this.loadOption10PasswordRequests();
+                        await this.loadOption10CustomerAccounts();
                     } catch (error) {
                         this.option10Authenticated = false;
                         alert(error.message || 'My ARTfive! Could not load visitor activity. Please verify Manager access again.');
