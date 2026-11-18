@@ -1661,7 +1661,7 @@
                     </div>
                     <p class="text-xs text-slate-300" x-text="cms.myTicketsInstruction"></p>
                     <template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 4)" :key="'ticket-option4-note-'+note.id">
-                        <div class="rounded-xl border border-emerald-500/40 bg-slate-900 p-4 text-sm text-emerald-200 whitespace-pre-wrap" x-text="note.message"></div>
+                        <div class="sticky top-2 z-20 pointer-events-none rounded-xl border border-emerald-500/40 bg-slate-900/95 p-3 text-sm text-emerald-200 whitespace-pre-wrap shadow-lg" role="status" aria-live="polite" x-text="note.message"></div>
                     </template>
                     <div class="space-y-3">
                         <template x-for="tkt in getMyAssignedTickets()" :key="tkt.id">
