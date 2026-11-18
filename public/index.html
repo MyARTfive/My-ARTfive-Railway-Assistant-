@@ -3371,6 +3371,7 @@
                 selectExistingManualNotification(instructionId) {
                     const selected = this.existingManualNotificationsForSelection().find(item => String(item.id) === String(instructionId));
                     if (!selected) return;
+                    this.selectedManualNotificationId = String(selected.id);
                     this.paymentForm.requestId = String(selected.requestId);
                     this.paymentForm.message = String(selected.message || '');
                     this.paymentForm.amount = (Number(selected.amountPaise || 0) / 100).toFixed(2);
