@@ -680,7 +680,7 @@
                     <div x-show="ownerInspectCustOpt === 3" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                         <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="ownerInspectCustOpt = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
                         <p class="text-xs text-slate-300" x-text="cms.payOpt3Instruction"></p>
-                    <template x-for="note in customerNotifications.filter(n => n.message === 'My ARTfive! have uploaded your railway ticket successfully. It is now available in 🎫 Option 4 — GET MY TICKET! Please sign in with the same phone number and password used when you created your customer account.')" :key="'option3-ticket-note-'+note.id">
+                    <template x-for="note in customerNotifications.filter(n => n.message === 'My ARTfive! have uploaded your railway ticket successfully. It is now available in customer dashboard 🎫 Option 4 — GET MY TICKET! Please sign in with the same phone number and password used when you created your customer account.')" :key="'option3-ticket-note-'+note.id">
                         <div class="rounded-xl border border-sky-500/40 bg-slate-900 p-4 text-sm text-sky-200 whitespace-pre-wrap" x-text="note.message"></div>
                     </template>
                         <div @click="copyToClipboard(cms.collectionUpiNumber)" class="bg-slate-900 border border-emerald-500/40 p-4 rounded-xl flex items-center justify-between cursor-pointer">
