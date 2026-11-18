@@ -2137,6 +2137,7 @@
                     // Chat history is server-authoritative; clear any legacy device cache.
                     localStorage.removeItem('artfive_customer_enquiry_chat');
                     this.customerEnquiryMessages = [];
+                    const savedChatToggle = localStorage.getItem('artfive_customer_chat_enabled');
                     if (savedChatToggle !== null) {
                         this.customerChatEnabled = savedChatToggle === 'true';
                     }
