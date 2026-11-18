@@ -162,6 +162,14 @@ async function readJson(request) {
   try { return text ? JSON.parse(text) : {}; } catch { throw new Error("Invalid JSON request."); }
 }
 
+async function ensureTicketNotificationColumns(env) {
+  const result = await env.DB.prepare("PRAGMA table_info(customer_notifications)").all();
+  const columns = new Set((result.results || []).map(column => column.name));
+  if (!columns.has("ticket_id")) await env.DB.prepare("ALTER TABLE customer_notifications ADD COLUMN ticket_id TEXT").run();
+  if (!columns.has("target_option")) await env.DB.prepare("ALTER TABLE customer_notifications ADD COLUMN target_option INTEGER").run();
+  if (!columns.has("expires_at")) await env.DB.prepare("ALTER TABLE customer_notifications ADD COLUMN expires_at INTEGER").run();
+}
+
 async function logSecurity(env, ip, event, details, now) {
   try {
     await env.DB.prepare(
@@ -603,17 +611,19 @@ export default {
             read_at INTEGER
           )
         `).run();
+        await ensureTicketNotificationColumns(env);
         if (method === "GET") {
+          await env.DB.prepare("DELETE FROM customer_notifications WHERE expires_at IS NOT NULL AND expires_at <= ?").bind(now).run();
           if (user.role === "customer") {
             const rows = await env.DB.prepare(
-              "SELECT id, message, created_at AS createdAt, read_at AS readAt FROM customer_notifications WHERE customer_id = ? ORDER BY created_at DESC LIMIT 100"
-            ).bind(user.id).all();
+              "SELECT id, message, created_at AS createdAt, read_at AS readAt, target_option AS targetOption, ticket_id AS ticketId, expires_at AS expiresAt FROM customer_notifications WHERE customer_id = ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC LIMIT 100"
+            ).bind(user.id, now).all();
             return json({ success: true, notifications: rows.results || [] });
           }
           if (user.role === "owner") {
             const rows = await env.DB.prepare(
-              "SELECT n.id, n.customer_id AS customerId, u.name AS customerName, u.phone AS customerPhone, n.message, n.created_at AS createdAt, n.read_at AS readAt FROM customer_notifications n JOIN users u ON u.id = n.customer_id ORDER BY n.created_at DESC LIMIT 300"
-            ).all();
+              "SELECT n.id, n.customer_id AS customerId, u.name AS customerName, u.phone AS customerPhone, n.message, n.created_at AS createdAt, n.read_at AS readAt, n.target_option AS targetOption, n.ticket_id AS ticketId, n.expires_at AS expiresAt FROM customer_notifications n JOIN users u ON u.id = n.customer_id WHERE n.expires_at IS NULL OR n.expires_at > ? ORDER BY n.created_at DESC LIMIT 300"
+            ).bind(now).all();
             return json({ success: true, notifications: rows.results || [] });
           }
           return json({ success: false, message: "Access denied." }, 403);
@@ -1422,14 +1432,22 @@ export default {
             read_at INTEGER
           )
         `).run();
+        await ensureTicketNotificationColumns(env);
         const ticketMessages = [
-          "My ARTfive! have uploaded your railway ticket successfully. It is now available in 🎫 Option 4 — GET MY TICKET! Please sign in with the same phone number and password used when you created your customer account.",
-          "My ARTfive! Thank you for choosing us! Your confirmed railway ticket is ready. You can now view and download your ticket. You're always most welcome to visit us again. Have a safe and happy journey! ❤️"
+          {
+            targetOption: 3,
+            message: "My ARTfive! have uploaded your railway ticket successfully. It is now available in 🎫 Option 4 — GET MY TICKET! Please sign in with the same phone number and password used when you created your customer account."
+          },
+          {
+            targetOption: 4,
+            message: "My ARTfive! Thank you for choosing us! Your confirmed railway ticket is ready. You can now view and download your ticket. You're always most welcome to visit us again. Have a safe and happy journey! ❤️"
+          }
         ];
-        for (const message of ticketMessages) {
+        const notificationExpiry = now + 15 * 60 * 1000;
+        for (const ticketMessage of ticketMessages) {
           await env.DB.prepare(
-            "INSERT INTO customer_notifications (id, customer_id, sender_id, message, created_at) VALUES (?, ?, ?, ?, ?)"
-          ).bind(crypto.randomUUID(), customer.id, user.id, message, now).run();
+            "INSERT INTO customer_notifications (id, customer_id, sender_id, message, created_at, ticket_id, target_option, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+          ).bind(crypto.randomUUID(), customer.id, user.id, ticketMessage.message, now, id, ticketMessage.targetOption, notificationExpiry).run();
         }
         return json({ success: true, id, message: "My ARTfive! Ticket uploaded and made available in Customer Option 4." }, 201);
       }
@@ -1444,7 +1462,12 @@ export default {
         if (!id) return json({ success: false, message: "Ticket ID is required." }, 400);
         const ticket = await env.DB.prepare("SELECT id FROM tickets WHERE id = ? LIMIT 1").bind(id).first();
         if (!ticket) return json({ success: false, message: "Ticket was not found." }, 404);
-        const deletion = await env.DB.prepare("DELETE FROM tickets WHERE id = ?").bind(id).run();
+        await ensureTicketNotificationColumns(env);
+        await env.DB.batch([
+          env.DB.prepare("DELETE FROM customer_notifications WHERE ticket_id = ?").bind(id),
+          env.DB.prepare("DELETE FROM tickets WHERE id = ?").bind(id)
+        ]);
+        const deletion = { meta: { changes: 1 } };
         if (!deletion.meta || deletion.meta.changes !== 1) return json({ success: false, message: "Ticket could not be permanently deleted." }, 500);
         return json({ success: true, message: "My ARTfive! Ticket file and its stored file data were permanently deleted from D1." });
       }
