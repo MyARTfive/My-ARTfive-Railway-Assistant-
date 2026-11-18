@@ -778,7 +778,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-300 mb-1">2. Select Customer Dashboard</label>
-                            <select x-model="paymentForm.optionNo" @change="paymentForm.optionNo = String($event.target.value); selectedManualNotificationId = ''; paymentForm.requestId = ''; paymentForm.message = ''; paymentForm.amount = ''; manualNotificationTemplateIndex = '';" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
+                            <select x-model="paymentForm.optionNo" @change="paymentForm.optionNo = String($event.target.value); selectedManualNotificationId = ''; manualNotificationSelection = ''; paymentForm.requestId = ''; paymentForm.message = ''; paymentForm.amount = ''; manualNotificationTemplateIndex = '';" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-sm text-white">
                                 <option value="2">Customer Dashboard Option 2 — Railway Ticket Booking Request Payment</option>
                                 <option value="3">Customer Dashboard Option 3 — Ticket Collection Charges Payment</option>
                             </select>
