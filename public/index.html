@@ -1374,46 +1374,64 @@
                                     </template>
                                 </div>
                             </div>
-                            <div class="bg-slate-800 border border-rose-500/40 rounded-xl p-4 space-y-3">
+                            <div class="bg-slate-800 border border-rose-500/40 rounded-xl p-4 space-y-4">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <div>
-                                        <h4 class="font-bold text-white">Delete ID — Customer & Staff Accounts</h4>
-                                        <p class="text-xs text-slate-400">Find any registered Customer ID or Staff ID and permanently delete that account and its associated data from D1 and the app.</p>
+                                        <h4 class="font-bold text-white">Delete ID — Automatic Account Lists</h4>
+                                        <p class="text-xs text-slate-400">Registered accounts are loaded directly from D1. New registrations appear automatically when this list refreshes. Passwords are never retrieved or displayed.</p>
                                     </div>
                                     <button @click="loadOption10CustomerAccounts()" :disabled="option10CustomerLoading" class="bg-sky-700 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-lg">
-                                        <i class="fa-solid fa-rotate mr-1"></i> Refresh IDs
+                                        <i class="fa-solid fa-rotate mr-1"></i> Refresh Lists
                                     </button>
                                 </div>
-                                <input type="search" x-model="option10CustomerSearch" placeholder="Filter by name, phone number or Customer/Staff ID..." class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-sm text-white">
-                                <div class="flex justify-between text-xs text-slate-400">
-                                    <span x-text="option10CustomerAccounts.length + ' registered accounts'"></span>
-                                    <span x-text="filteredOption10CustomerAccounts().length + ' shown'"></span>
-                                </div>
-                                <template x-if="option10CustomerLoading"><p class="text-sm text-slate-400 py-3">Loading customer IDs...</p></template>
-                                <template x-if="!option10CustomerLoading && filteredOption10CustomerAccounts().length === 0">
-                                    <p class="text-sm text-slate-400 py-3">No matching customer accounts found.</p>
-                                </template>
-                                <div class="space-y-2">
-                                    <template x-for="customer in filteredOption10CustomerAccounts()" :key="customer.id">
-                                        <div class="bg-slate-900 border border-slate-700 rounded-lg p-3 space-y-2">
-                                            <div class="flex flex-wrap justify-between gap-2">
-                                                <div class="min-w-0">
-                                                    <p class="font-bold text-white" x-text="customer.name"></p>
-                                                    <p class="text-xs text-slate-300" x-text="'Phone: ' + (customer.phone || 'Not provided')"></p>
-                                                    <p class="text-xs text-slate-500 break-all" x-text="(customer.role === 'staff' ? 'Staff ID: ' : 'Customer ID: ') + customer.id"></p>
-                                                    <p class="text-xs text-slate-500" x-text="'Signed up: ' + new Date(customer.createdAt).toLocaleString()"></p>
-                                                </div>
-                                                <span class="text-xs font-bold text-emerald-300" x-text="Number(customer.active) === 1 ? 'ACTIVE' : 'INACTIVE'"></span>
-                                            </div>
+                                <template x-if="option10CustomerLoading"><p class="text-sm text-slate-400 py-2">Loading registered accounts from D1...</p></template>
+                                <section class="bg-slate-900/70 border border-sky-500/30 rounded-lg p-3 space-y-3">
+                                    <div class="flex justify-between items-center gap-2">
+                                        <h5 class="font-bold text-sky-300">1. Staff Dashboard — Auto Filter</h5>
+                                        <span class="text-xs text-slate-400" x-text="option10CustomerAccounts.filter(account => account.role === 'staff').length + ' Staff IDs'"></span>
+                                    </div>
+                                    <template x-if="!option10CustomerLoading && option10CustomerAccounts.filter(account => account.role === 'staff').length === 0">
+                                        <p class="text-sm text-slate-400">No staff accounts registered.</p>
+                                    </template>
+                                    <template x-for="account in option10CustomerAccounts.filter(account => account.role === 'staff')" :key="'staff-' + account.id">
+                                        <div class="bg-slate-800 border border-slate-700 rounded-lg p-3 space-y-2">
+                                            <p class="font-bold text-white" x-text="account.name || 'Name not available'"></p>
+                                            <p class="text-xs text-slate-300" x-text="'Staff full Name: ' + (account.name || 'Not provided')"></p>
+                                            <p class="text-xs text-slate-300" x-text="'Staff phone number: ' + (account.phone || 'Not provided')"></p>
+                                            <p class="text-xs text-slate-400">Staff password: •••••••• (Hidden — never displayed)</p>
+                                            <p class="text-xs text-slate-500 break-all" x-text="'Staff ID: ' + account.id"></p>
                                             <div class="flex justify-end">
-                                                <button @click="deleteOption10CustomerAccount(customer)" class="bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2 rounded-lg">
-                                                    <i class="fa-solid fa-trash mr-1"></i> Permanently Delete ID
+                                                <button @click="deleteOption10CustomerAccount(account)" class="bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2 rounded-lg">
+                                                    <i class="fa-solid fa-trash mr-1"></i> Delete — Permanently from D1
                                                 </button>
                                             </div>
                                         </div>
                                     </template>
-                                </div>
-                                <p class="text-xs text-rose-300">Warning: deletion permanently removes the selected Customer or Staff account and its associated records. Customer deletion also removes that customer's requests, uploaded tickets, payment records, notifications, inquiry messages, passenger filters and engagement counts. Staff deletion removes that staff member's sessions and authored chat messages. The same phone number may register again later.</p>
+                                </section>
+                                <section class="bg-slate-900/70 border border-emerald-500/30 rounded-lg p-3 space-y-3">
+                                    <div class="flex justify-between items-center gap-2">
+                                        <h5 class="font-bold text-emerald-300">2. Customer Dashboard — Auto Filter</h5>
+                                        <span class="text-xs text-slate-400" x-text="option10CustomerAccounts.filter(account => account.role === 'customer').length + ' Customer IDs'"></span>
+                                    </div>
+                                    <template x-if="!option10CustomerLoading && option10CustomerAccounts.filter(account => account.role === 'customer').length === 0">
+                                        <p class="text-sm text-slate-400">No customer accounts registered.</p>
+                                    </template>
+                                    <template x-for="account in option10CustomerAccounts.filter(account => account.role === 'customer')" :key="'customer-' + account.id">
+                                        <div class="bg-slate-800 border border-slate-700 rounded-lg p-3 space-y-2">
+                                            <p class="font-bold text-white" x-text="account.name || 'Name not available'"></p>
+                                            <p class="text-xs text-slate-300" x-text="'Customer full Name: ' + (account.name || 'Not provided')"></p>
+                                            <p class="text-xs text-slate-300" x-text="'Customer phone number: ' + (account.phone || 'Not provided')"></p>
+                                            <p class="text-xs text-slate-400">Customer password: •••••••• (Hidden — never displayed)</p>
+                                            <p class="text-xs text-slate-500 break-all" x-text="'Customer ID: ' + account.id"></p>
+                                            <div class="flex justify-end">
+                                                <button @click="deleteOption10CustomerAccount(account)" class="bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2 rounded-lg">
+                                                    <i class="fa-solid fa-trash mr-1"></i> Delete — Permanently from D1
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </section>
+                                <p class="text-xs text-rose-300">Only the Owner decides whether to delete an account. Deletion permanently removes the selected account and its associated records from D1 and the app. The person may register again later; the Owner may delete that new account again. No account-deleted message or notification is sent to them. Owner accounts cannot be deleted here.</p>
                             </div>
                             <p class="text-xs text-slate-500">Privacy note: names are shown only when the visitor is signed in. Location is approximate and depends on Cloudflare availability; a website cannot identify a visitor's real name or exact home address automatically. Blocking is by IP address, so shared networks may affect multiple people.</p>
                         </div>
