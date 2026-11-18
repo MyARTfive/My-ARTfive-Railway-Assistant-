@@ -472,12 +472,6 @@
                                     <p class="text-xs font-bold text-slate-200">Option 2 & 3 payment verification</p>
                                     <button type="button" @click="apiRequest('/api/customer-payments').then(result => { paymentInstructions = result.instructions || []; showAppNotice('My ARTfive! Payment status refreshed.'); }).catch(error => showAppNotice(error.message || 'My ARTfive! Could not refresh payment status.'))" class="text-xs text-sky-300 underline">Refresh payments</button>
                                 </div>
-                                <template x-for="instruction in paymentInstructions.filter(item => String(item.customerId) === String(uploadForm.customerId) && String(item.requestId) === String(uploadForm.requestId) && Number(item.optionNo) === 2)" :key="'staff-verify-booking-'+instruction.id">
-                                    <div class="flex items-center justify-between gap-2 text-xs">
-                                        <span :class="instruction.paymentStatus === 'verified' ? 'text-emerald-300' : 'text-amber-300'" x-text="instruction.paymentStatus === 'verified' ? 'Option 2 booking payment verified ✅' : 'Option 2 booking payment pending — verify this before sending Option 3'"></span>
-                                        <button x-show="instruction.paymentStatus !== 'verified'" type="button" @click="verifyCustomerPaymentInstruction(instruction)" class="rounded bg-emerald-700 px-3 py-1.5 font-bold text-white">Mark received ✅</button>
-                                    </div>
-                                </template>
                                 <template x-for="instruction in paymentInstructions.filter(item => String(item.customerId) === String(uploadForm.customerId) && String(item.requestId) === String(uploadForm.requestId) && Number(item.optionNo) === 3)" :key="'staff-verify-'+instruction.id">
                                     <div class="flex items-center justify-between gap-2 text-xs">
                                         <span :class="instruction.paymentStatus === 'verified' ? 'text-emerald-300' : 'text-amber-300'" x-text="instruction.paymentStatus === 'verified' ? 'Option 3 payment verified ✅' : 'Option 3 payment pending — ticket locked'"></span>
@@ -485,7 +479,7 @@
                                     </div>
                                 </template>
                                 <p x-show="!paymentInstructions.some(item => String(item.customerId) === String(uploadForm.customerId) && String(item.requestId) === String(uploadForm.requestId) && Number(item.optionNo) === 3)" class="text-xs text-amber-300">No Option 3 payment instruction found for this request. Ticket upload stays locked.</p>
-                                <p class="text-[11px] text-slate-400">Only mark a payment received after personally checking the UPI transaction. First verify the Option 2 booking-request payment here; this unlocks sending the Option 3 collection-charge notification. Then verify Option 3 separately before ticket upload. The existing Owner ticket-upload confirmation remains separate.</p>
+                                <p class="text-[11px] text-slate-400">Only mark the Option 3 collection payment received after personally checking the UPI transaction. This verification is for ticket-upload readiness only; it does not control whether payment notifications can be sent. The existing Owner ticket-upload confirmation remains separate.</p>
                             </div>
 
                             <div class="space-y-3">
