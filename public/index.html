@@ -1553,7 +1553,7 @@
                             <!-- Synced My ARTfive! Live Enquiry Box -->
                             <div class="sm:col-span-2 border-t border-slate-700 pt-4 space-y-3">
                                 <label class="block text-xs font-bold text-emerald-400"><i class="fa-solid fa-comments"></i> <span x-text="cms.formEnquiryLabel"></span></label>
-                                <div class="bg-slate-900/90 border border-emerald-500/30 rounded-xl p-3 space-y-2 max-h-44 overflow-y-auto">
+                                <div x-show="!ownerPreviewMode" class="bg-slate-900/90 border border-emerald-500/30 rounded-xl p-3 space-y-2 max-h-44 overflow-y-auto">
                                     <div class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
                                         <span><i class="fa-solid fa-headset"></i> Live Messages from My ARTfive!</span>
                                         <span x-text="customerChatEnabled ? 'Reply Enabled' : 'View Only'" class="px-2 py-0.5 rounded bg-slate-800 text-slate-300"></span>
@@ -1639,11 +1639,11 @@
                     <!-- Box 1: Both Option 3 message types appear together -->
                     <section class="w-full min-w-0 rounded-xl border-2 border-sky-500/50 bg-slate-900 p-4 space-y-3" aria-label="Option 3 message notifications">
                         <p class="text-sm font-extrabold text-sky-300">My ARTfive! Message Notification</p>
-                        <template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 3)" :key="'ticket-option3-note-'+note.id">
+                        <div x-show="!ownerPreviewMode"><template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 3)" :key="'ticket-option3-note-'+note.id">
                             <div class="w-full min-w-0 rounded-lg border border-sky-500/40 bg-slate-950 p-3">
                                 <p class="text-sm leading-relaxed text-sky-100 whitespace-pre-wrap break-words" style="overflow-wrap:anywhere" role="status" aria-live="polite" x-text="note.message"></p>
                             </div>
-                        </template>
+                        </template></div>
                         <template x-for="instruction in customerPaymentInstructions(3)" :key="'custpay3-message-'+instruction.id">
                             <div class="w-full min-w-0 rounded-lg border border-emerald-500/30 bg-slate-800 p-3 space-y-2">
                                 <p class="text-xs font-bold text-emerald-300 break-words" x-text="customerPaymentRequestLabel(instruction.requestId)"></p>
