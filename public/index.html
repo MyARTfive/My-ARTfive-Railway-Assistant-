@@ -1574,91 +1574,104 @@
                 <!-- Customer Option 2: Booking Request Payment -->
                 <div x-show="activeCustOption === 2" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
-                    <p class="text-xs text-slate-300" x-text="cms.payOpt2Instruction"></p>
-                    <section class="w-full min-w-0 rounded-xl border-2 border-emerald-500/50 bg-slate-900 p-4 space-y-3" aria-label="Customer Option 2 personal notification and payment details">
-                        <div class="border-b border-slate-700 pb-2">
-                            <p class="text-sm font-extrabold text-emerald-300">My ARTfive! Personal Payment Notification</p>
-                            <p class="text-[11px] text-slate-400">Your private Option 2 notification appears only in this box.</p>
-                        </div>
-                        <template x-for="instruction in customerPaymentInstructions(2)" :key="'custpay2-'+instruction.id">
+
+                    <!-- Box 1: Personal message notification -->
+                    <section class="w-full min-w-0 rounded-xl border-2 border-emerald-500/50 bg-slate-900 p-4 space-y-3" aria-label="Option 2 message notification">
+                        <p class="text-sm font-extrabold text-emerald-300">My ARTfive! Message Notification</p>
+                        <template x-for="instruction in customerPaymentInstructions(2)" :key="'custpay2-message-'+instruction.id">
                             <div class="w-full min-w-0 rounded-lg border border-emerald-500/30 bg-slate-800 p-3 space-y-2">
                                 <p class="text-xs font-bold text-emerald-300 break-words" x-text="customerPaymentRequestLabel(instruction.requestId)"></p>
-                                <p class="text-xs text-slate-400">Your Railway Ticket Booking Request Payment</p>
-                                <p class="text-2xl font-extrabold text-emerald-300 break-words" x-text="manualPayAmount(instruction.amountPaise)"></p>
+                                <p class="text-sm leading-relaxed text-white whitespace-pre-wrap break-words" style="overflow-wrap:anywhere" x-text="instruction.message"></p>
                                 <p class="text-xs font-bold" :class="instruction.paymentStatus === 'verified' ? 'text-emerald-400' : 'text-amber-300'" x-text="instruction.paymentStatus === 'verified' ? 'Payment verified' : 'Payment pending verification'"></p>
-                                <div class="w-full min-w-0 rounded-lg border border-sky-500/40 bg-slate-950 p-3">
-                                    <p class="text-[11px] font-bold uppercase tracking-wide text-sky-300 mb-2">Your notification</p>
-                                    <p class="text-sm leading-relaxed text-white whitespace-pre-wrap break-words" style="overflow-wrap:anywhere" x-text="instruction.message"></p>
-                                </div>
                             </div>
                         </template>
                         <template x-if="customerPaymentInstructions(2).length === 0">
-                            <p class="text-sm leading-relaxed text-amber-200">My ARTfive! Your personal Option 2 payment notification and charges will appear in this box when our team sends them.</p>
+                            <p class="text-sm leading-relaxed text-amber-200">My ARTfive! Your personal payment notification will appear here when our team sends it.</p>
                         </template>
                     </section>
-                    <template x-if="customerPaymentInstructions(2).length === 0">
-                        <div class="rounded-xl border border-amber-500/30 bg-slate-900 p-4 text-sm text-amber-200">My ARTfive! Your Railway Ticket Booking Request Payment amount and personal payment message will appear here when our team sends them. Please wait for our notification before making this payment.</div>
-                    </template>
-                    <div class="bg-slate-900 border border-emerald-500/40 p-4 rounded-xl flex items-center justify-between cursor-pointer" @click="copyToClipboard(cms.upiNumber)">
-                        <div><p class="text-xs text-slate-400 mb-1">UPI number — tap to copy</p><span class="text-emerald-400 font-mono font-bold text-lg" x-text="cms.upiNumber || 'UPI number not added yet'"></span></div>
-                        <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded">Copy</span>
-                    </div>
-                    <div class="bg-slate-900 p-4 rounded-xl text-center space-y-2 border border-slate-700">
-                        <p class="text-xs text-slate-400">Or scan this QR code to pay</p>
+
+                    <!-- Box 2: Payment amount -->
+                    <section class="w-full rounded-xl border border-emerald-500/40 bg-slate-900 p-4 space-y-2" aria-label="Option 2 payment amount">
+                        <p class="text-xs font-bold uppercase tracking-wide text-emerald-300">Pay Amount</p>
+                        <template x-for="instruction in customerPaymentInstructions(2)" :key="'custpay2-amount-'+instruction.id">
+                            <p class="text-2xl font-extrabold text-white" x-text="manualPayAmount(instruction.amountPaise)"></p>
+                        </template>
+                        <template x-if="customerPaymentInstructions(2).length === 0">
+                            <p class="text-sm text-slate-400">My ARTfive! Your payment amount will appear here with your message notification.</p>
+                        </template>
+                    </section>
+
+                    <!-- Box 3: UPI number -->
+                    <section class="w-full rounded-xl border border-emerald-500/40 bg-slate-900 p-4 flex items-center justify-between gap-3 cursor-pointer" aria-label="Option 2 UPI number" @click="copyToClipboard(cms.upiNumber)">
+                        <div class="min-w-0"><p class="text-xs text-slate-400 mb-1">UPI Number — Tap to Copy</p><span class="text-emerald-400 font-mono font-bold text-lg break-all" x-text="cms.upiNumber || 'UPI number not added yet'"></span></div>
+                        <span class="shrink-0 text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded">Copy</span>
+                    </section>
+
+                    <!-- Box 4: QR code photo -->
+                    <section class="w-full rounded-xl border border-slate-700 bg-slate-900 p-4 text-center space-y-2" aria-label="Option 2 QR code photo">
+                        <p class="text-sm font-bold text-slate-200">QR Code Photo</p>
                         <template x-if="cms.bookingQrImage"><img :src="cms.bookingQrImage" alt="Booking payment QR code" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
                         <template x-if="!cms.bookingQrImage"><p class="text-xs text-amber-300">My ARTfive! Booking QR code has not been uploaded yet.</p></template>
-                    </div>
-                    <div class="rounded-xl bg-slate-900 border border-slate-700 p-3 text-sm text-slate-200">My ARTfive! Please pay only the amount shown in our latest personal message. After payment, wait for our team to verify it and guide you to the next step.</div>
-                    <button @click="showAppNotice('My ARTfive! Please complete the Railway Ticket Booking Request Payment shown in your personal message. Our team will check your payment manually and update you.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt2ConfirmBtn"></button>
+                    </section>
+
+                    <!-- Box 5: Payment instruction -->
+                    <section class="w-full rounded-xl border border-sky-500/40 bg-slate-900 p-4 text-sm font-semibold leading-relaxed text-sky-100" aria-label="Option 2 payment instruction">
+                        You can pay by copying the UPI number or scanning the QR code!
+                    </section>
                 </div>
 
                 <!-- Customer Option 3: Ticket Collection Charges -->
                 <div x-show="activeCustOption === 3" x-effect="if (activeCustOption === 3) loadCustomerNotifications()" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
-                    <p class="text-xs text-slate-300" x-text="cms.payOpt3Instruction"></p>
-                    <section class="w-full min-w-0 rounded-xl border-2 border-sky-500/50 bg-slate-900 p-4 space-y-2" aria-label="Customer Option 3 automatic ticket notification">
-                        <p class="text-sm font-extrabold text-sky-300">My ARTfive! Ticket Update</p>
+
+                    <!-- Box 1: Both Option 3 message types appear together -->
+                    <section class="w-full min-w-0 rounded-xl border-2 border-sky-500/50 bg-slate-900 p-4 space-y-3" aria-label="Option 3 message notifications">
+                        <p class="text-sm font-extrabold text-sky-300">My ARTfive! Message Notification</p>
                         <template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 3)" :key="'ticket-option3-note-'+note.id">
                             <div class="w-full min-w-0 rounded-lg border border-sky-500/40 bg-slate-950 p-3">
                                 <p class="text-sm leading-relaxed text-sky-100 whitespace-pre-wrap break-words" style="overflow-wrap:anywhere" role="status" aria-live="polite" x-text="note.message"></p>
                             </div>
                         </template>
-                    </section>
-                    <section class="w-full min-w-0 rounded-xl border-2 border-emerald-500/50 bg-slate-900 p-4 space-y-3" aria-label="Customer Option 3 personal notification and payment details">
-                        <div class="border-b border-slate-700 pb-2">
-                            <p class="text-sm font-extrabold text-emerald-300">My ARTfive! Personal Payment Notification</p>
-                            <p class="text-[11px] text-slate-400">Your private Option 3 notification appears only in this box.</p>
-                        </div>
-                        <template x-for="instruction in customerPaymentInstructions(3)" :key="'custpay3-'+instruction.id">
+                        <template x-for="instruction in customerPaymentInstructions(3)" :key="'custpay3-message-'+instruction.id">
                             <div class="w-full min-w-0 rounded-lg border border-emerald-500/30 bg-slate-800 p-3 space-y-2">
                                 <p class="text-xs font-bold text-emerald-300 break-words" x-text="customerPaymentRequestLabel(instruction.requestId)"></p>
-                                <p class="text-xs text-slate-400">Your Ticket Collection Charges</p>
-                                <p class="text-2xl font-extrabold text-emerald-300 break-words" x-text="manualPayAmount(instruction.amountPaise)"></p>
+                                <p class="text-sm leading-relaxed text-white whitespace-pre-wrap break-words" style="overflow-wrap:anywhere" x-text="instruction.message"></p>
                                 <p class="text-xs font-bold" :class="instruction.paymentStatus === 'verified' ? 'text-emerald-400' : 'text-amber-300'" x-text="instruction.paymentStatus === 'verified' ? 'Payment verified' : 'Payment pending verification'"></p>
-                                <div class="w-full min-w-0 rounded-lg border border-sky-500/40 bg-slate-950 p-3">
-                                    <p class="text-[11px] font-bold uppercase tracking-wide text-sky-300 mb-2">Your notification</p>
-                                    <p class="text-sm leading-relaxed text-white whitespace-pre-wrap break-words" style="overflow-wrap:anywhere" x-text="instruction.message"></p>
-                                </div>
                             </div>
                         </template>
-                        <template x-if="customerPaymentInstructions(3).length === 0">
-                            <p class="text-sm leading-relaxed text-amber-200">My ARTfive! Your personal Option 3 payment notification and charges will appear in this box when our team sends them.</p>
+                        <template x-if="customerNotifications.filter(n => Number(n.targetOption) === 3).length === 0 && customerPaymentInstructions(3).length === 0">
+                            <p class="text-sm leading-relaxed text-amber-200">My ARTfive! Your personal message notification will appear here when our team sends it.</p>
                         </template>
                     </section>
-                    <template x-if="customerPaymentInstructions(3).length === 0">
-                        <div class="rounded-xl border border-amber-500/30 bg-slate-900 p-4 text-sm text-amber-200">My ARTfive! Your Ticket Collection Charges and personal payment message will appear here after our team completes your booking. Please wait for our notification. Do not make this payment before receiving our message.</div>
-                    </template>
-                    <div class="bg-slate-900 border border-emerald-500/40 p-4 rounded-xl flex items-center justify-between cursor-pointer" @click="copyToClipboard(cms.collectionUpiNumber)">
-                        <div><p class="text-xs text-slate-400 mb-1">UPI number — tap to copy</p><span class="text-emerald-400 font-mono font-bold text-lg" x-text="cms.collectionUpiNumber || 'UPI number not added yet'"></span></div>
-                        <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded">Copy</span>
-                    </div>
-                    <div class="bg-slate-900 p-4 rounded-xl text-center space-y-2 border border-slate-700">
-                        <p class="text-xs text-slate-400">Or scan this QR code to pay</p>
+
+                    <!-- Box 2: Payment amount -->
+                    <section class="w-full rounded-xl border border-emerald-500/40 bg-slate-900 p-4 space-y-2" aria-label="Option 3 payment amount">
+                        <p class="text-xs font-bold uppercase tracking-wide text-emerald-300">Pay Amount</p>
+                        <template x-for="instruction in customerPaymentInstructions(3)" :key="'custpay3-amount-'+instruction.id">
+                            <p class="text-2xl font-extrabold text-white" x-text="manualPayAmount(instruction.amountPaise)"></p>
+                        </template>
+                        <template x-if="customerPaymentInstructions(3).length === 0">
+                            <p class="text-sm text-slate-400">My ARTfive! Your payment amount will appear here with your message notification.</p>
+                        </template>
+                    </section>
+
+                    <!-- Box 3: UPI number -->
+                    <section class="w-full rounded-xl border border-emerald-500/40 bg-slate-900 p-4 flex items-center justify-between gap-3 cursor-pointer" aria-label="Option 3 UPI number" @click="copyToClipboard(cms.collectionUpiNumber)">
+                        <div class="min-w-0"><p class="text-xs text-slate-400 mb-1">UPI Number — Tap to Copy</p><span class="text-emerald-400 font-mono font-bold text-lg break-all" x-text="cms.collectionUpiNumber || 'UPI number not added yet'"></span></div>
+                        <span class="shrink-0 text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded">Copy</span>
+                    </section>
+
+                    <!-- Box 4: QR code photo -->
+                    <section class="w-full rounded-xl border border-slate-700 bg-slate-900 p-4 text-center space-y-2" aria-label="Option 3 QR code photo">
+                        <p class="text-sm font-bold text-slate-200">QR Code Photo</p>
                         <template x-if="cms.collectionQrImage"><img :src="cms.collectionQrImage" alt="Ticket collection payment QR code" class="mx-auto max-h-56 rounded-lg border border-slate-600"></template>
                         <template x-if="!cms.collectionQrImage"><p class="text-xs text-amber-300">My ARTfive! Ticket collection QR code has not been uploaded yet.</p></template>
-                    </div>
-                    <div class="rounded-xl bg-slate-900 border border-slate-700 p-3 text-sm text-slate-200">My ARTfive! Please pay only the Ticket Collection Charges sent in your personal message after booking is completed. Once our team verifies your payment and uploads your ticket, we will notify you to open Option 4 — GET MY TICKET!</div>
-                    <button @click="showAppNotice('My ARTfive! Please complete the Ticket Collection Charges Payment only after receiving your personal payment message. Our team will check your payment manually and update you.')" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs" x-text="cms.payOpt3ConfirmBtn"></button>
+                    </section>
+
+                    <!-- Box 5: Payment instruction -->
+                    <section class="w-full rounded-xl border border-sky-500/40 bg-slate-900 p-4 text-sm font-semibold leading-relaxed text-sky-100" aria-label="Option 3 payment instruction">
+                        You can pay by copying the UPI number or scanning the QR code!
+                    </section>
                 </div>
 
                 <!-- Customer Option 4: My Tickets -->
@@ -2144,6 +2157,15 @@
                             this.currentDashboard === 'customer' &&
                             (this.activeCustOption === 3 || this.activeCustOption === 4)) {
                             this.loadCustomerNotifications();
+                        }
+                    }, 5000);
+
+                    // Keep personal payment messages and amounts fresh in open customer Options 2 and 3.
+                    setInterval(() => {
+                        if (this.currentUser && this.currentUser.role === 'customer' &&
+                            this.currentDashboard === 'customer' &&
+                            (this.activeCustOption === 2 || this.activeCustOption === 3)) {
+                            this.loadCustomerPaymentInstructions();
                         }
                     }, 5000);
 
@@ -3466,6 +3488,16 @@
                     }
                 },
 
+                async loadCustomerPaymentInstructions() {
+                    if (!this.currentUser || this.currentUser.role !== 'customer') return;
+                    try {
+                        const result = await this.apiRequest('/api/customer-payments');
+                        this.paymentInstructions = result.instructions || [];
+                    } catch (error) {
+                        console.warn('My ARTfive! Payment notifications could not be loaded:', error.message);
+                    }
+                },
+
                 async sendNotificationMessage() {
                     const rawMessage = String(this.notifForm.message || '').trim();
                     if (!rawMessage) { this.showAppNotice('My ARTfive! Please select or write a notification message first.'); return; }
@@ -3748,7 +3780,7 @@
                     if (optNum === 2 || optNum === 3) {
                         const ownRequests = this.customerPaymentRequests();
                         if (!this.customerPaymentRequestId || !ownRequests.some(req => String(req.id) === String(this.customerPaymentRequestId))) this.customerPaymentRequestId = ownRequests.length ? ownRequests[0].id : '';
-                        this.apiRequest('/api/customer-payments').then(result => { this.paymentInstructions = result.instructions || []; }).catch(() => {});
+                        this.loadCustomerPaymentInstructions();
                     }
                     this.activeCustOption = optNum;
                 },
