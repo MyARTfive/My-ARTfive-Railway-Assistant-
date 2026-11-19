@@ -6,11 +6,13 @@ on:
       - feature/central-d1-ticket-sync
       - feature/24-hour-chat-message-expiry
       - feature/option10-delete-customer-id
+      - feature/full-app-workflow-audit-fixes
   pull_request:
     branches:
       - main
       - feature/central-d1-ticket-sync
       - feature/24-hour-chat-message-expiry
+      - feature/app-management-dashboard-foundation
 
 jobs:
   syntax-check:
