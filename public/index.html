@@ -443,8 +443,8 @@
                             </template>
                         </div>
                         <div class="flex gap-2">
-                            <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage('My ARTfive!')" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Type message as My ARTfive!...">
-                            <button @click="sendStaffChatMessage('My ARTfive!')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-xs font-bold transition">Send</button>
+                            <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage()" :disabled="!staffChatSelectedId" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50" placeholder="Type message to selected Staff member...">
+                            <button @click="sendStaffChatMessage()" :disabled="!staffChatSelectedId" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-xs font-bold transition disabled:opacity-50">Send</button>
                         </div>
                     </div>
                 </div>
@@ -1959,8 +1959,8 @@
 
                 <div x-show="activeStaffOption === 3" class="space-y-4">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.staffOpt3Title"></h3><button @click="activeStaffOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
-                    <div x-show="ownerPreviewMode" class="space-y-2">
-                        <label class="block text-xs font-bold text-slate-300">Choose Staff conversation to preview</label>
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold text-slate-300" x-text="ownerPreviewMode ? 'Choose Staff conversation to preview' : 'Your private Staff conversation'"></label>
                         <select x-model="staffChatSelectedId" @change="loadStaffChat(staffChatSelectedId)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                             <option value="">-- Select Staff member --</option>
                             <template x-for="staff in staffAccounts" :key="'staff-preview-recipient-'+staff.id">
