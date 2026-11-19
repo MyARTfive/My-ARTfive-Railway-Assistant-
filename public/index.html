@@ -61,7 +61,13 @@
                 script.onerror = loadNextSource;
                 document.head.appendChild(script);
             }
-            loadNextSource();
+            // Wait until the full document is parsed so railwayApp() and the body
+            // exist before Alpine scans and initializes the dashboard.
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', loadNextSource, { once: true });
+            } else {
+                loadNextSource();
+            }
         })();
     </script>
     <style id="artfive-design-theme">
