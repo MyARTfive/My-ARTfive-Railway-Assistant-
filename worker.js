@@ -171,6 +171,29 @@ async function ensureTicketNotificationColumns(env) {
   if (!columns.has("expires_at")) await env.DB.prepare("ALTER TABLE customer_notifications ADD COLUMN expires_at INTEGER").run();
 }
 
+async function ensureStaffNotificationSchema(env) {
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS staff_notifications (
+      id TEXT PRIMARY KEY,
+      staff_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'general',
+      created_at INTEGER NOT NULL,
+      read_at INTEGER
+    )
+  `).run();
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_staff_notifications_staff_created ON staff_notifications(staff_id, created_at DESC)").run();
+}
+
+async function addStaffNotification(env, staffId, title, message, category, now) {
+  await ensureStaffNotificationSchema(env);
+  const safeMessage = /^My ARTfive!/i.test(message) ? message : "My ARTfive! " + message;
+  await env.DB.prepare(
+    "INSERT INTO staff_notifications (id, staff_id, title, message, category, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+  ).bind(crypto.randomUUID(), staffId, String(title || "My ARTfive! Notification").slice(0, 120), safeMessage.slice(0, 2000), String(category || "general").slice(0, 40), now).run();
+}
+
 async function logSecurity(env, ip, event, details, now) {
   try {
     await env.DB.prepare(
@@ -467,6 +490,45 @@ export default {
         return json({ success: true, customers: result.results || [] });
       }
 
+      if (path === "/api/owner/control/customer-accounts/status" && method === "POST") {
+        const owner = await getManagerVerifiedOwner(request, env, now);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required to change account access." }, 403);
+        const body = await readJson(request);
+        const accountId = String(body.accountId || "").trim();
+        const action = String(body.action || "").trim().toLowerCase();
+        const reason = String(body.reason || "").trim().slice(0, 250);
+        if (!accountId || !["block", "unblock"].includes(action)) return json({ success: false, message: "Select a registered account and choose Block or Unblock." }, 400);
+        const account = await env.DB.prepare("SELECT id, name, phone, role, active FROM users WHERE id = ? AND role IN ('customer','staff') LIMIT 1").bind(accountId).first();
+        if (!account) return json({ success: false, message: "Only registered Customer or Staff accounts can be blocked or unblocked." }, 404);
+        const active = action === "unblock" ? 1 : 0;
+        if (Number(account.active) === active) return json({ success: true, active, message: action === "block" ? "My ARTfive! This account is already blocked." : "My ARTfive! This account is already active." });
+        await env.DB.prepare("UPDATE users SET active = ? WHERE id = ? AND role IN ('customer','staff')").bind(active, accountId).run();
+        if (action === "block") {
+          await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(accountId).run();
+          try { await env.DB.prepare("DELETE FROM customer_ticket_access WHERE customer_id = ?").bind(accountId).run(); } catch {}
+        }
+        const notificationMessage = action === "block"
+          ? "My ARTfive! Sign-in to your account has been temporarily blocked by the Owner. Contact My ARTfive! if you believe this is a mistake."
+          : "My ARTfive! Your account access has been restored by the Owner. You can sign in again.";
+        if (account.role === "staff") {
+          await addStaffNotification(env, accountId, action === "block" ? "My ARTfive! Account access blocked" : "My ARTfive! Account access restored", notificationMessage, "security", now);
+        } else {
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS customer_notifications (
+              id TEXT PRIMARY KEY,
+              customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              sender_id TEXT NOT NULL REFERENCES users(id),
+              message TEXT NOT NULL,
+              created_at INTEGER NOT NULL,
+              read_at INTEGER
+            )
+          `).run();
+          await env.DB.prepare("INSERT INTO customer_notifications (id, customer_id, sender_id, message, created_at) VALUES (?, ?, ?, ?, ?)").bind(crypto.randomUUID(), accountId, owner.id, notificationMessage, now).run();
+        }
+        await logSecurity(env, ip, "account_" + action + "ed", "Owner " + action + "ed " + account.role + " account " + accountId + (reason ? "; reason: " + reason : ""), now);
+        return json({ success: true, active, message: action === "block" ? "My ARTfive! Account sign-in blocked. Existing sessions were revoked." : "My ARTfive! Account sign-in restored. The account can sign in again." });
+      }
+
       if (path === "/api/owner/control/customer-accounts/delete" && method === "POST") {
         const owner = await getManagerVerifiedOwner(request, env, now);
         if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required to delete registered accounts." }, 403);
@@ -491,6 +553,7 @@ export default {
           ["customer_enquiry_messages", "customer_id = ? OR sender_id = ?", [customerId, customerId]],
           ["staff_chat_messages", "sender_id = ? OR staff_id = ?", [customerId, customerId]],
           ["customer_notifications", "customer_id = ?", [customerId]],
+          ["staff_notifications", "staff_id = ?", [customerId]],
           ["staff_notifications", "staff_id = ?", [customerId]],
           ["customer_payment_instructions", "customer_id = ?", [customerId]],
           ["ticket_payment_verifications", "customer_id = ?", [customerId]],
@@ -1167,6 +1230,47 @@ export default {
         return json({ success: true, message: "My ARTfive! Visitor access unblocked." });
       }
 
+      if (path === "/api/staff/notifications" && (method === "GET" || method === "POST")) {
+        const staff = await getSessionUser(request, env, now);
+        if (!staff || staff.role !== "staff") return json({ success: false, message: "Staff sign-in is required to view Staff notifications." }, 403);
+        await ensureStaffNotificationSchema(env);
+        if (method === "GET") {
+          const rows = await env.DB.prepare(
+            "SELECT id, title, message, category, created_at AS createdAt, read_at AS readAt FROM staff_notifications WHERE staff_id = ? ORDER BY created_at DESC LIMIT 100"
+          ).bind(staff.id).all();
+          return json({ success: true, notifications: rows.results || [] });
+        }
+        const body = await readJson(request);
+        const notificationId = String(body.notificationId || "").trim();
+        if (!notificationId) return json({ success: false, message: "Select a Staff notification to mark as read." }, 400);
+        const result = await env.DB.prepare(
+          "UPDATE staff_notifications SET read_at = COALESCE(read_at, ?) WHERE id = ? AND staff_id = ?"
+        ).bind(now, notificationId, staff.id).run();
+        if (!Number(result.meta?.changes || 0)) return json({ success: false, message: "This Staff notification was not found." }, 404);
+        return json({ success: true, message: "My ARTfive! Staff notification marked as read." });
+      }
+
+      if (path === "/api/staff/signup-status" && method === "GET") {
+        const requestId = String(url.searchParams.get("requestId") || "").trim();
+        if (!/^[0-9a-f-]{36}$/i.test(requestId)) return json({ success: false, message: "A valid Staff signup request reference is required." }, 400);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS staff_signup_requests (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL, password_hash TEXT,
+            status TEXT NOT NULL CHECK (status IN ('pending','approved','rejected')),
+            created_at INTEGER NOT NULL, reviewed_at INTEGER
+          )
+        `).run();
+        const signup = await env.DB.prepare("SELECT status FROM staff_signup_requests WHERE id = ? LIMIT 1").bind(requestId).first();
+        if (!signup) return json({ success: false, message: "Staff signup request was not found." }, 404);
+        const status = String(signup.status || "pending");
+        const message = status === "approved"
+          ? "My ARTfive! Your Staff account has been approved. You can now sign in."
+          : status === "rejected"
+            ? "My ARTfive! Your Staff signup request was rejected. Please contact My ARTfive! for assistance."
+            : "My ARTfive! Your Staff signup request is waiting for Owner approval.";
+        return json({ success: true, status, message });
+      }
+
       if (path === "/api/staff/signup" && method === "POST") {
         await env.DB.prepare(`
           CREATE TABLE IF NOT EXISTS staff_signup_requests (
@@ -1192,7 +1296,7 @@ export default {
         const passwordHash = await hashPassword(password);
         const id = crypto.randomUUID();
         await env.DB.prepare("INSERT INTO staff_signup_requests (id, name, phone, password_hash, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)").bind(id, name, phone, passwordHash, now).run();
-        return json({ success: true, message: "My ARTfive! Staff registration request submitted for Owner approval." }, 201);
+        return json({ success: true, requestId: id, status: "pending", message: "My ARTfive! Staff registration request submitted for Owner approval." }, 201);
       }
 
       if (path === "/api/owner/staff-signup-requests" && (method === "GET" || method === "POST")) {
@@ -1225,10 +1329,18 @@ export default {
           const staffId = crypto.randomUUID();
           await env.DB.prepare("INSERT INTO users (id, name, email, phone, role, password_hash, active, created_at) VALUES (?, ?, NULL, ?, 'staff', ?, 1, ?)").bind(staffId, signup.name, signup.phone, signup.password_hash, now).run();
           await env.DB.prepare("UPDATE staff_signup_requests SET status = 'approved', password_hash = NULL, reviewed_at = ? WHERE id = ? AND status = 'pending'").bind(now, requestId).run();
+          await addStaffNotification(
+            env,
+            staffId,
+            "My ARTfive! Staff account approved",
+            "My ARTfive! Your Staff account has been approved. You can now sign in to your Staff Dashboard.",
+            "account",
+            now
+          );
         } else {
           await env.DB.prepare("UPDATE staff_signup_requests SET status = 'rejected', password_hash = NULL, reviewed_at = ? WHERE id = ? AND status = 'pending'").bind(now, requestId).run();
         }
-        return json({ success: true, message: decision === "approve" ? "My ARTfive! Staff account approved successfully." : "Staff request rejected." });
+        return json({ success: true, message: decision === "approve" ? "My ARTfive! Staff account approved successfully. A notification is waiting in the Staff Dashboard." : "My ARTfive! Staff signup request rejected. The applicant can check the decision using their signup reference." });
       }
 
       if (path === "/api/owner/login" && method === "POST") {
