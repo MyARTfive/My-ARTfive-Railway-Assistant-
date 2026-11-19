@@ -3450,7 +3450,7 @@
                         this.showAppNotice('My ARTfive! Please write your request first.');
                         return;
                     }
-                    const fullPrompt = 'My ARTfive! Railway Assistant — GitHub task request\\n\\n' + requestText + '\\n\\nPlease inspect the repository before changing code. Preserve all protected working ticket, payment, upload, download, account-security and D1 workflows. Explain the proposed changes, use a separate branch and Draft Pull Request for Preview testing, and do not merge or deploy Production without my explicit approval.';
+                    const fullPrompt = 'My ARTfive! Railway Assistant — GitHub task request\n\n' + requestText + '\n\nPlease inspect the repository before changing code. Preserve all protected working ticket, payment, upload, download, account-security and D1 workflows. Explain the proposed changes, use a separate branch and Draft Pull Request for Preview testing, and do not merge or deploy Production without my explicit approval.';
                     try {
                         if (navigator.clipboard && window.isSecureContext) {
                             await navigator.clipboard.writeText(fullPrompt);
