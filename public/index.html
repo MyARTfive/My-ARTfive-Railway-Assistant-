@@ -1898,7 +1898,9 @@
                                     <button type="button" @click="refreshOwnerTicketPaymentVerification()" :disabled="ownerPaymentStatusRefreshing" class="text-xs text-sky-300 underline disabled:opacity-50" x-text="ownerPaymentStatusRefreshing ? 'Refreshing…' : 'Refresh status'"></button>
                                 </div>
                                 <p class="text-xs text-slate-300">Only the Owner can personally confirm the customer's actual payment. Staff can only view this status.</p>
-                                <p x-show="uploadForm.customerId && uploadForm.requestId" class="text-xs" :class="isOwnerTicketPaymentVerified() ? 'text-emerald-300' : 'text-rose-300'" x-text="isOwnerTicketPaymentVerified() ? 'Owner payment confirmed ✅' : 'Payment not confirmed — sending is locked'"></p>
+                                <p x-show="uploadForm.customerId && uploadForm.requestId && staffTicketAssignmentEnabled && isOwnerTicketPaymentVerified()" class="text-xs font-extrabold text-sky-300">Owner payment confirmed <span class="text-sky-300">✓</span></p>
+                                <p x-show="uploadForm.customerId && uploadForm.requestId && staffTicketAssignmentEnabled && !isOwnerTicketPaymentVerified()" class="text-xs text-rose-300">Payment not confirmed — sending is locked</p>
+                                <p x-show="!staffTicketAssignmentEnabled" class="text-xs text-amber-300">Staff ticket assignment is OFF.</p>
                                 <p x-show="!uploadForm.customerId || !uploadForm.requestId" class="text-xs text-amber-300">Select the customer and exact ticket request to view its payment status.</p>
                             </div>
                                                         <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
@@ -2293,6 +2295,11 @@
                         if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'custChat' && this.paymentForm.customerId) this.loadCustomerEnquiryChat(this.paymentForm.customerId);
                         if (this.currentUser && ['owner', 'staff'].includes(this.currentUser.role) && (this.activeMenuOption === 'staffChat' || this.activeStaffOption === 3)) this.loadStaffChat();
                         if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'staffChat') this.loadStaffSignupRequests();
+                        // Keep Staff's payment tick synchronized with the Owner's ON/OFF switch and saved payment confirmation.
+                        if (this.currentUser && this.currentUser.role === 'staff' && this.currentDashboard === 'staff' && this.activeStaffOption === 2) {
+                            this.loadStaffTicketAssignmentPermission();
+                            this.refreshOwnerTicketPaymentVerification();
+                        }
                     }, 7000);
 
                     let timer = setInterval(() => {
