@@ -620,6 +620,23 @@ export default {
         return json({ success: true, id, message: "My ARTfive! Enquiry message saved." }, 201);
       }
 
+      if (path === "/api/owner/staff-ticket-assignment" && (method === "GET" || method === "POST")) {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") return json({ success: false, message: "Owner sign-in is required." }, 403);
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, setting_json TEXT NOT NULL, updated_by TEXT, updated_at INTEGER NOT NULL)").run();
+        if (method === "POST") {
+          const body = await readJson(request);
+          const enabled = body.enabled === true;
+          await env.DB.prepare("INSERT INTO app_settings (setting_key, setting_json, updated_by, updated_at) VALUES ('staff_ticket_assignment_enabled', ?, ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_json = excluded.setting_json, updated_by = excluded.updated_by, updated_at = excluded.updated_at")
+            .bind(JSON.stringify(enabled), owner.id, now).run();
+          return json({ success: true, enabled });
+        }
+        const row = await env.DB.prepare("SELECT setting_json FROM app_settings WHERE setting_key = 'staff_ticket_assignment_enabled' LIMIT 1").first();
+        let enabled = false;
+        try { enabled = row ? JSON.parse(row.setting_json) === true : false; } catch {}
+        return json({ success: true, enabled });
+      }
+
       if (path === "/api/staff-chat" && (method === "GET" || method === "POST")) {
         const user = await getSessionUser(request, env, now);
         if (!user || !["owner", "staff"].includes(user.role)) return json({ success: false, message: "Only Owner and Staff can access Staff Chat." }, 403);
@@ -1561,6 +1578,13 @@ export default {
 
       if (path === "/api/tickets" && method === "POST") {
         const user = await getSessionUser(request, env, now);
+        if (user && user.role === "staff") {
+          await env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, setting_json TEXT NOT NULL, updated_by TEXT, updated_at INTEGER NOT NULL)").run();
+          const permission = await env.DB.prepare("SELECT setting_json FROM app_settings WHERE setting_key = 'staff_ticket_assignment_enabled' LIMIT 1").first();
+          let enabled = false;
+          try { enabled = permission ? JSON.parse(permission.setting_json) === true : false; } catch {}
+          if (!enabled) return json({ success: false, message: "My ARTfive! Staff ticket assignment is currently OFF. Please contact the Owner." }, 403);
+        }
         if (!user || !["owner", "staff"].includes(user.role)) {
           return json({ success: false, message: "Owner or Staff sign-in is required to send tickets." }, 403);
         }
