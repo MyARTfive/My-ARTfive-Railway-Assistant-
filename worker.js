@@ -241,6 +241,27 @@ function isSameOrigin(request) {
   catch { return false; }
 }
 
+async function ensureStaffChatSchema(env) {
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS staff_chat_messages (
+      id TEXT PRIMARY KEY,
+      staff_id TEXT,
+      sender_id TEXT NOT NULL REFERENCES users(id),
+      sender_role TEXT NOT NULL CHECK (sender_role IN ('owner','staff')),
+      sender_name TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )
+  `).run();
+  const info = await env.DB.prepare("PRAGMA table_info(staff_chat_messages)").all();
+  const columns = new Set((info.results || []).map(column => column.name));
+  if (!columns.has("staff_id")) await env.DB.prepare("ALTER TABLE staff_chat_messages ADD COLUMN staff_id TEXT").run();
+  // Legacy Staff messages belong to their sender. Old Owner messages had no recipient,
+  // so they are intentionally not exposed in any private Staff conversation.
+  await env.DB.prepare("UPDATE staff_chat_messages SET staff_id = sender_id WHERE sender_role = 'staff' AND staff_id IS NULL").run();
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_staff_chat_messages_staff_created ON staff_chat_messages(staff_id, created_at)").run();
+}
+
 async function purgeExpiredChatMessages(env, now = Date.now()) {
   const cutoff = now - 24 * 60 * 60 * 1000;
   await env.DB.prepare(`
@@ -254,16 +275,7 @@ async function purgeExpiredChatMessages(env, now = Date.now()) {
       created_at INTEGER NOT NULL
     )
   `).run();
-  await env.DB.prepare(`
-    CREATE TABLE IF NOT EXISTS staff_chat_messages (
-      id TEXT PRIMARY KEY,
-      sender_id TEXT NOT NULL REFERENCES users(id),
-      sender_role TEXT NOT NULL CHECK (sender_role IN ('owner','staff')),
-      sender_name TEXT NOT NULL,
-      message TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    )
-  `).run();
+  await ensureStaffChatSchema(env);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM staff_chat_messages WHERE created_at <= ?").bind(cutoff),
     env.DB.prepare("DELETE FROM customer_enquiry_messages WHERE created_at <= ?").bind(cutoff)
@@ -466,6 +478,8 @@ export default {
         ).bind(customerId).first();
         if (!customer) return json({ success: false, message: "The selected account was not found. Refresh the list and try again." }, 404);
 
+        // Ensure the private Staff conversation recipient column exists before account cleanup.
+        await ensureStaffChatSchema(env);
         // Delete only records belonging to this selected customer or staff account. Keep owner accounts, shared settings, visitor/security logs, and unrelated accounts untouched.
         const tableResult = await env.DB.prepare(
           "SELECT name FROM sqlite_master WHERE type = 'table'"
@@ -475,7 +489,7 @@ export default {
           ["tickets", "customer_id = ?", [customerId]],
           ["requests", "customer_id = ?", [customerId]],
           ["customer_enquiry_messages", "customer_id = ? OR sender_id = ?", [customerId, customerId]],
-          ["staff_chat_messages", "sender_id = ?", [customerId]],
+          ["staff_chat_messages", "sender_id = ? OR staff_id = ?", [customerId, customerId]],
           ["customer_notifications", "customer_id = ?", [customerId]],
           ["staff_notifications", "staff_id = ?", [customerId]],
           ["customer_payment_instructions", "customer_id = ?", [customerId]],
@@ -620,36 +634,86 @@ export default {
         return json({ success: true, id, message: "My ARTfive! Enquiry message saved." }, 201);
       }
 
+      if (path === "/api/owner/staff-ticket-assignment" && (method === "GET" || method === "POST")) {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || !["owner", "staff"].includes(owner.role)) return json({ success: false, message: "Owner or Staff sign-in is required." }, 403);
+        if (method === "POST" && owner.role !== "owner") return json({ success: false, message: "Only the Owner can change Staff ticket assignment permission." }, 403);
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, setting_json TEXT NOT NULL, updated_by TEXT, updated_at INTEGER NOT NULL)").run();
+        if (method === "POST") {
+          const body = await readJson(request);
+          const enabled = body.enabled === true;
+          await env.DB.prepare("INSERT INTO app_settings (setting_key, setting_json, updated_by, updated_at) VALUES ('staff_ticket_assignment_enabled', ?, ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_json = excluded.setting_json, updated_by = excluded.updated_by, updated_at = excluded.updated_at")
+            .bind(JSON.stringify(enabled), owner.id, now).run();
+          return json({ success: true, enabled });
+        }
+        const row = await env.DB.prepare("SELECT setting_json FROM app_settings WHERE setting_key = 'staff_ticket_assignment_enabled' LIMIT 1").first();
+        let enabled = false;
+        try { enabled = row ? JSON.parse(row.setting_json) === true : false; } catch {}
+        return json({ success: true, enabled });
+      }
+
+      if (path === "/api/owner/staff-payment-tick" && (method === "GET" || method === "POST")) {
+        const user = await getSessionUser(request, env, now);
+        if (!user || !["owner", "staff"].includes(user.role)) return json({ success: false, message: "Owner or Staff sign-in is required." }, 403);
+        if (method === "POST" && user.role !== "owner") return json({ success: false, message: "Only the Owner can change Staff payment tick visibility." }, 403);
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, setting_json TEXT NOT NULL, updated_by TEXT, updated_at INTEGER NOT NULL)").run();
+        if (method === "POST") {
+          const body = await readJson(request);
+          const enabled = body.enabled === true;
+          await env.DB.prepare("INSERT INTO app_settings (setting_key, setting_json, updated_by, updated_at) VALUES ('staff_payment_tick_enabled', ?, ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_json = excluded.setting_json, updated_by = excluded.updated_by, updated_at = excluded.updated_at")
+            .bind(JSON.stringify(enabled), user.id, now).run();
+          return json({ success: true, enabled });
+        }
+        const row = await env.DB.prepare("SELECT setting_json FROM app_settings WHERE setting_key = 'staff_payment_tick_enabled' LIMIT 1").first();
+        let enabled = false;
+        try { enabled = row ? JSON.parse(row.setting_json) === true : false; } catch {}
+        return json({ success: true, enabled });
+      }
+
+      if (path === "/api/staff-chat/recipients" && method === "GET") {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the Owner can view Staff chat recipients." }, 403);
+        const rows = await env.DB.prepare(
+          "SELECT id, name, phone FROM users WHERE role = 'staff' AND active = 1 ORDER BY name COLLATE NOCASE"
+        ).all();
+        return json({ success: true, staff: rows.results || [] });
+      }
+
       if (path === "/api/staff-chat" && (method === "GET" || method === "POST")) {
         const user = await getSessionUser(request, env, now);
         if (!user || !["owner", "staff"].includes(user.role)) return json({ success: false, message: "Only Owner and Staff can access Staff Chat." }, 403);
-        await env.DB.prepare(`
-          CREATE TABLE IF NOT EXISTS staff_chat_messages (
-            id TEXT PRIMARY KEY,
-            sender_id TEXT NOT NULL REFERENCES users(id),
-            sender_role TEXT NOT NULL CHECK (sender_role IN ('owner','staff')),
-            sender_name TEXT NOT NULL,
-            message TEXT NOT NULL,
-            created_at INTEGER NOT NULL
-          )
-        `).run();
+        await ensureStaffChatSchema(env);
         await purgeExpiredChatMessages(env, now);
         if (method === "GET") {
+          let staffId = user.id;
+          if (user.role === "owner") {
+            staffId = String(url.searchParams.get("staffId") || "").trim();
+            if (!staffId) return json({ success: true, messages: [] });
+            const target = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND role = 'staff' AND active = 1 LIMIT 1").bind(staffId).first();
+            if (!target) return json({ success: false, message: "The selected Staff account was not found." }, 404);
+          }
           const rows = await env.DB.prepare(
-            "SELECT id, sender_role AS senderRole, sender_name AS sender, message AS text, created_at AS createdAt FROM staff_chat_messages ORDER BY created_at ASC LIMIT 300"
-          ).all();
+            "SELECT id, sender_role AS senderRole, sender_name AS sender, message AS text, created_at AS createdAt FROM staff_chat_messages WHERE staff_id = ? ORDER BY created_at ASC LIMIT 300"
+          ).bind(staffId).all();
           return json({ success: true, messages: rows.results || [] });
         }
         const body = await readJson(request);
         const messageText = String(body.message || "").trim();
         if (!messageText || messageText.length > 2000) return json({ success: false, message: "Enter a message up to 2,000 characters." }, 400);
-        const senderName = user.role === "owner" ? "My ARTfive!" : user.name;
+        let staffId = user.id;
+        if (user.role === "owner") {
+          staffId = String(body.staffId || "").trim();
+          if (!staffId) return json({ success: false, message: "Select the exact Staff member before sending a message." }, 400);
+          const target = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND role = 'staff' AND active = 1 LIMIT 1").bind(staffId).first();
+          if (!target) return json({ success: false, message: "The selected Staff account was not found." }, 404);
+        }
+        const senderName = user.role === "owner" ? "My ARTfive!" : String(user.name || "Staff");
         const finalMessage = user.role === "owner" && !/^My ARTfive!/i.test(messageText) ? "My ARTfive! " + messageText : messageText;
         const id = crypto.randomUUID();
         await env.DB.prepare(
-          "INSERT INTO staff_chat_messages (id, sender_id, sender_role, sender_name, message, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-        ).bind(id, user.id, user.role, senderName, finalMessage, now).run();
-        return json({ success: true, id, message: "My ARTfive! Staff message saved." }, 201);
+          "INSERT INTO staff_chat_messages (id, staff_id, sender_id, sender_role, sender_name, message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        ).bind(id, staffId, user.id, user.role, senderName, finalMessage, now).run();
+        return json({ success: true, id, message: "My ARTfive! Private Staff message saved." }, 201);
       }
 
       if (path === "/api/public/cms" && method === "GET") {
@@ -1103,6 +1167,70 @@ export default {
         return json({ success: true, message: "My ARTfive! Visitor access unblocked." });
       }
 
+      if (path === "/api/staff/signup" && method === "POST") {
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS staff_signup_requests (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            password_hash TEXT,
+            status TEXT NOT NULL CHECK (status IN ('pending','approved','rejected')),
+            created_at INTEGER NOT NULL,
+            reviewed_at INTEGER
+          )
+        `).run();
+        if (await loginRateLimited(env, ip, "staff_signup_attempt", now)) return json({ success: false, message: "Error!" }, 429);
+        await logSecurity(env, ip, "staff_signup_attempt", "Staff signup request submitted", now);
+        const body = await readJson(request);
+        const name = String(body.name || "").trim();
+        const phone = String(body.phone || "").trim();
+        const password = String(body.password || "");
+        if (!name || !phone || password.length < 8 || name.length > 100 || phone.length > 30) return json({ success: false, message: "Error!" }, 400);
+        const existingUser = await env.DB.prepare("SELECT id FROM users WHERE phone = ? LIMIT 1").bind(phone).first();
+        const pending = await env.DB.prepare("SELECT id FROM staff_signup_requests WHERE phone = ? AND status = 'pending' LIMIT 1").bind(phone).first();
+        if (existingUser || pending) return json({ success: false, message: "Error!" }, 409);
+        const passwordHash = await hashPassword(password);
+        const id = crypto.randomUUID();
+        await env.DB.prepare("INSERT INTO staff_signup_requests (id, name, phone, password_hash, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)").bind(id, name, phone, passwordHash, now).run();
+        return json({ success: true, message: "My ARTfive! Staff registration request submitted for Owner approval." }, 201);
+      }
+
+      if (path === "/api/owner/staff-signup-requests" && (method === "GET" || method === "POST")) {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") return json({ success: false, message: "Owner sign-in is required." }, 403);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS staff_signup_requests (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            password_hash TEXT,
+            status TEXT NOT NULL CHECK (status IN ('pending','approved','rejected')),
+            created_at INTEGER NOT NULL,
+            reviewed_at INTEGER
+          )
+        `).run();
+        if (method === "GET") {
+          const rows = await env.DB.prepare("SELECT id, name, phone, status, created_at AS createdAt FROM staff_signup_requests WHERE status = 'pending' ORDER BY created_at ASC").all();
+          return json({ success: true, requests: rows.results || [] });
+        }
+        const body = await readJson(request);
+        const requestId = String(body.requestId || "").trim();
+        const decision = String(body.decision || "").trim().toLowerCase();
+        if (!requestId || !["approve","reject"].includes(decision)) return json({ success: false, message: "Invalid staff approval action." }, 400);
+        const signup = await env.DB.prepare("SELECT id, name, phone, password_hash, status FROM staff_signup_requests WHERE id = ? LIMIT 1").bind(requestId).first();
+        if (!signup || signup.status !== "pending") return json({ success: false, message: "This staff request is no longer pending. Refresh the list." }, 409);
+        if (decision === "approve") {
+          const existingUser = await env.DB.prepare("SELECT id FROM users WHERE phone = ? LIMIT 1").bind(signup.phone).first();
+          if (existingUser) return json({ success: false, message: "This phone number is already registered." }, 409);
+          const staffId = crypto.randomUUID();
+          await env.DB.prepare("INSERT INTO users (id, name, email, phone, role, password_hash, active, created_at) VALUES (?, ?, NULL, ?, 'staff', ?, 1, ?)").bind(staffId, signup.name, signup.phone, signup.password_hash, now).run();
+          await env.DB.prepare("UPDATE staff_signup_requests SET status = 'approved', password_hash = NULL, reviewed_at = ? WHERE id = ? AND status = 'pending'").bind(now, requestId).run();
+        } else {
+          await env.DB.prepare("UPDATE staff_signup_requests SET status = 'rejected', password_hash = NULL, reviewed_at = ? WHERE id = ? AND status = 'pending'").bind(now, requestId).run();
+        }
+        return json({ success: true, message: decision === "approve" ? "My ARTfive! Staff account approved successfully." : "Staff request rejected." });
+      }
+
       if (path === "/api/owner/login" && method === "POST") {
         if (await loginRateLimited(env, ip, "staff_owner_login_failed", now)) return json({ success: false, message: "Too many sign-in attempts. Please wait 15 minutes and try again." }, 429);
         const body = await readJson(request);
@@ -1115,6 +1243,11 @@ export default {
               OR (role = 'staff' AND (lower(email) = lower(?) OR phone = ?))
            ORDER BY CASE WHEN role = 'owner' THEN 0 ELSE 1 END LIMIT 1`
         ).bind(identifier, identifier, identifier).first();
+        if (!user) {
+          await env.DB.prepare(`CREATE TABLE IF NOT EXISTS staff_signup_requests (id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL, password_hash TEXT, status TEXT NOT NULL CHECK (status IN ('pending','approved','rejected')), created_at INTEGER NOT NULL, reviewed_at INTEGER)`).run();
+          const rejected = await env.DB.prepare("SELECT id FROM staff_signup_requests WHERE phone = ? AND status = 'rejected' ORDER BY reviewed_at DESC LIMIT 1").bind(identifier).first();
+          if (rejected) return json({ success: false, message: "Error!" }, 401);
+        }
         if (!user || user.active !== 1 || !(await verifyPassword(password, user.password_hash))) {
           await logSecurity(env, ip, "staff_owner_login_failed", "Invalid Owner/Staff sign-in", now);
           return json({ success: false, message: "Email or password was not accepted." }, 401);
@@ -1471,7 +1604,7 @@ export default {
         let result;
         if (user.role === "owner" || user.role === "staff") {
           result = await env.DB.prepare(
-            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets ORDER BY created_at DESC"
+            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, uploaded_by AS uploadedBy, created_at AS createdAt FROM tickets ORDER BY created_at DESC"
           ).all();
         } else if (user.role === "customer") {
           const ticketAccessToken = request.headers.get("X-Ticket-Access") || "";
@@ -1482,7 +1615,7 @@ export default {
           ).bind(ticketAccessHash, user.id, now).first();
           if (!ticketAccess) return json({ success: false, message: "Your ticket access verification has expired. Please sign in again." }, 403);
           result = await env.DB.prepare(
-            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets WHERE customer_id = ? ORDER BY created_at DESC"
+            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, uploaded_by AS uploadedBy, created_at AS createdAt FROM tickets WHERE customer_id = ? ORDER BY created_at DESC"
           ).bind(user.id).all();
         } else {
           return json({ success: false, message: "Access denied." }, 403);
@@ -1492,6 +1625,13 @@ export default {
 
       if (path === "/api/tickets" && method === "POST") {
         const user = await getSessionUser(request, env, now);
+        if (user && user.role === "staff") {
+          await env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, setting_json TEXT NOT NULL, updated_by TEXT, updated_at INTEGER NOT NULL)").run();
+          const permission = await env.DB.prepare("SELECT setting_json FROM app_settings WHERE setting_key = 'staff_ticket_assignment_enabled' LIMIT 1").first();
+          let enabled = false;
+          try { enabled = permission ? JSON.parse(permission.setting_json) === true : false; } catch {}
+          if (!enabled) return json({ success: false, message: "My ARTfive! Staff ticket assignment is currently OFF. Please contact the Owner." }, 403);
+        }
         if (!user || !["owner", "staff"].includes(user.role)) {
           return json({ success: false, message: "Owner or Staff sign-in is required to send tickets." }, 403);
         }
@@ -1555,21 +1695,26 @@ export default {
           }
         ];
         const notificationExpiry = now + 15 * 60 * 1000;
-        // Keep the ticket, one-time payment confirmation and both notifications atomic.
+        // Keep the saved Owner payment confirmation. A successful send resets only
+        // the two dashboard switches; it never deletes ticket_payment_verifications.
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, setting_json TEXT NOT NULL, updated_by TEXT, updated_at INTEGER NOT NULL)").run();
         const sendResults = await env.DB.batch([
           env.DB.prepare(
             "INSERT INTO tickets (id, request_id, customer_id, customer_name, customer_phone, ticket_title, mime_type, file_data, payment_confirmed, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
           ).bind(id, requestId, customer.id, customer.name, customer.phone, ticketTitle, match[1], fileData, user.id, now),
-          env.DB.prepare(
-            "DELETE FROM ticket_payment_verifications WHERE request_id = ? AND customer_id = ?"
-          ).bind(requestId, customerId),
           ...ticketMessages.map(ticketMessage => env.DB.prepare(
             "INSERT INTO customer_notifications (id, customer_id, sender_id, message, created_at, ticket_id, target_option, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-          ).bind(crypto.randomUUID(), customer.id, user.id, ticketMessage.message, now, id, ticketMessage.targetOption, notificationExpiry))
+          ).bind(crypto.randomUUID(), customer.id, user.id, ticketMessage.message, now, id, ticketMessage.targetOption, notificationExpiry)),
+          env.DB.prepare(
+            "INSERT INTO app_settings (setting_key, setting_json, updated_by, updated_at) VALUES ('staff_payment_tick_enabled', 'false', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_json = 'false', updated_by = excluded.updated_by, updated_at = excluded.updated_at"
+          ).bind(user.id, now),
+          env.DB.prepare(
+            "INSERT INTO app_settings (setting_key, setting_json, updated_by, updated_at) VALUES ('staff_ticket_assignment_enabled', 'false', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_json = 'false', updated_by = excluded.updated_by, updated_at = excluded.updated_at"
+          ).bind(user.id, now)
         ]);
         if (!sendResults[0]?.meta || sendResults[0].meta.changes !== 1 ||
-            !sendResults[2]?.meta || sendResults[2].meta.changes !== 1 ||
-            !sendResults[3]?.meta || sendResults[3].meta.changes !== 1) {
+            !sendResults[1]?.meta || sendResults[1].meta.changes !== 1 ||
+            !sendResults[2]?.meta || sendResults[2].meta.changes !== 1) {
           return json({ success: false, message: "My ARTfive! Ticket and notifications could not be saved together. Please try again." }, 500);
         }
         return json({ success: true, id, message: "My ARTfive! Ticket uploaded and made available in Customer Option 4." }, 201);

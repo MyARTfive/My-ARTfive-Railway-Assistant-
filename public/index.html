@@ -252,9 +252,7 @@
                         <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1" x-text="cms.ownerDashTitle"></h2>
                         <p class="text-slate-300 text-sm" x-text="cms.ownerDashSubtitle"></p>
                     </div>
-                    <button @click="logout()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow flex items-center gap-2">
-                        <i class="fa-solid fa-right-from-bracket"></i> <span x-text="cms.logoutBtnText"></span>
-                    </button>
+                    
                 </div>
 
                 <div x-show="activeMenuOption === null" class="space-y-6">
@@ -351,8 +349,9 @@
                         <p class="text-xs text-emerald-400"><i class="fa-solid fa-arrows-rotate"></i> Messages are stored centrally for the selected customer and appear in Customer Dashboard Option 1.</p>
                         <select x-model="paymentForm.customerId" @change="loadCustomerEnquiryChat(paymentForm.customerId)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                             <option value="">-- Select customer conversation --</option>
-                            <template x-for="cust in customers" :key="'chat-customer-'+cust.id"><option :value="cust.id" x-text="cust.name + ' (' + (cust.phone || 'No phone') + ')'"></option></template>
+                            <template x-for="cust in customers" :key="'chat-customer-'+cust.id"><option :value="cust.id" x-text="cust.name + ' — Customer ID: ' + cust.id + ' (' + (cust.phone || 'No phone') + ')'"></option></template>
                         </select>
+                        <p x-show="paymentForm.customerId" class="text-xs text-emerald-300" x-text="'Selected Customer ID: ' + paymentForm.customerId"></p>
                         <div class="bg-slate-900 p-4 rounded-xl h-64 overflow-y-auto space-y-3 border border-slate-700">
                             <template x-for="msg in customerEnquiryMessages" :key="msg.id">
                                 <div class="p-3 rounded-lg text-xs" :class="msg.sender === 'My ARTfive!' ? 'bg-emerald-900/30 border border-emerald-500/30 ml-8' : 'bg-slate-800 border border-slate-700 mr-8'">
@@ -373,11 +372,63 @@
 
                 <!-- Owner Chat 2 -->
                 <div x-show="activeMenuOption === 'staffChat'" class="space-y-6">
+                    <div class="bg-slate-800 border border-sky-500/30 p-5 rounded-2xl space-y-3">
+                        <div class="space-y-3">
+                            <div class="rounded-xl border border-sky-500/30 bg-slate-900 p-4 space-y-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div><h4 class="font-extrabold text-sky-300">Confirmed Payment</h4><p class="text-xs text-slate-400">ON shows the blue payment-confirmed tick to Staff. OFF hides the tick. This switch only controls tick visibility.</p></div>
+                                    <span class="text-xs font-extrabold px-3 py-1.5 rounded-full" :class="staffPaymentTickEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'" x-text="staffPaymentTickEnabled ? 'ON' : 'OFF'"></span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button type="button" @click="setStaffPaymentTickPermission(true)" :disabled="staffPaymentTickEnabled" class="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 px-4 py-2.5 text-xs font-extrabold text-white">ON</button>
+                                    <button type="button" @click="setStaffPaymentTickPermission(false)" :disabled="!staffPaymentTickEnabled" class="flex-1 rounded-lg bg-rose-700 hover:bg-rose-600 disabled:opacity-40 px-4 py-2.5 text-xs font-extrabold text-white">OFF</button>
+                                </div>
+                            </div>
+                            <div class="rounded-xl border border-emerald-500/30 bg-slate-900 p-4 space-y-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div><h4 class="font-extrabold text-emerald-300">Allow / Disabled Send Button</h4><p class="text-xs text-slate-400">ON allows Staff to use Send it. OFF disables Staff sending.</p></div>
+                                    <span class="text-xs font-extrabold px-3 py-1.5 rounded-full" :class="staffTicketAssignmentEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'" x-text="staffTicketAssignmentEnabled ? 'ON' : 'OFF'"></span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button type="button" @click="setStaffTicketAssignmentPermission(true)" :disabled="staffTicketAssignmentEnabled" class="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 px-4 py-2.5 text-xs font-extrabold text-white">ON — Allow</button>
+                                    <button type="button" @click="setStaffTicketAssignmentPermission(false)" :disabled="!staffTicketAssignmentEnabled" class="flex-1 rounded-lg bg-rose-700 hover:bg-rose-600 disabled:opacity-40 px-4 py-2.5 text-xs font-extrabold text-white">OFF — Disabled</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
                         <h3 class="text-lg font-bold text-white" x-text="cms.ownerChat2Title"></h3>
                         <button @click="activeMenuOption = null" class="bg-slate-700 text-white text-xs px-3.5 py-2 rounded-lg">Back</button>
                     </div>
+                    <div class="bg-slate-800 border border-amber-500/30 p-5 rounded-2xl space-y-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <div><h4 class="font-extrabold text-amber-300">Staff Signup Requests</h4><p class="text-xs text-slate-400">Review each new Staff Dashboard registration. Only approved people can sign in as Staff.</p></div>
+                            <button @click="loadStaffSignupRequests()" class="bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold px-3 py-2 rounded-lg">Refresh</button>
+                        </div>
+                        <template x-if="staffSignupRequests.length === 0"><p class="text-sm text-slate-400">No pending staff signup requests.</p></template>
+                        <template x-for="request in staffSignupRequests" :key="request.id">
+                            <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-3">
+                                <p class="font-bold text-white" x-text="request.name"></p>
+                                <p class="text-xs text-slate-300" x-text="'Staff phone number: ' + request.phone"></p>
+                                <p class="text-[11px] text-slate-500" x-text="'Request received: ' + new Date(Number(request.createdAt)).toLocaleString()"></p>
+                                <div class="flex gap-2">
+                                    <button @click="decideStaffSignup(request, 'approve')" class="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-extrabold px-3 py-2.5 rounded-lg">Staff approved</button>
+                                    <button @click="decideStaffSignup(request, 'reject')" class="flex-1 bg-rose-700 hover:bg-rose-600 text-white text-xs font-extrabold px-3 py-2.5 rounded-lg">Reject</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                     <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4">
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-slate-300">Choose the exact Staff member to message</label>
+                            <select x-model="staffChatSelectedId" @change="loadStaffChat(staffChatSelectedId)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                                <option value="">-- Select Staff member --</option>
+                                <template x-for="staff in staffAccounts" :key="'staff-chat-recipient-'+staff.id">
+                                    <option :value="String(staff.id)" x-text="staff.name + ' — Staff ID: ' + staff.id + ' (' + (staff.phone || 'No phone') + ')'"></option>
+                                </template>
+                            </select>
+                            <p x-show="staffChatSelectedId" class="text-xs text-emerald-300" x-text="'Private conversation with Staff ID: ' + staffChatSelectedId"></p>
+                        </div>
                         <div class="bg-slate-900 p-4 rounded-xl h-64 overflow-y-auto space-y-3 border border-slate-700">
                             <template x-for="msg in staffChatMessages" :key="msg.id">
                                 <div class="p-3 rounded-lg text-xs space-y-2" :class="msg.sender === 'My ARTfive!' ? 'bg-emerald-900/30 border border-emerald-500/30 ml-8' : 'bg-sky-900/30 border border-sky-500/30 mr-8'">
@@ -390,8 +441,8 @@
                             </template>
                         </div>
                         <div class="flex gap-2">
-                            <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage('My ARTfive!')" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Type message as My ARTfive!...">
-                            <button @click="sendStaffChatMessage('My ARTfive!')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-xs font-bold transition">Send</button>
+                            <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage()" :disabled="!staffChatSelectedId" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50" placeholder="Type message to selected Staff member...">
+                            <button @click="sendStaffChatMessage()" :disabled="!staffChatSelectedId" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-xs font-bold transition disabled:opacity-50">Send</button>
                         </div>
                     </div>
                 </div>
@@ -418,7 +469,7 @@
                             <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt2Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.staffOpt2Desc"></p>
                         </div>
-                        <div @click="ownerInspectStaffOpt = 3" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                        <div @click="ownerInspectStaffOpt = 3; loadStaffChatRecipients()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                             <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-comments"></i></div>
                             <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt3Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.staffOpt3Desc"></p>
@@ -508,6 +559,15 @@
 
                     <div x-show="ownerInspectStaffOpt === 3" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4">
                         <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.staffOpt3Title"></h3><button @click="ownerInspectStaffOpt = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-slate-300">Choose the exact Staff member to message</label>
+                            <select x-model="staffChatSelectedId" @change="loadStaffChat(staffChatSelectedId)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                                <option value="">-- Select Staff member --</option>
+                                <template x-for="staff in staffAccounts" :key="'staff-owner-preview-'+staff.id">
+                                    <option :value="String(staff.id)" x-text="staff.name + ' — Staff ID: ' + staff.id + ' (' + (staff.phone || 'No phone') + ')'"></option>
+                                </template>
+                            </select>
+                        </div>
                         <div class="bg-slate-900 p-4 rounded-xl h-48 overflow-y-auto space-y-3 border border-slate-700">
                             <template x-for="msg in staffChatMessages" :key="msg.id">
                                 <div class="p-3 rounded-lg text-xs space-y-2" :class="msg.sender === 'My ARTfive!' ? 'bg-emerald-900/30 border border-emerald-500/30 ml-8' : 'bg-slate-800 border border-slate-700 mr-8'">
@@ -517,8 +577,8 @@
                             </template>
                         </div>
                         <div class="flex gap-2">
-                            <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage('My ARTfive!')" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Type message...">
-                            <button @click="sendStaffChatMessage('My ARTfive!')" class="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-xs font-bold">Send</button>
+                            <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage()" :disabled="!staffChatSelectedId" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50" placeholder="Type message to selected Staff member...">
+                            <button @click="sendStaffChatMessage()" :disabled="!staffChatSelectedId" class="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-xs font-bold disabled:opacity-50">Send</button>
                         </div>
                     </div>
                 </div>
@@ -1288,12 +1348,12 @@
                                 </div>
                             </div>
                             <div class="text-right"><a href="#" @click.prevent="option10ForgotOpen = !option10ForgotOpen" class="text-amber-300 hover:underline text-xs">Forgot password?</a></div>
-                            <div x-show="option10ForgotOpen" x-cloak class="bg-slate-900 border border-amber-500/30 rounded-xl p-4 space-y-3">
+                            <div x-show="option10ForgotOpen" x-cloak x-data="{ showOwnerRecoveryPassword: false, showNewManagerPassword: false, showConfirmManagerPassword: false }" class="bg-slate-900 border border-amber-500/30 rounded-xl p-4 space-y-3">
                                 <p class="text-sm font-bold text-white">Recover Manager password</p>
                                 <p class="text-xs text-slate-400">Verify your Owner account password, then set a new Manager password. Your existing Manager phone number will stay the same.</p>
-                                <div><label class="block text-xs text-slate-300 mb-1">Owner account password</label><input type="password" x-model="option10OwnerPassword" autocomplete="current-password" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Owner account password"></div>
-                                <div><label class="block text-xs text-slate-300 mb-1">New Manager password (12+ characters)</label><input type="password" x-model="option10NewPassword" autocomplete="new-password" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Create a new Manager password"></div>
-                                <div><label class="block text-xs text-slate-300 mb-1">Confirm new Manager password</label><input type="password" x-model="option10ConfirmPassword" autocomplete="new-password" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter it again"></div>
+                                <div><label class="block text-xs text-slate-300 mb-1">Owner account password</label><div class="relative"><input :type="showOwnerRecoveryPassword ? 'text' : 'password'" x-model="option10OwnerPassword" autocomplete="current-password" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 pr-11 text-sm text-white" placeholder="Owner account password"><button type="button" @click="showOwnerRecoveryPassword = !showOwnerRecoveryPassword" class="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-white" :aria-label="showOwnerRecoveryPassword ? 'Hide password' : 'Show password'"><i class="fa-solid" :class="showOwnerRecoveryPassword ? 'fa-eye-slash' : 'fa-eye'"></i></button></div></div>
+                                <div><label class="block text-xs text-slate-300 mb-1">New Manager password (12+ characters)</label><div class="relative"><input :type="showNewManagerPassword ? 'text' : 'password'" x-model="option10NewPassword" autocomplete="new-password" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 pr-11 text-sm text-white" placeholder="Create a new Manager password"><button type="button" @click="showNewManagerPassword = !showNewManagerPassword" class="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-white" :aria-label="showNewManagerPassword ? 'Hide password' : 'Show password'"><i class="fa-solid" :class="showNewManagerPassword ? 'fa-eye-slash' : 'fa-eye'"></i></button></div></div>
+                                <div><label class="block text-xs text-slate-300 mb-1">Confirm new Manager password</label><div class="relative"><input :type="showConfirmManagerPassword ? 'text' : 'password'" x-model="option10ConfirmPassword" autocomplete="new-password" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 pr-11 text-sm text-white" placeholder="Enter it again"><button type="button" @click="showConfirmManagerPassword = !showConfirmManagerPassword" class="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-white" :aria-label="showConfirmManagerPassword ? 'Hide password' : 'Show password'"><i class="fa-solid" :class="showConfirmManagerPassword ? 'fa-eye-slash' : 'fa-eye'"></i></button></div></div>
                                 <button @click="resetOption10ManagerPassword()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg py-2.5 text-sm">Verify Owner & Reset Manager Password</button>
                             </div>
                             <button @click="verifyOption10Login()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg py-3">Unlock Control</button>
@@ -1518,18 +1578,18 @@
                         <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1" x-text="ownerPreviewMode ? 'Customer Dashboard Preview' : 'Welcome, ' + (currentUser ? currentUser.name : 'Customer')"></h2>
                         <p x-show="!ownerPreviewMode" class="text-xs text-slate-400 mt-1" x-text="'Phone: ' + (currentUser ? currentUser.phone : '')"></p>
                     </div>
-                    <button @click="ownerPreviewMode ? closeOwnerDashboardPreview() : logout()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow flex items-center gap-2">
-                        <i class="fa-solid fa-right-from-bracket"></i> <span x-text="ownerPreviewMode ? 'Back to My Dashboard' : cms.logoutBtnText"></span>
+                    <button x-show="ownerPreviewMode" @click="closeOwnerDashboardPreview()" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-left"></i> Back to My Dashboard
                     </button>
                 </div>
 
-                <div x-show="appUpdates.length > 0" class="bg-slate-800 border border-sky-500/30 rounded-xl p-4 space-y-2">
+                <div x-show="ownerPreviewMode && appUpdates.length > 0" class="bg-slate-800 border border-sky-500/30 rounded-xl p-4 space-y-2">
                     <h3 class="text-sm font-bold text-sky-300">My ARTfive! App Updates</h3>
                     <template x-for="item in appUpdates.slice(0,3)" :key="'customer-update-'+item.id">
                         <div class="border-t border-slate-700 pt-2"><p class="text-xs font-bold text-white" x-text="item.title"></p><p class="text-xs text-slate-300 mt-1" x-text="item.description"></p></div>
                     </template>
                 </div>
-                <div x-show="activeCustOption === null" class="space-y-6">
+                <div x-show="ownerPreviewMode && activeCustOption === null" class="space-y-6">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div @click="selectCustomerOption(1)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-ticket"></i></div>
@@ -1558,7 +1618,7 @@
                 <div x-show="activeCustOption === 1" class="bg-slate-800 border border-slate-700 p-6 sm:p-8 rounded-2xl space-y-6 max-w-3xl mx-auto">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-4">
                         <h3 class="text-xl font-extrabold text-white" x-text="cms.custOpt1Title"></h3>
-                        <button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
+                        <button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <div class="space-y-6">
                         <template x-for="(pax, index) in ticketReqForm.passengers" :key="index">
@@ -1644,7 +1704,7 @@
 
                 <!-- Customer Option 2: Booking Request Payment -->
                 <div x-show="activeCustOption === 2" x-effect="if (!ownerPreviewMode && activeCustOption === 2) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
-                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
+                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Personal message notification -->
                     <section class="w-full min-w-0 rounded-xl border-2 border-emerald-500/50 bg-slate-900 p-4 space-y-3" aria-label="Option 2 message notification">
@@ -1693,7 +1753,7 @@
 
                 <!-- Customer Option 3: Ticket Collection Charges -->
                 <div x-show="activeCustOption === 3" x-effect="if (!ownerPreviewMode && activeCustOption === 3) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
-                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
+                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Both Option 3 message types appear together -->
                     <section class="w-full min-w-0 rounded-xl border-2 border-sky-500/50 bg-slate-900 p-4 space-y-3" aria-label="Option 3 message notifications">
@@ -1749,7 +1809,7 @@
                 <div x-show="activeCustOption === 4" x-effect="if (!ownerPreviewMode && activeCustOption === 4) loadCustomerNotifications()" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-2xl mx-auto">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                         <h3 class="font-bold text-white text-lg" x-text="cms.custOpt4Title"></h3>
-                        <button @click="activeCustOption = null; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
+                        <button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <p class="text-xs text-slate-300" x-text="cms.myTicketsInstruction"></p>
                     <p x-show="ownerPreviewMode" class="rounded-lg border border-amber-500/30 bg-amber-950/30 p-3 text-xs text-amber-100">My ARTfive! Private tickets can only be viewed after the customer's own Option 4 sign-in. This owner preview shows the page layout only.</p>
@@ -1800,12 +1860,12 @@
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt1Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt1Desc"></p>
                     </div>
-                    <div @click="activeStaffOption = 2; if (!ownerPreviewMode) loadAssignedTicketsFromDB()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                    <div @click="activeStaffOption = 2; loadAssignedTicketsFromDB(); loadStaffTicketAssignmentPermission(); loadStaffPaymentTickPermission(); refreshOwnerTicketPaymentVerification();" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-cloud-arrow-up"></i></div>
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt2Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt2Desc"></p>
                     </div>
-                    <div @click="activeStaffOption = 3; loadStaffChat()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                    <div @click="activeStaffOption = 3; if (ownerPreviewMode) loadStaffChatRecipients(); else loadStaffChat()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-comments"></i></div>
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt3Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt3Desc"></p>
@@ -1828,28 +1888,58 @@
                     </div>
                 </div>
 
-                <div x-show="activeStaffOption === 2" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4">
-                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.staffOpt2Title"></h3><button @click="activeStaffOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
-                    <div class="space-y-4">
+                <!-- Staff Option 2: Upload Ticket from Mobile; no permanent-delete controls -->
+                <div x-show="activeStaffOption === 2" class="space-y-6">
+                    <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
+                        <h3 class="text-lg font-bold text-white" x-text="cms.staffOpt2Title"></h3>
+                        <button @click="activeStaffOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
+                    </div>
+                    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-6 max-w-2xl mx-auto">
                         <div>
                             <label class="block text-xs font-bold text-slate-400 mb-1">Find Customer by Name or Phone Number</label>
-                                <input type="search" x-model="customerSearch" placeholder="Search customer name or phone..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
-                            <select x-model="uploadForm.customerId" @change="uploadForm.requestId = ''" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
-                                <option value="">-- Choose Customer --</option>
-                                <template x-for="cust in filteredCustomers()" :key="cust.id"><option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option></template>
-                            </select>
-                            <label class="block text-xs font-bold text-slate-400 mt-3 mb-1">Select the exact ticket request</label>
-                            <select x-model="uploadForm.requestId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
-                                <option value="">-- Choose Ticket Request --</option>
-                                <template x-for="req in ticketRequests.filter(item => String(item.customerId) === String(uploadForm.customerId))" :key="'staff-uploadreq-'+req.id">
-                                    <option :value="req.id" x-text="paymentRequestLabel(req)"></option>
+                            <input type="search" x-model="customerSearch" placeholder="Type to search customers..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                            <div x-show="customerSearch.trim().length > 0" class="max-h-40 overflow-y-auto rounded-lg border border-slate-600 bg-slate-900 mb-3">
+                                <template x-for="cust in filteredCustomers()" :key="'upload-customer-'+cust.id">
+                                    <button type="button" @click="uploadForm.customerId = cust.id; uploadForm.requestId = ''; customerSearch = cust.name; uploadCustomerFilter = String(cust.id)" class="w-full text-left px-3 py-2.5 text-sm text-white hover:bg-slate-700 border-b border-slate-800 last:border-0" x-text="cust.name + ' (' + cust.phone + ')'"></button>
+                                </template>
+                                <div x-show="filteredCustomers().length === 0" class="px-3 py-3 text-xs text-slate-400">No matching customer found.</div>
+                            </div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Or choose a customer from the filter</label>
+                            <select x-model="uploadCustomerFilter" @change="selectUploadCustomerFromFilter($event.target.value)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                                <option value="">-- Filter / Choose Customer --</option>
+                                <template x-for="cust in customers" :key="'upload-filter-customer-'+cust.id">
+                                    <option :value="String(cust.id)" x-text="cust.name + ' (' + cust.phone + ')'"></option>
                                 </template>
                             </select>
-                            <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
+                            <p x-show="uploadForm.customerId" class="text-sm text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Selected customer: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
+                            <div class="flex items-center justify-between gap-2">
+                                <label class="block text-xs font-bold text-slate-400 mt-3 mb-1">Select the exact ticket request</label>
+                                <button type="button" @click="refreshUploadRequestList()" class="text-xs text-sky-300 underline">Refresh requests</button>
+                            </div>
+                            <select x-model="uploadForm.requestId" @change="refreshOwnerTicketPaymentVerification()" :disabled="!uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50">
+                                <option value="">-- Choose Ticket Request --</option>
+                                <template x-for="req in uploadRequestsForSelectedCustomer()" :key="'owner-uploadreq-'+req.id">
+                                    <option :value="String(req.id)" x-text="uploadRequestLabel(req)"></option>
+                                </template>
+                            </select>
+                            <p x-show="uploadForm.customerId && uploadRequestsForSelectedCustomer().length === 0" class="text-xs text-amber-300 mt-2">No ticket requests are currently linked to this customer. Tap “Refresh requests” to check the latest saved requests.</p>
+                            <p x-show="!uploadForm.customerId" class="text-xs text-slate-400 mt-2">Choose a customer above to load their ticket requests.</p>
+                            <div class="rounded-lg border border-slate-700 bg-slate-900 p-3 mt-4 space-y-2" aria-label="Read-only Owner Payment Confirmation status">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="text-xs font-bold text-slate-200">Owner Payment Confirmation</p>
+                                    <button type="button" @click="refreshOwnerTicketPaymentVerification()" :disabled="ownerPaymentStatusRefreshing" class="text-xs text-sky-300 underline disabled:opacity-50" x-text="ownerPaymentStatusRefreshing ? 'Refreshing…' : 'Refresh status'"></button>
+                                </div>
+                                <p class="text-xs text-slate-300">Only the Owner can personally confirm the customer's actual payment. Staff can only view this status.</p>
+                                <p x-show="uploadForm.customerId && uploadForm.requestId && staffPaymentTickEnabled && isOwnerTicketPaymentVerified()" class="text-xs font-extrabold text-sky-300">Owner payment confirmed <span class="text-sky-300">✓</span></p>
+                                <p x-show="uploadForm.customerId && uploadForm.requestId && staffPaymentTickEnabled && !isOwnerTicketPaymentVerified()" class="text-xs text-rose-300">Payment not confirmed yet.</p>
+                                <p x-show="!staffPaymentTickEnabled" class="text-xs text-amber-300">Staff payment confirmation tick is OFF.</p>
+                                <p x-show="!staffTicketAssignmentEnabled && !ownerPreviewMode" class="text-xs text-amber-300">Staff “Send it” permission is OFF.</p>
+                                <p x-show="!uploadForm.customerId || !uploadForm.requestId" class="text-xs text-amber-300">Select the customer and exact ticket request to view its payment status.</p>
+                            </div>
+                                                        <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
                         </div>
-                            <p class="text-xs text-emerald-300">Upload is allowed only after the Owner or authorized Staff manually verifies Option 3 payment.</p>
 
-                        <div x-show="!ownerPreviewMode" class="space-y-3">
+                        <div class="space-y-3">
                             <label class="block text-xs font-bold text-slate-400 mb-1">Choose Upload Method</label>
                             <input type="file" x-ref="staffDashFile" accept=".pdf,application/pdf" @change="handleFileUpload($event)" class="hidden">
                             <input type="file" x-ref="staffDashImage" accept="image/png,image/jpeg,image/webp" @change="handleFileUpload($event)" class="hidden">
@@ -1861,46 +1951,41 @@
                                     <i class="fa-solid fa-image text-lg"></i> Upload image
                                 </button>
                             </div>
-                            <div x-show="uploadForm.ticketTitle" class="bg-slate-900 p-3 rounded-lg text-xs text-emerald-400 font-bold text-center border border-emerald-500/30">
-                                Selected: <span x-text="uploadForm.ticketTitle"></span>
+                            <div x-show="uploadForm.ticketTitle" class="bg-slate-900 p-3 rounded-lg text-xs text-emerald-400 font-bold flex items-center justify-between border border-emerald-500/30">
+                                <span>Selected: <span x-text="uploadForm.ticketTitle"></span></span>
+                                <button @click="clearSelectedUpload()" class="text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-1 font-bold">
+                                    <i class="fa-solid fa-trash"></i> Clear Selected File
+                                </button>
                             </div>
                         </div>
 
-                        <button x-show="!ownerPreviewMode" @click="uploadAndAssignTicket()" class="w-full bg-sky-600 text-white font-bold py-3 rounded-xl text-sm">Upload & Assign File</button>
-                    </div>
-                    <div class="border-t border-slate-700 pt-4 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <h4 class="font-bold text-white text-sm">Tickets sent to customers</h4>
-                            <button @click="loadAssignedTicketsFromDB()" class="text-xs text-sky-300 underline">Refresh</button>
-                        </div>
-                        <template x-for="tkt in assignedTickets" :key="tkt.id">
-                            <div class="bg-slate-900 border border-slate-700 rounded-lg p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-                                <div>
-                                    <span class="block text-white font-bold" x-text="tkt.ticketTitle"></span>
-                                    <span class="text-slate-400" x-text="(tkt.customerName || 'Customer') + ' · ' + (tkt.customerPhone || '')"></span>
-                                </div>
-                                <button @click="openFileViewer(tkt)" class="bg-emerald-600 text-white px-3 py-1.5 rounded font-bold">View ticket</button>
-                            </div>
-                        </template>
-                        <template x-if="assignedTickets.length === 0">
-                            <p class="text-slate-400 text-xs">No tickets have been sent yet.</p>
-                        </template>
+                        <p x-show="staffTicketUploadError" class="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm font-extrabold text-rose-300" x-text="staffTicketUploadError"></p>
+                        <button x-show="ownerPreviewMode || staffTicketAssignmentEnabled" @click="uploadAndAssignTicket()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm transition shadow">Send it</button>
                     </div>
                 </div>
 
                 <div x-show="activeStaffOption === 3" class="space-y-4">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.staffOpt3Title"></h3><button @click="activeStaffOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
+                    <div x-show="ownerPreviewMode" class="space-y-2">
+                        <label class="block text-xs font-bold text-slate-300">Choose Staff conversation to preview</label>
+                        <select x-model="staffChatSelectedId" @change="loadStaffChat(staffChatSelectedId)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                            <option value="">-- Select Staff member --</option>
+                            <template x-for="staff in staffAccounts" :key="'staff-preview-recipient-'+staff.id">
+                                <option :value="String(staff.id)" x-text="staff.name + ' — Staff ID: ' + staff.id"></option>
+                            </template>
+                        </select>
+                    </div>
                     <div class="bg-slate-900 p-4 rounded-xl h-48 overflow-y-auto space-y-3 border border-slate-700">
                         <template x-for="msg in staffChatMessages" :key="msg.id">
-                            <div class="p-3 rounded-lg text-xs space-y-2" :class="msg.sender === 'Staff' ? 'bg-sky-900/30 border border-sky-500/30 ml-8' : 'bg-slate-800 border border-slate-700 mr-8'">
-                                <div class="flex justify-between font-bold mb-1" :class="msg.sender === 'Staff' ? 'text-sky-400' : 'text-emerald-400'"><span x-text="msg.sender"></span><span class="text-[10px] text-slate-400" x-text="msg.time"></span></div>
+                            <div class="p-3 rounded-lg text-xs space-y-2" :class="msg.senderRole === 'staff' ? 'bg-sky-900/30 border border-sky-500/30 ml-8' : 'bg-slate-800 border border-slate-700 mr-8'">
+                                <div class="flex justify-between font-bold mb-1" :class="msg.senderRole === 'staff' ? 'text-sky-400' : 'text-emerald-400'"><span x-text="msg.sender"></span><span class="text-[10px] text-slate-400" x-text="msg.time"></span></div>
                                 <p class="text-slate-200" x-text="msg.text"></p>
                             </div>
                         </template>
                     </div>
                     <div class="flex gap-2">
-                        <input x-show="!ownerPreviewMode" type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage('Staff')" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Type message as Staff...">
-                        <button x-show="!ownerPreviewMode" @click="sendStaffChatMessage('Staff')" class="bg-sky-600 text-white px-4 py-2.5 rounded-lg text-xs font-bold">Send</button>
+                        <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage()" :disabled="ownerPreviewMode && !staffChatSelectedId" class="flex-1 min-w-0 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50" :placeholder="ownerPreviewMode ? 'Type message as My ARTfive!...' : 'Type message as your registered Staff name...'">
+                        <button @click="sendStaffChatMessage()" :disabled="ownerPreviewMode && !staffChatSelectedId" class="bg-sky-600 hover:bg-sky-500 text-white px-4 py-2.5 rounded-lg text-xs font-bold disabled:opacity-50">Send</button>
                     </div>
                 </div>
             </div>
@@ -2005,7 +2090,7 @@
                 
                 <div class="flex items-center justify-between pr-6">
                     <h3 class="font-bold text-xl text-white" x-text="getLoginModalTitle()"></h3>
-                    <button @click="logout(); showLoginModal = false" class="text-xs text-red-400 hover:text-red-300 font-bold bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/30 flex items-center gap-1 transition">
+                    <button x-show="loginRole === 'customer' || loginRole === 'customer_new'" @click="logout(); showLoginModal = false" class="text-xs text-red-400 hover:text-red-300 font-bold bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/30 flex items-center gap-1 transition">
                         <i class="fa-solid fa-right-from-bracket"></i> <span x-text="cms.logoutBtnText"></span>
                     </button>
                 </div>
@@ -2046,6 +2131,7 @@
                 <!-- 2. STAFF LOGIN -->
                 <template x-if="loginRole === 'staff'">
                     <div class="space-y-4">
+                        <p x-show="staffSignupError" x-text="staffSignupError" class="text-center text-sm font-extrabold text-red-500"></p>
                         <div><label class="block text-xs font-bold text-slate-300 mb-1">Staff Full Name</label><input type="text" x-model="loginStaffName" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter staff full name"></div>
                         <div><label class="block text-xs font-bold text-slate-300 mb-1">Phone Number</label><input type="text" x-model="loginPhone" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter phone number"></div>
                         <div class="relative">
@@ -2059,7 +2145,7 @@
                         </div>
                         <div class="flex justify-between items-center text-xs">
                             <a href="#" @click.prevent="forgotPassword('Staff')" class="text-emerald-400 hover:underline">Forgot password?</a>
-                            <a href="#" @click.prevent="loginRole = 'staff_new'" class="text-sky-400 hover:underline">New Sign In? Register Here</a>
+                            <a href="#" @click.prevent="staffSignupError = ''; loginRole = 'staff_new'" class="text-sky-400 hover:underline">New Sign In? Register Here</a>
                         </div>
                     </div>
                 </template>
@@ -2067,6 +2153,7 @@
                 <!-- STAFF NEW SIGN-IN -->
                 <template x-if="loginRole === 'staff_new'">
                     <div class="space-y-4">
+                        <p x-show="staffSignupError" x-text="staffSignupError" class="text-center text-sm font-extrabold text-red-500"></p>
                         <div><label class="block text-xs font-bold text-slate-300 mb-1">Staff Full Name</label><input type="text" x-model="loginStaffName" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter staff full name"></div>
                         <div><label class="block text-xs font-bold text-slate-300 mb-1">Phone Number</label><input type="text" x-model="loginPhone" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter phone number"></div>
                         <div class="relative">
@@ -2087,7 +2174,7 @@
                 <!-- 3. CUSTOMER LOGIN -->
                 <template x-if="loginRole === 'customer' || loginRole === 'customer_verify'">
                     <div class="space-y-4">
-                        <div x-show="loginRole !== 'customer_verify'"><label class="block text-xs font-bold text-slate-300 mb-1">Customer Full Name</label><input type="text" x-model="loginCustomerName" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter full name"></div>
+                        
                         <div><label class="block text-xs font-bold text-slate-300 mb-1">Phone Number</label><input type="text" x-model="loginPhone" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter phone number"></div>
                         <div class="relative">
                             <label class="block text-xs font-bold text-slate-300 mb-1">Password</label>
@@ -2140,7 +2227,7 @@
         </div>
 
         <!-- FOOTER -->
-        <footer class="bg-slate-800 border-t border-slate-700 py-4 px-6 text-center text-xs text-slate-400">
+        <footer x-show="currentDashboard !== 'customer'" class="bg-slate-800 border-t border-slate-700 py-4 px-6 text-center text-xs text-slate-400">
             <p x-text="cms.footerText"></p>
         </footer>
 
@@ -2248,7 +2335,21 @@
                     setInterval(() => {
                         if (this.currentUser && this.currentUser.role === 'customer' && this.currentDashboard === 'customer' && this.activeCustOption === 1) this.loadCustomerEnquiryChat();
                         if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'custChat' && this.paymentForm.customerId) this.loadCustomerEnquiryChat(this.paymentForm.customerId);
-                        if (this.currentUser && ['owner', 'staff'].includes(this.currentUser.role) && (this.activeMenuOption === 'staffChat' || this.activeStaffOption === 3)) this.loadStaffChat();
+                        if (this.currentUser && this.currentUser.role === 'staff' && this.currentDashboard === 'staff' && this.activeStaffOption === 3) this.loadStaffChat();
+                        if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'staffChat' && this.staffChatSelectedId) this.loadStaffChat(this.staffChatSelectedId);
+                        if (this.currentUser && this.currentUser.role === 'owner' && this.ownerPreviewMode && this.activeStaffOption === 3 && this.staffChatSelectedId) this.loadStaffChat(this.staffChatSelectedId);
+                        if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'staffChat') {
+                            this.loadStaffSignupRequests();
+                            // Reflect automatic OFF resets after Staff successfully sends a ticket.
+                            this.loadStaffTicketAssignmentPermission();
+                            this.loadStaffPaymentTickPermission();
+                        }
+                        // Keep Staff's payment tick synchronized with the Owner's ON/OFF switch and saved payment confirmation.
+                        if (this.currentUser && this.currentUser.role === 'staff' && this.currentDashboard === 'staff' && this.activeStaffOption === 2) {
+                            this.loadStaffTicketAssignmentPermission();
+                            this.loadStaffPaymentTickPermission();
+                            this.refreshOwnerTicketPaymentVerification();
+                        }
                     }, 7000);
 
                     let timer = setInterval(() => {
@@ -2496,6 +2597,12 @@
                 customerReplyText: '',
                 customerEnquiryMessages: [],
                 staffChatMessages: [],
+                staffAccounts: [],
+                staffChatSelectedId: '',
+                staffSignupRequests: [],
+                staffSignupError: '',
+                staffTicketAssignmentEnabled: false,
+                staffPaymentTickEnabled: false,
                 customerNotifications: [],
                 newStaffChatText: '',
 
@@ -2557,20 +2664,108 @@
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not send your enquiry message.'); }
                 },
 
-                async loadStaffChat() {
-                    if (!this.currentUser || !['owner', 'staff'].includes(this.currentUser.role)) return;
+                async loadStaffTicketAssignmentPermission() {
                     try {
-                        const result = await this.apiRequest('/api/staff-chat');
+                        const result = await this.apiRequest('/api/owner/staff-ticket-assignment');
+                        this.staffTicketAssignmentEnabled = !!result.enabled;
+                    } catch (error) {
+                        this.staffTicketAssignmentEnabled = false;
+                        if (this.currentUser && this.currentUser.role === 'owner') this.showAppNotice(error.message || 'My ARTfive! Could not load Staff Send it permission.');
+                    }
+                },
+
+                async loadStaffPaymentTickPermission() {
+                    try {
+                        const result = await this.apiRequest('/api/owner/staff-payment-tick');
+                        this.staffPaymentTickEnabled = !!result.enabled;
+                    } catch (error) {
+                        this.staffPaymentTickEnabled = false;
+                        if (this.currentUser && this.currentUser.role === 'owner') this.showAppNotice(error.message || 'My ARTfive! Could not load Staff payment tick permission.');
+                    }
+                },
+
+                async setStaffPaymentTickPermission(enabled) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/staff-payment-tick', { method: 'POST', body: { enabled: !!enabled } });
+                        this.staffPaymentTickEnabled = !!result.enabled;
+                        this.showAppNotice(this.staffPaymentTickEnabled ? 'My ARTfive! Staff payment confirmation tick is ON.' : 'My ARTfive! Staff payment confirmation tick is OFF.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not change Staff payment tick permission.');
+                    }
+                },
+
+                async setStaffTicketAssignmentPermission(enabled) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/staff-ticket-assignment', { method: 'POST', body: { enabled: !!enabled } });
+                        this.staffTicketAssignmentEnabled = !!result.enabled;
+                        this.showAppNotice(this.staffTicketAssignmentEnabled ? 'My ARTfive! Staff ticket assignment is ON.' : 'My ARTfive! Staff ticket assignment is OFF.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not change Staff ticket permission.');
+                    }
+                },
+
+                async loadStaffSignupRequests() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/staff-signup-requests');
+                        this.staffSignupRequests = result.requests || [];
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not load Staff signup requests.');
+                    }
+                },
+
+                async decideStaffSignup(request, decision) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner' || !request) return;
+                    const actionLabel = decision === 'approve' ? 'approve' : 'reject';
+                    if (!confirm('My ARTfive! Do you want to ' + actionLabel + ' the Staff signup request for ' + request.name + '?')) return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/staff-signup-requests', {
+                            method: 'POST',
+                            body: { requestId: request.id, decision }
+                        });
+                        await this.loadStaffSignupRequests();
+                        this.showAppNotice(result.message || 'My ARTfive! Staff signup decision saved.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not update the Staff signup request.');
+                    }
+                },
+
+                async loadStaffChatRecipients() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    try {
+                        const result = await this.apiRequest('/api/staff-chat/recipients');
+                        this.staffAccounts = result.staff || [];
+                        if (this.staffChatSelectedId && !this.staffAccounts.some(item => String(item.id) === String(this.staffChatSelectedId))) {
+                            this.staffChatSelectedId = '';
+                            this.staffChatMessages = [];
+                        }
+                        if (this.staffChatSelectedId) await this.loadStaffChat(this.staffChatSelectedId);
+                    } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not load Staff chat recipients.'); }
+                },
+
+                async loadStaffChat(staffId = '') {
+                    if (!this.currentUser || !['owner', 'staff'].includes(this.currentUser.role)) return;
+                    const targetId = this.currentUser.role === 'staff' ? '' : String(staffId || this.staffChatSelectedId || '');
+                    if (this.currentUser.role === 'owner' && !targetId) { this.staffChatMessages = []; return; }
+                    try {
+                        const endpoint = this.currentUser.role === 'owner' ? '/api/staff-chat?staffId=' + encodeURIComponent(targetId) : '/api/staff-chat';
+                        const result = await this.apiRequest(endpoint);
                         this.staffChatMessages = (result.messages || []).map(msg => ({ ...msg, time: new Date(Number(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not load Staff Chat.'); }
                 },
 
                 async sendStaffChatMessage() {
-                    if (this.ownerPreviewMode) { this.showAppNotice('My ARTfive! Staff messages cannot be sent from Owner preview.'); return; }
                     const message = String(this.newStaffChatText || '').trim();
                     if (!message) return;
+                    const body = { message };
+                    if (this.currentUser && this.currentUser.role === 'owner') {
+                        if (!this.staffChatSelectedId) return this.showAppNotice('My ARTfive! Please select the exact Staff member before sending a message.');
+                        body.staffId = this.staffChatSelectedId;
+                    }
                     try {
-                        await this.apiRequest('/api/staff-chat', { method: 'POST', body: { message } });
+                        await this.apiRequest('/api/staff-chat', { method: 'POST', body });
                         this.newStaffChatText = '';
                         await this.loadStaffChat();
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not send the Staff Chat message.'); }
@@ -2771,7 +2966,9 @@
                     let result = {};
                     try { result = await response.json(); } catch (e) {}
                     if (!response.ok || result.success === false) {
-                        throw new Error(result.message || 'My ARTfive! Server request failed.');
+                        const error = new Error(result.message || 'My ARTfive! Server request failed.');
+                        error.status = response.status;
+                        throw error;
                     }
                     return result;
                 },
@@ -2818,10 +3015,19 @@
                 },
 
                 async restoreCentralSession() {
+                    let cachedProfile = null;
+                    try {
+                        cachedProfile = JSON.parse(localStorage.getItem('artfive_last_signed_in_profile') || 'null');
+                    } catch (profileError) {}
                     try {
                         const result = await this.apiRequest('/api/me');
                         this.currentUser = result.user;
                         this.ownerPreviewMode = false;
+                        if (result.user.role === 'customer') {
+                            this.currentDashboard = 'public';
+                            this.activeCustOption = null;
+                            this.ticketAccessToken = '';
+                        }
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
                         this.offlineMode = false;
                         await this.refreshCentralData();
@@ -2830,19 +3036,23 @@
                         this.assignedTickets = [];
                         this.customers = [];
                         if (!navigator.onLine) {
-                            try {
-                                const cachedProfile = JSON.parse(localStorage.getItem('artfive_last_signed_in_profile') || 'null');
-                                if (cachedProfile && ['owner', 'staff', 'customer'].includes(cachedProfile.role)) {
-                                    this.currentUser = cachedProfile;
-                                    this.currentDashboard = cachedProfile.role;
-                                    this.offlineMode = true;
-                                    this.showAppNotice('My ARTfive! You are offline. Dashboard options are available, but requests, messages, payments and ticket downloads cannot be sent or verified until you reconnect.');
-                                    return;
-                                }
-                            } catch (profileError) {}
+                            if (cachedProfile && ['owner', 'staff', 'customer'].includes(cachedProfile.role)) {
+                                this.currentUser = cachedProfile;
+                                this.currentDashboard = cachedProfile.role === 'customer' ? 'public' : cachedProfile.role;
+                                this.offlineMode = true;
+                                this.showAppNotice('My ARTfive! You are offline. Dashboard options are available, but requests, messages, payments and ticket downloads cannot be sent or verified until you reconnect.');
+                                return;
+                            }
                         }
                         this.currentUser = null;
                         this.offlineMode = false;
+                        // A previously signed-in customer whose server session has expired
+                        // must sign in again; never redirect them to New Customer Sign Up.
+                        if (e && e.status === 401 && cachedProfile && cachedProfile.role === 'customer') {
+                            localStorage.removeItem('artfive_last_signed_in_profile');
+                            this.openLoginModal('customer');
+                            this.showAppNotice('My ARTfive! Your customer sign-in session has expired. Please sign in again. You do not need to create a new account.');
+                        }
                     }
                 },
 
@@ -2925,6 +3135,7 @@
                 customerSearch: '',
                 uploadCustomerFilter: '',
                 ticketLoadError: '',
+                staffTicketUploadError: '',
 
                 filteredCustomers() {
                     const query = String(this.customerSearch || '').trim().toLowerCase();
@@ -2943,6 +3154,7 @@
                     this.uploadForm.requestId = '';
                     this.customerSearch = '';
                     this.refreshOwnerPaymentInstructions();
+                    this.refreshOwnerTicketPaymentVerification();
                 },
 
                 uploadRequestsForSelectedCustomer() {
@@ -3151,7 +3363,7 @@
                     // Option 9 must reload the central uploaded-ticket list whenever the Owner opens it.
                     if (optNum === 9) { this.loadAssignedTicketsFromDB(); this.refreshOwnerPaymentInstructions(); }
                     if (optNum === 'custChat') this.loadCustomerChatSettings();
-                    if (optNum === 'staffChat') this.loadStaffChat();
+                    if (optNum === 'staffChat') { this.loadStaffChatRecipients(); this.loadStaffSignupRequests(); this.loadStaffTicketAssignmentPermission(); this.loadStaffPaymentTickPermission(); }
                     if (optNum === 10) {
                         this.option10Authenticated = false;
                         this.option10Phone = '';
@@ -3606,8 +3818,8 @@
                     await this.refreshOwnerTicketPaymentVerification();
                 },
                 async refreshOwnerTicketPaymentVerification() {
-                    if (!this.currentUser || this.currentUser.role !== 'owner') {
-                        this.showAppNotice('My ARTfive! Owner sign-in is required to refresh payment status.');
+                    if (!this.currentUser || !['owner', 'staff'].includes(this.currentUser.role)) {
+                        this.showAppNotice('My ARTfive! Owner or Staff sign-in is required to refresh payment status.');
                         return false;
                     }
                     if (this.ownerPaymentStatusRefreshing) return false;
@@ -3781,12 +3993,6 @@
                     }
                 },
 
-                sendStaffChatMessage(senderName) {
-                    if (!this.newStaffChatText.trim()) return;
-                    this.staffChatMessages.push({ id: Date.now(), sender: senderName, text: this.newStaffChatText, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-                    this.newStaffChatText = '';
-                },
-
                 copyToClipboard(text) {
                     navigator.clipboard.writeText(text);
                     alert('Copied to clipboard: ' + text);
@@ -3882,7 +4088,7 @@
                     this.loginEmail = '';
                     this.loginPhone = role === 'customer_verify' ? '' : (role === 'customer' ? (localStorage.getItem('artfive_remembered_phone') || '') : '');
                     this.loginPassword = '';
-                    this.loginCustomerName = role === 'customer_verify' ? '' : (role === 'customer' ? (localStorage.getItem('artfive_remembered_name') || '') : '');
+                    this.loginCustomerName = '';
                     this.loginStaffName = '';
                     this.showLoginPwd = false;
                     this.showLoginModal = true; 
@@ -3900,7 +4106,16 @@
                                 return;
                             }
                             if (this.loginRole === 'staff_new') {
-                                alert('My ARTfive! Staff registration is controlled by the Owner. Ask the Owner to create your staff account first.');
+                                this.staffSignupError = '';
+                                await this.apiRequest('/api/staff/signup', {
+                                    method: 'POST',
+                                    body: { name: this.loginStaffName.trim(), phone: identifier, password }
+                                });
+                                this.loginPassword = '';
+                                this.loginStaffName = '';
+                                this.loginPhone = '';
+                                this.showLoginModal = false;
+                                this.showAppNotice('My ARTfive! Your Staff signup request has been sent to the Owner for approval.');
                                 return;
                             }
                             if (this.loginRole === 'owner' && this.ownerExists === false) {
@@ -3944,7 +4159,7 @@
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
                         this.offlineMode = false;
                         this.currentDashboard = this.currentUser.role === 'owner' ? 'owner' :
-                            (this.currentUser.role === 'staff' ? 'staff' : 'customer');
+                            (this.currentUser.role === 'staff' ? 'staff' : (this.loginRole === 'customer_verify' ? 'customer' : 'public'));
                         if (this.loginRole === 'customer_verify') this.activeCustOption = 4;
                         this.activeMenuOption = null;
                         this.activeStaffOption = null;
@@ -3969,20 +4184,16 @@
                             await this.refreshCentralData();
                         }
 
-                        if (this.currentUser && this.currentUser.role === 'customer') {
-                            if (this.loginRole === 'customer_verify') {
-                                if (this.getMyAssignedTickets().length > 0) this.showAppNotice('My ARTfive! have uploaded your ticket successfully. You can view and download your ticket below.');
-                                else if (!this.assignedTickets.length) this.showAppNotice('My ARTfive! have verified your details. Your ticket will appear here after our team uploads it.');
-                            }
-                            else if (createdCustomerAccount) this.showAppNotice('My ARTfive! have created your account successfully. Welcome! Please visit Option 1 🚆 — Request A Railway Ticket to send your first request.');
-                            else this.showAppNotice('My ARTfive! have welcomed you back. Please choose the next service from your Customer Dashboard options.');
-                        }
+                        // Customer login and Option 4 verification do not show success popups.
+                        // The request-success notification is reserved for successful Option 1 submissions.
                     } catch (error) {
                         if (this.loginRole === 'customer_verify') {
                             const safeMessage = String(error && error.message || '').trim();
                             this.showAppNotice(safeMessage ? 'My ARTfive! ' + safeMessage : 'My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
                         } else if (this.loginRole === 'customer' || this.loginRole === 'customer_new') {
                             this.showAppNotice('My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
+                        } else if ((this.loginRole === 'staff' || this.loginRole === 'staff_new') && String(error && error.message || '') === 'Error!') {
+                            this.staffSignupError = 'Error!';
                         } else {
                             alert(error.message || 'My ARTfive! Sign-in failed. Please check your details.');
                         }
@@ -4062,9 +4273,13 @@
                 },
 
                 async uploadAndAssignTicket() {
-                    if (this.ownerPreviewMode) {
-                        this.showAppNotice('My ARTfive! Ticket uploads are disabled in Owner preview.');
-                        return;
+                    this.staffTicketUploadError = '';
+                    if (this.currentUser && this.currentUser.role === 'staff') {
+                        await this.loadStaffTicketAssignmentPermission();
+                        if (!this.staffTicketAssignmentEnabled) {
+                            this.staffTicketUploadError = 'Error!';
+                            return;
+                        }
                     }
                     if (!this.uploadForm.customerId || !this.uploadForm.requestId || !this.uploadForm.ticketTitle || !this.uploadForm.fileData) {
                         alert('My ARTfive! Select the customer, exact ticket request and ticket file.');
@@ -4078,9 +4293,12 @@
                             fileData: this.uploadForm.fileData,
                             confirmOption3Payment: true
                         });
-                        // The Worker consumes the one-time confirmation only after the
-                        // ticket is saved successfully. Refresh the visible status now.
-                        await this.refreshOwnerTicketPaymentVerification();
+                        // A successful send turns both dashboard switches OFF.
+                        // The Owner's saved payment confirmation remains in D1.
+                        this.staffPaymentTickEnabled = false;
+                        this.staffTicketAssignmentEnabled = false;
+                        // Refresh the visible payment status after the successful send.
+                        if (this.currentUser && this.currentUser.role === 'owner') await this.refreshOwnerTicketPaymentVerification();
                         this.uploadForm.confirmOption3Payment = false;
                         this.uploadForm.requestId = '';
                         this.uploadForm.ticketTitle = '';
@@ -4093,6 +4311,11 @@
                             this.showAppNotice('My ARTfive! have saved the ticket. The file list could not refresh; tap Refresh files to check it.');
                         }
                     } catch (error) {
+                        if (this.currentUser && this.currentUser.role === 'staff' &&
+                            /staff ticket assignment is currently off/i.test(String(error && error.message || ''))) {
+                            this.staffTicketUploadError = 'Error!';
+                            return;
+                        }
                         alert(error.message || 'My ARTfive! Ticket upload failed.');
                     }
                 },
@@ -4274,8 +4497,9 @@
                             console.warn('My ARTfive! Could not sync passenger filters to D1:', profileError.message);
                         }
                         await this.loadTicketRequestsFromStorage();
-                        this.showAppNotice('My ARTfive! have received your railway ticket request form successfully! Please visit Customer Dashboard Option 2 to view the details of your ticket booking payment charges.', 2500);
+                        this.showAppNotice('My ARTfive! have received your railway ticket request form successfully! Please visit Customer Dashboard Option 2 to view the details of your ticket booking payment charges.', 3500);
                         this.activeCustOption = null;
+                        if (!this.ownerPreviewMode) this.currentDashboard = 'public';
                         this.ownerInspectCustOpt = null;
                     } catch (error) {
                         console.error('My ARTfive! Ticket request submission failed:', error);
@@ -4318,12 +4542,12 @@
   }
     </script>
     <div x-show="passwordRecoveryOpen" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/90 p-4">
-        <div class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-800 p-6 shadow-2xl space-y-4">
+        <div x-data="{ showRecoveryNewPassword: false, showRecoveryConfirmPassword: false }" class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-800 p-6 shadow-2xl space-y-4">
             <div class="flex items-center justify-between"><h3 class="text-lg font-bold text-white">My ARTfive! Password Change Request</h3><button @click="passwordRecoveryOpen = false" class="text-slate-400 hover:text-white" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
             <p class="text-xs text-slate-300">Create a new password and send the request to the Owner for approval. No OTP is used.</p>
             <div><label class="block text-xs text-slate-300 mb-1">Registered phone number</label><input type="tel" x-model="passwordRecoveryPhone" class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-sm text-white" placeholder="Enter registered phone number"></div>
-            <div><label class="block text-xs text-slate-300 mb-1">New password (at least 8 characters)</label><input type="password" x-model="passwordRecoveryNewPassword" autocomplete="new-password" class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-sm text-white" placeholder="Create new password"></div>
-            <div><label class="block text-xs text-slate-300 mb-1">Confirm new password</label><input type="password" x-model="passwordRecoveryConfirmPassword" autocomplete="new-password" class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-sm text-white" placeholder="Enter new password again"></div>
+            <div><label class="block text-xs text-slate-300 mb-1">New password (at least 8 characters)</label><div class="relative"><input :type="showRecoveryNewPassword ? 'text' : 'password'" x-model="passwordRecoveryNewPassword" autocomplete="new-password" class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 pr-11 text-sm text-white" placeholder="Create new password"><button type="button" @click="showRecoveryNewPassword = !showRecoveryNewPassword" class="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-white" :aria-label="showRecoveryNewPassword ? 'Hide password' : 'Show password'"><i class="fa-solid" :class="showRecoveryNewPassword ? 'fa-eye-slash' : 'fa-eye'"></i></button></div></div>
+            <div><label class="block text-xs text-slate-300 mb-1">Confirm new password</label><div class="relative"><input :type="showRecoveryConfirmPassword ? 'text' : 'password'" x-model="passwordRecoveryConfirmPassword" autocomplete="new-password" class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 pr-11 text-sm text-white" placeholder="Enter new password again"><button type="button" @click="showRecoveryConfirmPassword = !showRecoveryConfirmPassword" class="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-white" :aria-label="showRecoveryConfirmPassword ? 'Hide password' : 'Show password'"><i class="fa-solid" :class="showRecoveryConfirmPassword ? 'fa-eye-slash' : 'fa-eye'"></i></button></div></div>
             <button @click="submitPasswordChangeRequest()" :disabled="passwordRecoveryBusy" class="w-full rounded-lg bg-emerald-700 py-3 text-sm font-bold text-white disabled:opacity-50" x-text="passwordRecoveryBusy ? 'Sending request...' : 'Send for Owner Approval'"></button>
             <div x-show="passwordRecoveryToken" class="border-t border-slate-700 pt-3 space-y-2">
                 <p class="text-xs text-slate-300">You can check the request status from this device.</p>
