@@ -2272,6 +2272,7 @@
                     }, 7000);
 
                     let timer = setInterval(() => {
+                        if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'staffChat') this.loadStaffSignupRequests();
                         if (this.activeSplashIndex < this.totalSplashSlides - 1) {
                             this.activeSplashIndex++;
                         } else {
