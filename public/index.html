@@ -1580,8 +1580,8 @@
                         <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1" x-text="ownerPreviewMode ? 'Customer Dashboard Preview' : 'Welcome, ' + (currentUser ? currentUser.name : 'Customer')"></h2>
                         <p x-show="!ownerPreviewMode" class="text-xs text-slate-400 mt-1" x-text="'Phone: ' + (currentUser ? currentUser.phone : '')"></p>
                     </div>
-                    <button @click="ownerPreviewMode ? closeOwnerDashboardPreview() : logout()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow flex items-center gap-2">
-                        <i class="fa-solid fa-right-from-bracket"></i> <span x-text="ownerPreviewMode ? 'Back to My Dashboard' : cms.logoutBtnText"></span>
+                    <button x-show="ownerPreviewMode" @click="closeOwnerDashboardPreview()" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-left"></i> Back to My Dashboard
                     </button>
                 </div>
 
@@ -1706,7 +1706,7 @@
 
                 <!-- Customer Option 2: Booking Request Payment -->
                 <div x-show="activeCustOption === 2" x-effect="if (!ownerPreviewMode && activeCustOption === 2) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
-                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
+                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Personal message notification -->
                     <section class="w-full min-w-0 rounded-xl border-2 border-emerald-500/50 bg-slate-900 p-4 space-y-3" aria-label="Option 2 message notification">
@@ -1755,7 +1755,7 @@
 
                 <!-- Customer Option 3: Ticket Collection Charges -->
                 <div x-show="activeCustOption === 3" x-effect="if (!ownerPreviewMode && activeCustOption === 3) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
-                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
+                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Both Option 3 message types appear together -->
                     <section class="w-full min-w-0 rounded-xl border-2 border-sky-500/50 bg-slate-900 p-4 space-y-3" aria-label="Option 3 message notifications">
@@ -4176,14 +4176,8 @@
                             await this.refreshCentralData();
                         }
 
-                        if (this.currentUser && this.currentUser.role === 'customer') {
-                            if (this.loginRole === 'customer_verify') {
-                                if (this.getMyAssignedTickets().length > 0) this.showAppNotice('My ARTfive! have uploaded your ticket successfully. You can view and download your ticket below.');
-                                else if (!this.assignedTickets.length) this.showAppNotice('My ARTfive! have verified your details. Your ticket will appear here after our team uploads it.');
-                            }
-                            else if (createdCustomerAccount) this.showAppNotice('My ARTfive! have created your account successfully. Welcome! Please visit Option 1 🚆 — Request A Railway Ticket to send your first request.');
-                            else this.showAppNotice('My ARTfive! have welcomed you back. Please choose the next service from your Customer Dashboard options.');
-                        }
+                        // Customer login and Option 4 verification do not show success popups.
+                        // The request-success notification is reserved for successful Option 1 submissions.
                     } catch (error) {
                         if (this.loginRole === 'customer_verify') {
                             const safeMessage = String(error && error.message || '').trim();
@@ -4495,7 +4489,7 @@
                             console.warn('My ARTfive! Could not sync passenger filters to D1:', profileError.message);
                         }
                         await this.loadTicketRequestsFromStorage();
-                        this.showAppNotice('My ARTfive! have received your railway ticket request form successfully! Please visit Customer Dashboard Option 2 to view the details of your ticket booking payment charges.', 2500);
+                        this.showAppNotice('My ARTfive! have received your railway ticket request form successfully! Please visit Customer Dashboard Option 2 to view the details of your ticket booking payment charges.', 3500);
                         this.activeCustOption = null;
                         if (!this.ownerPreviewMode) this.currentDashboard = 'public';
                         this.ownerInspectCustOpt = null;
