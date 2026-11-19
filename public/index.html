@@ -3270,7 +3270,7 @@
                     // Option 9 must reload the central uploaded-ticket list whenever the Owner opens it.
                     if (optNum === 9) { this.loadAssignedTicketsFromDB(); this.refreshOwnerPaymentInstructions(); }
                     if (optNum === 'custChat') this.loadCustomerChatSettings();
-                    if (optNum === 'staffChat') { this.loadStaffChat(); this.loadStaffSignupRequests(); }
+                    if (optNum === 'staffChat') { this.loadStaffChat(); this.loadStaffSignupRequests(); this.loadStaffTicketAssignmentPermission(); }
                     if (optNum === 10) {
                         this.option10Authenticated = false;
                         this.option10Phone = '';
