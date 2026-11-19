@@ -2316,7 +2316,7 @@
 
                 showAppNotice(message, durationMs = null) {
                     this.appNotice.message = String(message || '');
-                    this.appNotice.isError = /\\b(?:error|failed|failure|could not|unable|denied|blocked|expired|invalid|unavailable|not found|too many|did not|does not|cannot|rejected|not received|not connected)\\b/i.test(this.appNotice.message);
+                    this.appNotice.isError = /\b(?:error|failed|failure|could not|unable|denied|blocked|expired|invalid|unavailable|not found|too many|did not|does not|cannot|rejected|not received|not connected)\b/i.test(this.appNotice.message);
                     this.appNotice.open = true;
                     if (this.appNoticeTimer) clearTimeout(this.appNoticeTimer);
                     const words = this.appNotice.message.trim().split(/\s+/).filter(Boolean).length;
