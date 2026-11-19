@@ -1585,13 +1585,13 @@
                     </button>
                 </div>
 
-                <div x-show="appUpdates.length > 0" class="bg-slate-800 border border-sky-500/30 rounded-xl p-4 space-y-2">
+                <div x-show="ownerPreviewMode && appUpdates.length > 0" class="bg-slate-800 border border-sky-500/30 rounded-xl p-4 space-y-2">
                     <h3 class="text-sm font-bold text-sky-300">My ARTfive! App Updates</h3>
                     <template x-for="item in appUpdates.slice(0,3)" :key="'customer-update-'+item.id">
                         <div class="border-t border-slate-700 pt-2"><p class="text-xs font-bold text-white" x-text="item.title"></p><p class="text-xs text-slate-300 mt-1" x-text="item.description"></p></div>
                     </template>
                 </div>
-                <div x-show="activeCustOption === null" class="space-y-6">
+                <div x-show="ownerPreviewMode && activeCustOption === null" class="space-y-6">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div @click="selectCustomerOption(1)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-ticket"></i></div>
@@ -1620,7 +1620,7 @@
                 <div x-show="activeCustOption === 1" class="bg-slate-800 border border-slate-700 p-6 sm:p-8 rounded-2xl space-y-6 max-w-3xl mx-auto">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-4">
                         <h3 class="text-xl font-extrabold text-white" x-text="cms.custOpt1Title"></h3>
-                        <button @click="activeCustOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
+                        <button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <div class="space-y-6">
                         <template x-for="(pax, index) in ticketReqForm.passengers" :key="index">
@@ -1811,7 +1811,7 @@
                 <div x-show="activeCustOption === 4" x-effect="if (!ownerPreviewMode && activeCustOption === 4) loadCustomerNotifications()" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-2xl mx-auto">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                         <h3 class="font-bold text-white text-lg" x-text="cms.custOpt4Title"></h3>
-                        <button @click="activeCustOption = null; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
+                        <button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <p class="text-xs text-slate-300" x-text="cms.myTicketsInstruction"></p>
                     <p x-show="ownerPreviewMode" class="rounded-lg border border-amber-500/30 bg-amber-950/30 p-3 text-xs text-amber-100">My ARTfive! Private tickets can only be viewed after the customer's own Option 4 sign-in. This owner preview shows the page layout only.</p>
@@ -2176,7 +2176,7 @@
                 <!-- 3. CUSTOMER LOGIN -->
                 <template x-if="loginRole === 'customer' || loginRole === 'customer_verify'">
                     <div class="space-y-4">
-                        <div x-show="loginRole !== 'customer_verify'"><label class="block text-xs font-bold text-slate-300 mb-1">Customer Full Name</label><input type="text" x-model="loginCustomerName" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter full name"></div>
+                        
                         <div><label class="block text-xs font-bold text-slate-300 mb-1">Phone Number</label><input type="text" x-model="loginPhone" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter phone number"></div>
                         <div class="relative">
                             <label class="block text-xs font-bold text-slate-300 mb-1">Password</label>
@@ -2229,7 +2229,7 @@
         </div>
 
         <!-- FOOTER -->
-        <footer class="bg-slate-800 border-t border-slate-700 py-4 px-6 text-center text-xs text-slate-400">
+        <footer x-show="currentDashboard !== 'customer'" class="bg-slate-800 border-t border-slate-700 py-4 px-6 text-center text-xs text-slate-400">
             <p x-text="cms.footerText"></p>
         </footer>
 
@@ -3019,6 +3019,11 @@
                         const result = await this.apiRequest('/api/me');
                         this.currentUser = result.user;
                         this.ownerPreviewMode = false;
+                        if (result.user.role === 'customer') {
+                            this.currentDashboard = 'public';
+                            this.activeCustOption = null;
+                            this.ticketAccessToken = '';
+                        }
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
                         this.offlineMode = false;
                         await this.refreshCentralData();
@@ -3031,7 +3036,7 @@
                                 const cachedProfile = JSON.parse(localStorage.getItem('artfive_last_signed_in_profile') || 'null');
                                 if (cachedProfile && ['owner', 'staff', 'customer'].includes(cachedProfile.role)) {
                                     this.currentUser = cachedProfile;
-                                    this.currentDashboard = cachedProfile.role;
+                                    this.currentDashboard = cachedProfile.role === 'customer' ? 'public' : cachedProfile.role;
                                     this.offlineMode = true;
                                     this.showAppNotice('My ARTfive! You are offline. Dashboard options are available, but requests, messages, payments and ticket downloads cannot be sent or verified until you reconnect.');
                                     return;
@@ -4075,7 +4080,7 @@
                     this.loginEmail = '';
                     this.loginPhone = role === 'customer_verify' ? '' : (role === 'customer' ? (localStorage.getItem('artfive_remembered_phone') || '') : '');
                     this.loginPassword = '';
-                    this.loginCustomerName = role === 'customer_verify' ? '' : (role === 'customer' ? (localStorage.getItem('artfive_remembered_name') || '') : '');
+                    this.loginCustomerName = '';
                     this.loginStaffName = '';
                     this.showLoginPwd = false;
                     this.showLoginModal = true; 
@@ -4146,7 +4151,7 @@
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
                         this.offlineMode = false;
                         this.currentDashboard = this.currentUser.role === 'owner' ? 'owner' :
-                            (this.currentUser.role === 'staff' ? 'staff' : 'customer');
+                            (this.currentUser.role === 'staff' ? 'staff' : (this.loginRole === 'customer_verify' ? 'customer' : 'public'));
                         if (this.loginRole === 'customer_verify') this.activeCustOption = 4;
                         this.activeMenuOption = null;
                         this.activeStaffOption = null;
@@ -4492,6 +4497,7 @@
                         await this.loadTicketRequestsFromStorage();
                         this.showAppNotice('My ARTfive! have received your railway ticket request form successfully! Please visit Customer Dashboard Option 2 to view the details of your ticket booking payment charges.', 2500);
                         this.activeCustOption = null;
+                        if (!this.ownerPreviewMode) this.currentDashboard = 'public';
                         this.ownerInspectCustOpt = null;
                     } catch (error) {
                         console.error('My ARTfive! Ticket request submission failed:', error);
