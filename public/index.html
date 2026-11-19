@@ -1531,9 +1531,11 @@
                                             <p class="font-bold text-white" x-text="account.name || 'Name not available'"></p>
                                             <p class="text-xs text-slate-300" x-text="'Staff full Name: ' + (account.name || 'Not provided')"></p>
                                             <p class="text-xs text-slate-300" x-text="'Staff phone number: ' + (account.phone || 'Not provided')"></p>
+                                            <p class="text-xs font-bold" :class="account.active === 1 ? 'text-emerald-300' : 'text-rose-300'" x-text="account.active === 1 ? 'Account status: ACTIVE' : 'Account status: BLOCKED'"></p>
                                             <p class="text-xs text-slate-400">Staff password: •••••••• (Hidden — never displayed)</p>
                                             <p class="text-xs text-slate-500 break-all" x-text="'Staff ID: ' + account.id"></p>
-                                            <div class="flex justify-end">
+                                            <div class="flex flex-wrap justify-end gap-2">
+                                                <button @click="setOption10AccountStatus(account, account.active === 1)" class="bg-amber-700 hover:bg-amber-600 text-white text-xs font-bold px-3 py-2 rounded-lg" x-text="account.active === 1 ? 'Block Sign-in' : 'Unblock Sign-in'"></button>
                                                 <button @click="deleteOption10CustomerAccount(account)" class="bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2 rounded-lg">
                                                     <i class="fa-solid fa-trash mr-1"></i> Delete — Permanently from D1
                                                 </button>
@@ -1554,9 +1556,11 @@
                                             <p class="font-bold text-white" x-text="account.name || 'Name not available'"></p>
                                             <p class="text-xs text-slate-300" x-text="'Customer full Name: ' + (account.name || 'Not provided')"></p>
                                             <p class="text-xs text-slate-300" x-text="'Customer phone number: ' + (account.phone || 'Not provided')"></p>
+                                            <p class="text-xs font-bold" :class="account.active === 1 ? 'text-emerald-300' : 'text-rose-300'" x-text="account.active === 1 ? 'Account status: ACTIVE' : 'Account status: BLOCKED'"></p>
                                             <p class="text-xs text-slate-400">Customer password: •••••••• (Hidden — never displayed)</p>
                                             <p class="text-xs text-slate-500 break-all" x-text="'Customer ID: ' + account.id"></p>
-                                            <div class="flex justify-end">
+                                            <div class="flex flex-wrap justify-end gap-2">
+                                                <button @click="setOption10AccountStatus(account, account.active === 1)" class="bg-amber-700 hover:bg-amber-600 text-white text-xs font-bold px-3 py-2 rounded-lg" x-text="account.active === 1 ? 'Block Sign-in' : 'Unblock Sign-in'"></button>
                                                 <button @click="deleteOption10CustomerAccount(account)" class="bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2 rounded-lg">
                                                     <i class="fa-solid fa-trash mr-1"></i> Delete — Permanently from D1
                                                 </button>
@@ -1926,7 +1930,18 @@
                         <i class="fa-solid fa-right-from-bracket"></i> <span x-text="ownerPreviewMode ? 'Back to My Dashboard' : cms.logoutBtnText"></span>
                     </button>
                 </div>
-
+                <div x-show="!ownerPreviewMode && currentUser && currentUser.role === 'staff'" class="rounded-xl border border-sky-500/30 bg-slate-800 p-4 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-bold text-white"><i class="fa-solid fa-bell text-amber-300 mr-2"></i>My ARTfive! Staff Notifications</h3><p class="text-xs text-slate-400">Private notifications for your signed-in Staff account only.</p></div>
+                        <button type="button" @click="staffNotificationsOpen = !staffNotificationsOpen; if (staffNotificationsOpen) loadStaffNotifications()" class="rounded-lg bg-sky-700 hover:bg-sky-600 px-3 py-2 text-xs font-bold text-white"><span x-text="staffNotifications.filter(item => !item.readAt).length + ' unread — ' + (staffNotificationsOpen ? 'Hide' : 'View')"></span></button>
+                    </div>
+                    <div x-show="staffNotificationsOpen" class="space-y-2"><div class="flex justify-end"><button type="button" @click="loadStaffNotifications()" class="text-xs text-sky-300 hover:underline">Refresh notifications</button></div>
+                        <template x-if="staffNotifications.length === 0"><p class="text-sm text-slate-400">My ARTfive! No Staff notifications yet.</p></template>
+                        <template x-for="item in staffNotifications" :key="'staff-notification-'+item.id"><div class="rounded-lg border border-slate-700 bg-slate-900 p-3 space-y-1">
+                            <div class="flex items-center justify-between gap-2"><strong class="text-sm text-white" x-text="item.title"></strong><span class="text-[10px] text-slate-400" x-text="new Date(Number(item.createdAt)).toLocaleString()"></span></div>
+                            <p class="text-xs text-slate-200" x-text="item.message"></p><div class="flex justify-end"><button x-show="!item.readAt" type="button" @click="markStaffNotificationRead(item)" class="text-xs font-bold text-sky-300 hover:underline">Mark as read</button><span x-show="item.readAt" class="text-[10px] text-emerald-300">Read</span></div>
+                        </div></template>
+                    </div>
+                </div>
                 <div x-show="activeStaffOption === null" class="grid grid-cols-1 sm:grid-cols-3 gap-5">
                     <div @click="activeStaffOption = 1; if (!ownerPreviewMode) loadTicketRequestsFromStorage()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-file-lines"></i></div>
@@ -2218,7 +2233,12 @@
                         </div>
                         <div class="flex justify-between items-center text-xs">
                             <a href="#" @click.prevent="forgotPassword('Staff')" class="text-emerald-400 hover:underline">Forgot password?</a>
-                            <a href="#" @click.prevent="staffSignupError = ''; loginRole = 'staff_new'" class="text-sky-400 hover:underline">New Sign In? Register Here</a>
+                            <a href="#" @click.prevent="staffSignupError = ''; staffSignupStatusMessage = ''; loginRole = 'staff_new'" class="text-sky-400 hover:underline">New Sign In? Register Here</a>
+                        </div>
+                        <div x-show="staffSignupRequestId" class="rounded-lg border border-sky-500/30 bg-slate-900 p-3 space-y-2">
+                            <p class="text-xs text-slate-300">Check the Owner's decision for your Staff registration.</p>
+                            <button type="button" @click="checkStaffSignupStatus()" class="w-full rounded-lg bg-sky-700 hover:bg-sky-600 px-3 py-2 text-xs font-bold text-white">Check Staff Approval Status</button>
+                            <p x-show="staffSignupStatusMessage" class="text-xs font-bold" :class="staffSignupStatus === 'rejected' ? 'text-rose-400' : staffSignupStatus === 'approved' ? 'text-emerald-300' : 'text-amber-300'" x-text="staffSignupStatusMessage"></p>
                         </div>
                     </div>
                 </template>
@@ -2754,6 +2774,11 @@
                 staffChatSelectedId: '',
                 staffSignupRequests: [],
                 staffSignupError: '',
+                staffSignupRequestId: '',
+                staffSignupStatus: '',
+                staffSignupStatusMessage: '',
+                staffNotifications: [],
+                staffNotificationsOpen: false,
                 staffTicketAssignmentEnabled: false,
                 staffPaymentTickEnabled: false,
                 customerNotifications: [],
@@ -2859,6 +2884,24 @@
                     }
                 },
 
+                async loadStaffNotifications() {
+                    if (!this.currentUser || this.currentUser.role !== 'staff') return;
+                    try { const result = await this.apiRequest('/api/staff/notifications'); this.staffNotifications = result.notifications || []; }
+                    catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not load Staff notifications.'); }
+                },
+                async markStaffNotificationRead(item) {
+                    if (!this.currentUser || this.currentUser.role !== 'staff' || !item) return;
+                    try { await this.apiRequest('/api/staff/notifications', { method: 'POST', body: { notificationId: item.id } }); item.readAt = Date.now(); }
+                    catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not update this Staff notification.'); }
+                },
+                async checkStaffSignupStatus() {
+                    if (!this.staffSignupRequestId) return;
+                    try {
+                        const result = await this.apiRequest('/api/staff/signup-status?requestId=' + encodeURIComponent(this.staffSignupRequestId));
+                        this.staffSignupStatus = result.status || 'pending';
+                        this.staffSignupStatusMessage = result.message || 'My ARTfive! Staff signup status updated.';
+                    } catch (error) { this.staffSignupStatusMessage = error.message || 'My ARTfive! Could not check Staff signup status.'; }
+                },
                 async loadStaffSignupRequests() {
                     if (!this.currentUser || this.currentUser.role !== 'owner') return;
                     try {
@@ -3192,6 +3235,7 @@
                     try {
                         const result = await this.apiRequest('/api/me');
                         this.currentUser = result.user;
+                        if (result.user && result.user.role === 'staff') await this.loadStaffNotifications();
                         this.ownerPreviewMode = false;
                         if (result.user.role === 'customer') {
                             this.currentDashboard = 'public';
@@ -3662,6 +3706,19 @@
                     }
                 },
 
+                async setOption10AccountStatus(account, blocked) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated || !account) return;
+                    const action = blocked ? 'block' : 'unblock';
+                    if (!confirm('My ARTfive! ' + (blocked ? 'BLOCK SIGN-IN' : 'RESTORE SIGN-IN') + ' for ' + (account.role === 'staff' ? 'Staff' : 'Customer') + ' ' + (account.name || account.phone) + '? ' + (blocked ? 'All active sessions will be revoked. Account data will remain saved.' : 'The account can sign in again.'))) return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/control/customer-accounts/status', { method: 'POST', body: { accountId: account.id, action, reason: 'Owner action from Option 10 Control' } });
+                        account.active = Number(result.active);
+                        if (blocked && String(this.paymentForm.customerId) === String(account.id)) this.paymentForm = { customerId: '', requestId: '', optionNo: '2', amount: '', message: '' };
+                        if (blocked && String(this.uploadForm.customerId) === String(account.id)) { this.uploadForm.customerId = ''; this.uploadForm.requestId = ''; this.uploadCustomerFilter = ''; }
+                        await this.refreshCentralData();
+                        this.showAppNotice(result.message || 'My ARTfive! Account access updated.');
+                    } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not update account access.'); }
+                },
                 async deleteOption10CustomerAccount(customer) {
                     if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated || !customer) return;
                     const customerName = String(customer.name || 'this account');
@@ -4278,15 +4335,15 @@
                             }
                             if (this.loginRole === 'staff_new') {
                                 this.staffSignupError = '';
-                                await this.apiRequest('/api/staff/signup', {
-                                    method: 'POST',
-                                    body: { name: this.loginStaffName.trim(), phone: identifier, password }
-                                });
+                                const signupResult = await this.apiRequest('/api/staff/signup', { method: 'POST', body: { name: this.loginStaffName.trim(), phone: identifier, password } });
+                                this.staffSignupRequestId = String(signupResult.requestId || '');
+                                this.staffSignupStatus = 'pending';
+                                this.staffSignupStatusMessage = 'My ARTfive! Your Staff registration is waiting for Owner approval. Keep this screen to check the decision.';
                                 this.loginPassword = '';
                                 this.loginStaffName = '';
                                 this.loginPhone = '';
-                                this.showLoginModal = false;
-                                this.showAppNotice('My ARTfive! Your Staff signup request has been sent to the Owner for approval.');
+                                this.loginRole = 'staff';
+                                this.showLoginModal = true;
                                 return;
                             }
                             if (this.loginRole === 'owner' && this.ownerExists === false) {
@@ -4326,6 +4383,7 @@
                         }
                         this.ticketAccessToken = this.loginRole === 'customer_verify' ? String(result.ticketAccessToken || '') : '';
                         this.currentUser = result.user;
+                        if (result.user && result.user.role === 'staff') await this.loadStaffNotifications();
                         this.ownerPreviewMode = false;
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
                         this.offlineMode = false;
