@@ -1918,37 +1918,10 @@
 
                         <button x-show="!ownerPreviewMode" :disabled="!staffTicketAssignmentEnabled" @click="uploadAndAssignTicket()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm transition shadow disabled:opacity-40 disabled:cursor-not-allowed">Upload & Assign to Customer Option 4</button>
 
-                        <div class="border-t border-slate-700 pt-5 space-y-3">
-                            <h4 class="font-bold text-white text-sm flex items-center justify-between gap-2">
-                                <span>Tickets sent to customers</span>
-                                <span class="text-xs text-slate-400 font-normal" x-text="assignedTickets.length + ' item(s) stored'"></span>
-                            </h4>
-                            <div class="flex justify-end">
-                                <button type="button" @click="refreshAssignedTicketFiles()" :disabled="ticketFilesRefreshing" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50 disabled:cursor-wait">
-                                    <i class="fa-solid" :class="ticketFilesRefreshing ? 'fa-spinner fa-spin' : 'fa-rotate'"></i>
-                                    <span x-text="ticketFilesRefreshing ? 'Refreshing files...' : 'Refresh Uploaded Ticket Files'"></span>
-                                </button>
-                            </div>
-                            <p x-show="ticketFilesRefreshMessage" x-text="ticketFilesRefreshMessage" class="rounded-lg border border-sky-500/30 bg-sky-500/10 p-3 text-xs text-sky-200"></p>
-                            <p x-show="ticketLoadError" x-text="'My ARTfive! ' + ticketLoadError" class="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300"></p>
-                            <div class="space-y-2 max-h-56 overflow-y-auto">
-                                <template x-for="tkt in assignedTickets" :key="tkt.id">
-                                    <div class="bg-slate-900 border border-slate-700 p-3 rounded-xl flex items-center justify-between text-xs">
-                                        <div>
-                                            <span class="font-bold text-white block" x-text="tkt.ticketTitle"></span>
-                                            <span class="text-slate-400 text-[10px]" x-text="'Customer: ' + tkt.customerName + ' (' + tkt.customerPhone + ')'></span>
-                                        </div>
-                                        <div class="flex flex-col items-stretch gap-4 min-w-[150px] sm:min-w-[180px]">
-                                            <button type="button" @click="openFileViewer(tkt)" class="w-full bg-sky-600 hover:bg-sky-500 text-white px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow">
-                                                <i class="fa-solid fa-eye"></i> View Ticket
-                                            </button>
-                                            
-                                        </div>
-                                    </div>
-                                </template>
-                                <template x-if="assignedTickets.length === 0">
-                                    <div class="text-center py-4 text-slate-500 text-xs italic">No active files stored in system storage.</div>
-                                </template>
+                        <div class="border-t border-slate-700 pt-5">
+                            <div class="rounded-lg border border-slate-700 bg-slate-900 p-4 flex items-center justify-between gap-3">
+                                <span class="text-sm font-bold text-slate-200">Staff Total Sent Ticket</span>
+                                <span class="text-2xl font-extrabold text-emerald-300 tabular-nums" x-text="assignedTickets.filter(tkt => String(tkt.uploadedBy) === String(currentUser && currentUser.id)).length">0</span>
                             </div>
                         </div>
                     </div>
