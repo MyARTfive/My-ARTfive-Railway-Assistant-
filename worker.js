@@ -1327,16 +1327,19 @@ export default {
           const existingUser = await env.DB.prepare("SELECT id FROM users WHERE phone = ? LIMIT 1").bind(signup.phone).first();
           if (existingUser) return json({ success: false, message: "This phone number is already registered." }, 409);
           const staffId = crypto.randomUUID();
-          await env.DB.prepare("INSERT INTO users (id, name, email, phone, role, password_hash, active, created_at) VALUES (?, ?, NULL, ?, 'staff', ?, 1, ?)").bind(staffId, signup.name, signup.phone, signup.password_hash, now).run();
-          await env.DB.prepare("UPDATE staff_signup_requests SET status = 'approved', password_hash = NULL, reviewed_at = ? WHERE id = ? AND status = 'pending'").bind(now, requestId).run();
-          await addStaffNotification(
-            env,
-            staffId,
-            "My ARTfive! Staff account approved",
-            "My ARTfive! Your Staff account has been approved. You can now sign in to your Staff Dashboard.",
-            "account",
-            now
-          );
+          await ensureStaffNotificationSchema(env);
+          const notificationId = crypto.randomUUID();
+          await env.DB.batch([
+            env.DB.prepare("INSERT INTO users (id, name, email, phone, role, password_hash, active, created_at) VALUES (?, ?, NULL, ?, 'staff', ?, 1, ?)").bind(staffId, signup.name, signup.phone, signup.password_hash, now),
+            env.DB.prepare("UPDATE staff_signup_requests SET status = 'approved', password_hash = NULL, reviewed_at = ? WHERE id = ? AND status = 'pending'").bind(now, requestId),
+            env.DB.prepare("INSERT INTO staff_notifications (id, staff_id, title, message, category, created_at) VALUES (?, ?, ?, ?, 'account', ?)").bind(
+              notificationId,
+              staffId,
+              "My ARTfive! Staff account approved",
+              "My ARTfive! Your Staff account has been approved. You can now sign in to your Staff Dashboard.",
+              now
+            )
+          ]);
         } else {
           await env.DB.prepare("UPDATE staff_signup_requests SET status = 'rejected', password_hash = NULL, reviewed_at = ? WHERE id = ? AND status = 'pending'").bind(now, requestId).run();
         }
