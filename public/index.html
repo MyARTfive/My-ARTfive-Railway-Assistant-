@@ -31,6 +31,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Alpine.js for reactive UI -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style id="artfive-design-theme">
+        body { background-color: var(--artfive-design-bg, #0f172a) !important; }
+        body .bg-slate-900 { background-color: var(--artfive-design-bg, #0f172a) !important; }
+        body .bg-slate-800 { background-color: var(--artfive-design-panel, #1e293b) !important; }
+        body .bg-slate-700 { background-color: color-mix(in srgb, var(--artfive-design-panel, #1e293b), white 12%) !important; }
+        body .bg-emerald-600 { background-color: var(--artfive-design-primary, #059669) !important; }
+        body [class~="hover:bg-emerald-500"]:hover { background-color: var(--artfive-design-primary, #059669) !important; filter: brightness(1.12); }
+        body .text-emerald-400, body .text-emerald-300 { color: var(--artfive-design-accent, #34d399) !important; }
+        body .border-emerald-500, body [class~="border-emerald-500/30"], body [class~="border-emerald-500/40"] { border-color: var(--artfive-design-accent, #34d399) !important; }
+        body .from-railway-600 { --tw-gradient-from: var(--artfive-design-primary, #059669) var(--tw-gradient-from-position) !important; }
+    </style>
 </head>
 <body class="h-full bg-slate-900 text-slate-100 font-sans antialiased" x-data="railwayApp()" x-init="initApp()">
 
@@ -47,13 +58,13 @@
         <div class="relative w-full max-w-4xl h-[85vh] rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-sky-900 via-slate-900 to-slate-950 flex flex-col items-center justify-between p-6 border border-emerald-500/30">
             
             <!-- BANNER 1 -->
-            <div x-show="activeSplashIndex === 0" class="w-full h-full flex flex-col items-center justify-around text-center p-4">
+            <div x-show="activeSplashIndex === 0" data-artfive-splash="1" class="w-full h-full flex flex-col items-center justify-around text-center p-4">
                 <div class="space-y-1">
                     <div class="inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-1.5 rounded-full text-xs font-bold border border-emerald-500/30">
                         <i class="fa-solid fa-train"></i> My ARTfive! (Railway Assistant!)
                     </div>
-                    <h2 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg">My ART<span class="text-emerald-400">five!</span></h2>
-                    <p class="text-amber-400 font-bold text-lg">Your Smart Travel Friend</p>
+                    <h2 data-design-slide-title class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg">My ARTfive!</h2>
+                    <p data-design-slide-subtitle class="text-amber-400 font-bold text-lg">Your Smart Travel Friend</p>
                 </div>
                 <div class="bg-slate-800/90 border border-emerald-500/40 p-4 rounded-2xl shadow-xl w-full max-w-lg space-y-2">
                     <p class="text-sm font-extrabold text-emerald-300">Plan • Request • Pay • Get Tickets</p>
@@ -69,13 +80,13 @@
             </div>
 
             <!-- BANNER 2 -->
-            <div x-show="activeSplashIndex === 1" class="w-full h-full flex flex-col items-center justify-around text-center p-4">
+            <div x-show="activeSplashIndex === 1" data-artfive-splash="2" class="w-full h-full flex flex-col items-center justify-around text-center p-4">
                 <div class="space-y-1">
                     <div class="inline-flex items-center gap-2 bg-sky-500/20 text-sky-400 px-4 py-1.5 rounded-full text-xs font-bold border border-sky-500/30">
                         <i class="fa-solid fa-shield-halved"></i> Trusted Railway Partner
                     </div>
-                    <h2 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg">My ART<span class="text-sky-400">five!</span></h2>
-                    <p class="text-sky-300 font-bold text-sm">Your Journey... Our Care...</p>
+                    <h2 data-design-slide-title class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg">My ARTfive!</h2>
+                    <p data-design-slide-subtitle class="text-sky-300 font-bold text-sm">Your Journey... Our Care...</p>
                 </div>
                 <div class="bg-gradient-to-r from-blue-900/60 to-slate-800 border border-sky-500/40 p-5 rounded-2xl shadow-xl w-full max-w-lg space-y-2">
                     <p class="text-2xl font-black text-white">Travel Smart with My ARTfive!</p>
@@ -91,16 +102,16 @@
             </div>
 
             <!-- BANNER 3 -->
-            <div x-show="activeSplashIndex === 2" class="w-full h-full flex flex-col items-center justify-around text-center p-4">
+            <div x-show="activeSplashIndex === 2" data-artfive-splash="3" class="w-full h-full flex flex-col items-center justify-around text-center p-4">
                 <div class="space-y-1">
                     <div class="inline-flex items-center gap-2 bg-amber-500/20 text-amber-400 px-4 py-1.5 rounded-full text-xs font-bold border border-amber-500/30">
                         <i class="fa-solid fa-compass"></i> Multi-Modal Travel Assistant
                     </div>
-                    <h2 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg">Safe Journey with <span class="text-amber-400">My ARTfive!</span></h2>
+                    <h2 data-design-slide-title class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg">Safe Journey with My ARTfive!</h2>
                 </div>
                 <div class="bg-slate-800/90 border border-amber-500/40 p-6 rounded-2xl shadow-xl w-full max-w-lg space-y-3">
                     <p class="text-xs uppercase tracking-widest text-slate-400 font-bold">Welcome Portal</p>
-                    <p class="text-3xl font-black text-amber-400">Travel Smart... with My ARTfive!</p>
+                    <p data-design-slide-subtitle class="text-3xl font-black text-amber-400">Travel Smart... with My ARTfive!</p>
                 </div>
                 <div class="grid grid-cols-3 gap-3 w-full max-w-lg text-xs font-bold">
                     <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 text-amber-300"><i class="fa-solid fa-bus block text-lg mb-1"></i> Bus Transit</div>
@@ -111,13 +122,13 @@
             </div>
 
             <!-- BANNER 4 -->
-            <div x-show="activeSplashIndex === 3" class="w-full h-full flex flex-col items-center justify-around text-center p-4">
+            <div x-show="activeSplashIndex === 3" data-artfive-splash="4" class="w-full h-full flex flex-col items-center justify-around text-center p-4">
                 <div class="space-y-2">
                     <div class="inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-1.5 rounded-full text-xs font-bold border border-emerald-500/30">
                         <i class="fa-solid fa-flag"></i> Indian Railways Official Assistant
                     </div>
-                    <h2 class="text-3xl sm:text-6xl font-extrabold text-white tracking-tight drop-shadow-lg">My ART<span class="text-emerald-400">five!</span></h2>
-                    <p class="text-lg font-bold text-slate-300">(Railway Assistant!)</p>
+                    <h2 data-design-slide-title class="text-3xl sm:text-6xl font-extrabold text-white tracking-tight drop-shadow-lg">My ARTfive!</h2>
+                    <p data-design-slide-subtitle class="text-lg font-bold text-slate-300">(Railway Assistant!)</p>
                 </div>
                 <div class="bg-gradient-to-r from-slate-800 via-emerald-950/40 to-slate-800 border border-emerald-500/30 p-6 rounded-2xl shadow-2xl w-full max-w-xl space-y-3">
                     <div class="flex justify-center gap-4 text-emerald-400 text-2xl">
@@ -257,6 +268,11 @@
 
                 <div x-show="activeMenuOption === null" class="space-y-6">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        <div @click="ownerSelectOption('manageAppDesign')" class="bg-slate-800 hover:bg-pink-900/30 border border-pink-500/40 hover:border-pink-400 p-5 rounded-xl cursor-pointer transition shadow group">
+                            <div class="flex items-center justify-between mb-3"><span class="text-xs font-bold text-pink-300 bg-pink-500/10 px-2.5 py-1 rounded-lg">MANAGE APP DESIGN</span><i class="fa-solid fa-palette text-pink-300 text-xl"></i></div>
+                            <h3 class="font-bold text-white text-base mb-1">Manage App Design</h3>
+                            <p class="text-xs text-slate-400">Manage the app's visual design, images and displayed text.</p>
+                        </div>
                         <div @click="ownerSelectOption('custChat')" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-xl cursor-pointer transition shadow group">
                             <div class="flex items-center justify-between mb-3"><span class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg">NEW CHAT 1</span><i class="fa-solid fa-comments text-emerald-400 text-xl"></i></div>
                             <h3 class="font-bold text-white text-base mb-1" x-text="cms.ownerChat1Title"></h3>
@@ -331,6 +347,63 @@
                             <p class="text-xs text-slate-400" x-text="cms.ownerOpt12Desc"></p>
                         </div>
                     </div>
+                </div>
+
+                <!-- Manage App Design: live editor backed by the existing owner Master CMS -->
+                <div x-show="activeMenuOption === 'manageAppDesign'" class="space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-800 border border-pink-500/30 rounded-xl p-4">
+                        <div><h3 class="text-xl font-extrabold text-white">Manage App Design</h3><p class="text-xs text-slate-400 mt-1">Edit app colours, first-screen slides, images, app icon and displayed words.</p></div>
+                        <button type="button" @click="activeMenuOption = null" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg"><i class="fa-solid fa-arrow-left mr-1"></i> Back to My Dashboard</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <section class="bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-4">
+                            <h4 class="font-bold text-pink-300"><i class="fa-solid fa-palette mr-2"></i>App-wide colours</h4>
+                            <p class="text-xs text-slate-400">These colour settings are applied across the public, customer, staff and owner screens.</p>
+                            <label class="block text-xs text-slate-300">Main background <input type="color" x-model="cms.designBackground" class="block w-full h-11 mt-1 rounded-lg bg-slate-700"></label>
+                            <label class="block text-xs text-slate-300">Panel / card colour <input type="color" x-model="cms.designPanel" class="block w-full h-11 mt-1 rounded-lg bg-slate-700"></label>
+                            <label class="block text-xs text-slate-300">Primary button / highlight <input type="color" x-model="cms.designPrimary" class="block w-full h-11 mt-1 rounded-lg bg-slate-700"></label>
+                            <label class="block text-xs text-slate-300">Accent / link colour <input type="color" x-model="cms.designAccent" class="block w-full h-11 mt-1 rounded-lg bg-slate-700"></label>
+                            <div class="rounded-xl p-4 border border-slate-600" :style="'background:'+cms.designPanel">
+                                <p class="font-bold" :style="'color:'+cms.designAccent">Live colour preview</p>
+                                <button type="button" class="mt-2 rounded-lg px-4 py-2 text-white text-xs font-bold" :style="'background:'+cms.designPrimary">Sample button</button>
+                            </div>
+                        </section>
+                        <section class="bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-4">
+                            <h4 class="font-bold text-pink-300"><i class="fa-solid fa-icons mr-2"></i>App icon</h4>
+                            <p class="text-xs text-slate-400">Upload a square PNG, JPG or WEBP icon. It updates the browser icon and install manifest for new installs.</p>
+                            <input type="file" accept="image/png,image/jpeg,image/webp" @change="handleDesignImageUpload($event, 'appIcon')" class="block w-full text-xs text-slate-300">
+                            <img x-show="cms.designAppIcon" :src="cms.designAppIcon" alt="App icon preview" class="w-24 h-24 rounded-2xl object-cover border border-slate-600">
+                            <button type="button" @click="cms.designAppIcon=''; applyAppDesign()" class="text-xs text-rose-300">Remove custom icon</button>
+                        </section>
+                    </div>
+                    <section class="bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2"><h4 class="font-bold text-pink-300"><i class="fa-solid fa-images mr-2"></i>First screen — four welcome slides</h4><span class="text-[11px] text-slate-400">Upload a background image for each slide</span></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <template x-for="slide in [1,2,3,4]" :key="'design-slide-'+slide">
+                                <div class="rounded-xl border border-slate-700 bg-slate-900 p-3 space-y-2">
+                                    <p class="text-sm font-bold text-white" x-text="'Welcome slide '+slide"></p>
+                                    <label class="block text-xs text-slate-300">Main heading<input type="text" x-model="cms['designSlide'+slide+'Title']" class="mt-1 w-full rounded-lg bg-slate-700 border border-slate-600 p-2 text-sm text-white"></label>
+                                    <label class="block text-xs text-slate-300">Subtitle / supporting words<input type="text" x-model="cms['designSlide'+slide+'Subtitle']" class="mt-1 w-full rounded-lg bg-slate-700 border border-slate-600 p-2 text-sm text-white"></label>
+                                    <input type="file" accept="image/png,image/jpeg,image/webp" @change="handleDesignImageUpload($event, 'slide'+slide)" class="block w-full text-xs text-slate-300">
+                                    <img x-show="cms['designSlide'+slide+'Image']" :src="cms['designSlide'+slide+'Image']" alt="Welcome slide background preview" class="w-full h-28 object-cover rounded-lg">
+                                    <button type="button" @click="cms['designSlide'+slide+'Image']=''; applyAppDesign()" class="text-xs text-rose-300">Remove slide image</button>
+                                </div>
+                            </template>
+                        </div>
+                    </section>
+                    <section class="bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-3">
+                        <h4 class="font-bold text-pink-300"><i class="fa-solid fa-pen-to-square mr-2"></i>Public home screen words</h4>
+                        <label class="block text-xs text-slate-300">Main heading<input type="text" x-model="cms.publicTitle" class="mt-1 w-full rounded-lg bg-slate-700 border border-slate-600 p-2 text-sm text-white"></label>
+                        <label class="block text-xs text-slate-300">Supporting text<textarea x-model="cms.heroSubtitle" rows="2" class="mt-1 w-full rounded-lg bg-slate-700 border border-slate-600 p-2 text-sm text-white"></textarea></label>
+                        <label class="block text-xs text-slate-300">Header subtitle<input type="text" x-model="cms.headerSubtitle" class="mt-1 w-full rounded-lg bg-slate-700 border border-slate-600 p-2 text-sm text-white"></label>
+                        <p class="text-xs text-slate-400">For the remaining screens and all other editable words (customer, staff, owner, forms, options and labels), open the existing Master CMS editor. This keeps its current text settings and save workflow.</p>
+                        <button type="button" @click="activeMenuOption = 5" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-4 py-2 text-xs font-bold text-white">Open Master CMS — edit words across the app</button>
+                    </section>
+                    <div class="sticky bottom-3 flex flex-wrap gap-3 rounded-xl border border-pink-500/30 bg-slate-950/95 p-3 shadow-xl">
+                        <button type="button" @click="applyAppDesign()" class="rounded-lg bg-slate-700 px-4 py-3 text-xs font-bold text-white">Preview changes</button>
+                        <button type="button" @click="saveAppDesign()" class="flex-1 rounded-lg bg-pink-600 hover:bg-pink-500 px-4 py-3 text-sm font-extrabold text-white"><i class="fa-solid fa-floppy-disk mr-2"></i>Save & Apply Design</button>
+                    </div>
+                    <p class="text-[11px] text-slate-400">Design settings are saved in the existing secured Owner Master CMS in D1 and then loaded for all app users. Ticket, payment, account, chat and notification records are not edited by this page. Image uploads are limited to 250 KB each to fit the existing CMS storage limit.</p>
                 </div>
 
                 <!-- Owner Chat 1 -->
@@ -2297,6 +2370,7 @@
 
                     this.loadSavedPassengerProfiles();
 
+                    this.applyAppDesign();
                     this.loadPublicStats();
                     window.addEventListener('appinstalled', () => this.recordAppInstallation());
                     const isInstalledApp = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
@@ -2390,6 +2464,84 @@
                     } catch (e) {
                         return false;
                     }
+                },
+
+                applyAppDesign() {
+                    const validHex = value => /^#[0-9a-f]{6}$/i.test(String(value || ''));
+                    const background = validHex(this.cms.designBackground) ? this.cms.designBackground : '#0f172a';
+                    const panel = validHex(this.cms.designPanel) ? this.cms.designPanel : '#1e293b';
+                    const primary = validHex(this.cms.designPrimary) ? this.cms.designPrimary : '#059669';
+                    const accent = validHex(this.cms.designAccent) ? this.cms.designAccent : '#34d399';
+                    document.documentElement.style.setProperty('--artfive-design-bg', background);
+                    document.documentElement.style.setProperty('--artfive-design-panel', panel);
+                    document.documentElement.style.setProperty('--artfive-design-primary', primary);
+                    document.documentElement.style.setProperty('--artfive-design-accent', accent);
+                    for (let n = 1; n <= 4; n++) {
+                        const slide = document.querySelector('[data-artfive-splash="' + n + '"]');
+                        if (slide) {
+                            const image = this.cms['designSlide' + n + 'Image'];
+                            slide.style.backgroundImage = image ? 'linear-gradient(rgba(15,23,42,.48),rgba(15,23,42,.68)),url("' + image + '")' : '';
+                            slide.style.backgroundSize = 'cover';
+                            slide.style.backgroundPosition = 'center';
+                        }
+                    }
+                    const manifestLink = document.querySelector('link[rel="manifest"]');
+                    if (this.cms.designAppIcon) {
+                        let iconLink = document.querySelector('link[rel="icon"]');
+                        if (!iconLink) { iconLink = document.createElement('link'); iconLink.rel = 'icon'; document.head.appendChild(iconLink); }
+                        iconLink.href = this.cms.designAppIcon;
+                        const appleLink = document.querySelector('link[rel="apple-touch-icon"]') || document.createElement('link');
+                        appleLink.rel = 'apple-touch-icon'; appleLink.href = this.cms.designAppIcon;
+                        if (!appleLink.parentNode) document.head.appendChild(appleLink);
+                        if (manifestLink) {
+                            if (this.designManifestUrl) URL.revokeObjectURL(this.designManifestUrl);
+                            const mime = this.cms.designAppIcon.startsWith('data:image/png') ? 'image/png' : this.cms.designAppIcon.startsWith('data:image/webp') ? 'image/webp' : 'image/jpeg';
+                            const manifest = {name:'My ARTfive! Railway Assistant',short_name:'My ARTfive!',start_url:'/',scope:'/',display:'standalone',background_color:background,theme_color:primary,icons:[{src:this.cms.designAppIcon,sizes:'192x192',type:mime,purpose:'any'},{src:this.cms.designAppIcon,sizes:'512x512',type:mime,purpose:'any'}]};
+                            this.designManifestUrl = URL.createObjectURL(new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'}));
+                            manifestLink.href = this.designManifestUrl;
+                        }
+                    } else {
+                        const iconLink = document.querySelector('link[rel="icon"]');
+                        if (iconLink) iconLink.remove();
+                        const appleLink = document.querySelector('link[rel="apple-touch-icon"]');
+                        if (appleLink) appleLink.remove();
+                        if (manifestLink) manifestLink.href = '/manifest.webmanifest';
+                        if (this.designManifestUrl) { URL.revokeObjectURL(this.designManifestUrl); this.designManifestUrl = ''; }
+                    }
+                    document.querySelectorAll('[data-artfive-splash]').forEach((node, index) => {
+                        const n = index + 1;
+                        const heading = node.querySelector('[data-design-slide-title]');
+                        const subtitle = node.querySelector('[data-design-slide-subtitle]');
+                        if (heading) heading.textContent = this.cms['designSlide' + n + 'Title'] || '';
+                        if (subtitle) subtitle.textContent = this.cms['designSlide' + n + 'Subtitle'] || '';
+                    });
+                },
+
+                handleDesignImageUpload(event, target) {
+                    const file = event.target.files && event.target.files[0];
+                    if (!file) return;
+                    if (!['image/png','image/jpeg','image/webp'].includes(file.type)) {
+                        this.showAppNotice('My ARTfive! Please choose a PNG, JPG or WEBP image.');
+                        event.target.value = '';
+                        return;
+                    }
+                    if (file.size > 250 * 1024) {
+                        this.showAppNotice('My ARTfive! Please choose an image smaller than 250 KB.');
+                        event.target.value = '';
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        if (target === 'appIcon') this.cms.designAppIcon = String(reader.result || '');
+                        else this.cms['designSlide' + target.slice(5) + 'Image'] = String(reader.result || '');
+                        this.applyAppDesign();
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                async saveAppDesign() {
+                    this.applyAppDesign();
+                    await this.saveAllCmsChanges();
                 },
 
                 async saveAllCmsChanges() {
@@ -2786,6 +2938,23 @@
 
                 cms: {
                     headerSubtitle: '(Railway Assistant!)',
+                    designBackground: '#0f172a',
+                    designPanel: '#1e293b',
+                    designPrimary: '#059669',
+                    designAccent: '#34d399',
+                    designAppIcon: '',
+                    designSlide1Title: 'My ARTfive!',
+                    designSlide1Subtitle: 'Your Smart Travel Friend',
+                    designSlide1Image: '',
+                    designSlide2Title: 'My ARTfive!',
+                    designSlide2Subtitle: 'Your Journey... Our Care...',
+                    designSlide2Image: '',
+                    designSlide3Title: 'Safe Journey with My ARTfive!',
+                    designSlide3Subtitle: 'Travel Smart... with My ARTfive!',
+                    designSlide3Image: '',
+                    designSlide4Title: 'My ARTfive!',
+                    designSlide4Subtitle: '(Railway Assistant!)',
+                    designSlide4Image: '',
                     publicTitle: 'My ARTfive!',
                     heroSubtitle: 'Request tickets, securely confirm payments, collect assigned tickets instantly, and stay updated with live railway services.',
                     custPreviewHeading: 'Customer Dashboard Options',
@@ -3899,6 +4068,7 @@
                             if (settings.cms && typeof settings.cms === 'object') this.cms = { ...this.cms, ...settings.cms };
                             if (Array.isArray(settings.availableStations)) this.availableStations = settings.availableStations;
                             if (Array.isArray(settings.notificationTemplates)) this.notificationTemplates = settings.notificationTemplates;
+                            this.applyAppDesign();
                         }
                     } catch (error) {
                         console.warn('My ARTfive! Public settings could not be refreshed:', error.message);
