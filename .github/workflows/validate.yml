@@ -66,7 +66,7 @@ jobs:
             ['Owner account block UI', ui.includes('/api/owner/control/customer-accounts/status') && ui.includes('setOption10AccountStatus')],
             ['Owner account block API', worker.includes('path === "/api/owner/control/customer-accounts/status"')],
             ['Existing customer ticket request', ui.includes("apiRequest('/api/requests'") && worker.includes('path === "/api/requests"')],
-            ['Existing customer payment notifications', ui.includes('/api/customer/payment-instructions') && worker.includes('path === "/api/customer/payment-instructions"')],
+            ['Existing customer payment notifications', ui.includes('/api/customer-payments') && worker.includes('path === "/api/customer-payments"')],
             ['Existing ticket upload', ui.includes('/api/tickets') && worker.includes('path === "/api/tickets"')],
             ['Existing manual notification SEND/UNSEND', ui.includes('/api/notifications') && worker.includes('path === "/api/notifications"')],
             ['Manual-only deployment trigger', deployment.includes('workflow_dispatch:') && !/^  push:/m.test(deployment)],
