@@ -1558,7 +1558,7 @@ export default {
         let result;
         if (user.role === "owner" || user.role === "staff") {
           result = await env.DB.prepare(
-            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets ORDER BY created_at DESC"
+            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, uploaded_by AS uploadedBy, created_at AS createdAt FROM tickets ORDER BY created_at DESC"
           ).all();
         } else if (user.role === "customer") {
           const ticketAccessToken = request.headers.get("X-Ticket-Access") || "";
@@ -1569,7 +1569,7 @@ export default {
           ).bind(ticketAccessHash, user.id, now).first();
           if (!ticketAccess) return json({ success: false, message: "Your ticket access verification has expired. Please sign in again." }, 403);
           result = await env.DB.prepare(
-            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, created_at AS createdAt FROM tickets WHERE customer_id = ? ORDER BY created_at DESC"
+            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, uploaded_by AS uploadedBy, created_at AS createdAt FROM tickets WHERE customer_id = ? ORDER BY created_at DESC"
           ).bind(user.id).all();
         } else {
           return json({ success: false, message: "Access denied." }, 403);
