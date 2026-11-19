@@ -349,7 +349,7 @@
                     </div>
 
                     <div x-show="activeAppManagementSection === null" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <button type="button" @click="activeAppManagementSection = 'services'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/50 rounded-xl p-5 transition">
+                        <button type="button" @click="activeAppManagementSection = 'services'; loadAppServices()" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/50 rounded-xl p-5 transition">
                             <i class="fa-solid fa-layer-group text-emerald-400 text-xl"></i><h4 class="font-bold text-white mt-3">1. Manage Services</h4><p class="text-xs text-slate-400 mt-1">Add, edit, activate or deactivate customer services.</p>
                         </button>
                         <button type="button" @click="activeAppManagementSection = 'notifications'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 rounded-xl p-5 transition">
@@ -381,7 +381,20 @@
                             <button type="button" @click="activeAppManagementSection = null" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg"><i class="fa-solid fa-arrow-left mr-1"></i> Back to App Management</button>
                         </div>
                         <p class="text-sm text-slate-300" x-text="appManagementSectionDescription()"></p>
-                        <div class="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
+                    <div x-show="activeAppManagementSection === 'services'" class="space-y-4">
+                        <div class="flex flex-col sm:flex-row justify-between gap-3"><div><h4 class="font-bold text-white">Service Catalogue</h4><p class="text-xs text-slate-400">Saved in the current environment's D1 database. Deactivation does not delete existing records.</p></div><button type="button" @click="loadAppServices()" class="bg-slate-700 px-3 py-2 rounded-lg text-xs font-bold">Refresh</button></div>
+                        <form @submit.prevent="saveAppService()" class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-900/70 border border-slate-700 rounded-xl p-4">
+                            <label class="text-xs text-slate-300">Service name<input x-model="appServiceForm.name" maxlength="80" required class="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white" placeholder="e.g. Railway Ticket Service"></label>
+                            <label class="text-xs text-slate-300">Icon class<input x-model="appServiceForm.icon" maxlength="80" class="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white" placeholder="fa-solid fa-train"></label>
+                            <label class="text-xs text-slate-300 sm:col-span-2">Description<textarea x-model="appServiceForm.description" maxlength="300" rows="2" class="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white"></textarea></label>
+                            <label class="text-xs text-slate-300">Display order<input x-model.number="appServiceForm.displayOrder" type="number" min="0" max="9999" class="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white"></label>
+                            <label class="text-xs text-slate-300">Initial status<select x-model="appServiceForm.status" class="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white"><option value="draft">Draft</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+                            <div class="sm:col-span-2 flex flex-wrap gap-2"><button type="submit" :disabled="appServicesBusy" class="bg-emerald-600 disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-bold text-white" x-text="appServicesBusy ? 'Saving...' : (appServiceForm.id ? 'Save Changes' : 'Add Service')"></button><button type="button" x-show="appServiceForm.id" @click="resetAppServiceForm()" class="bg-slate-700 px-4 py-2 rounded-lg text-sm font-bold">Cancel Edit</button></div>
+                        </form>
+                        <p x-show="appServicesMessage" x-text="appServicesMessage" class="text-sm text-emerald-300" role="status"></p><p x-show="appServicesError" x-text="appServicesError" class="text-sm text-red-300" role="alert"></p>
+                        <div class="space-y-2"><template x-for="service in appServices" :key="service.id"><div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/70 border border-slate-700 rounded-xl p-4"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><h5 class="font-bold text-white" x-text="service.name"></h5><span class="text-[10px] uppercase font-bold px-2 py-1 rounded bg-slate-700 text-slate-200" x-text="service.status"></span></div><p class="text-xs text-slate-400 mt-1" x-text="service.description || 'No description'"></p><p class="text-[10px] text-slate-500 mt-1">Order: <span x-text="service.displayOrder"></span></p></div><div class="flex flex-wrap gap-2 shrink-0"><button type="button" @click="editAppService(service)" class="bg-sky-700 px-3 py-2 rounded-lg text-xs font-bold">Edit</button><button type="button" @click="setAppServiceStatus(service, service.status === 'active' ? 'inactive' : 'active')" class="bg-amber-700 px-3 py-2 rounded-lg text-xs font-bold" x-text="service.status === 'active' ? 'Deactivate' : 'Activate'"></button></div></div></template><p x-show="!appServices.length && !appServicesBusy" class="text-xs text-slate-400 text-center py-5">No services have been added yet.</p></div>
+                    </div>
+                        <div x-show="activeAppManagementSection !== 'services'" class="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
                             <p class="text-xs font-bold text-amber-200"><i class="fa-solid fa-circle-info mr-1"></i> Setup stage</p>
                             <p class="text-xs text-amber-100/90 mt-1">This section is now placed inside My Dashboard. Its management controls and secure server connections must be implemented and tested before it can change live app data. No customer records, payments, tickets, notifications or existing services are changed by opening this page.</p>
                         </div>
@@ -2517,6 +2530,11 @@
                 ownerPreviewMode: false,
                 activeMenuOption: null,
                 activeAppManagementSection: null,
+                appServices: [],
+                appServicesBusy: false,
+                appServicesMessage: '',
+                appServicesError: '',
+                appServiceForm: { id: '', name: '', description: '', icon: 'fa-solid fa-layer-group', displayOrder: 0, status: 'draft' },
                 activeCustOption: null,
                 activeStaffOption: null,
                 ownerInspectStaffOpt: null,
@@ -3393,6 +3411,37 @@
                     this.ticketAccessToken = '';
                     this.assignedTickets = [];
                     this.stopCustomerPaymentInstructionPolling();
+                },
+
+                resetAppServiceForm() {
+                    this.appServiceForm = { id: '', name: '', description: '', icon: 'fa-solid fa-layer-group', displayOrder: 0, status: 'draft' };
+                },
+                editAppService(service) {
+                    this.appServiceForm = { id: service.id, name: service.name, description: service.description || '', icon: service.icon || 'fa-solid fa-layer-group', displayOrder: Number(service.displayOrder || 0), status: service.status || 'draft' };
+                    this.appServicesMessage = ''; this.appServicesError = '';
+                },
+                async loadAppServices() {
+                    this.appServicesBusy = true; this.appServicesError = '';
+                    try { const result = await this.apiRequest('/api/owner/services'); this.appServices = Array.isArray(result.services) ? result.services : []; }
+                    catch (error) { this.appServicesError = error.message || 'Could not load services.'; }
+                    finally { this.appServicesBusy = false; }
+                },
+                async saveAppService() {
+                    this.appServicesBusy = true; this.appServicesMessage = ''; this.appServicesError = '';
+                    try {
+                        const payload = { ...this.appServiceForm, action: this.appServiceForm.id ? 'update' : 'create' };
+                        await this.apiRequest('/api/owner/services', { method: 'POST', body: payload });
+                        this.appServicesMessage = 'My ARTfive! Service saved successfully.'; this.resetAppServiceForm(); await this.loadAppServices();
+                    } catch (error) { this.appServicesError = error.message || 'Could not save service.'; }
+                    finally { this.appServicesBusy = false; }
+                },
+                async setAppServiceStatus(service, status) {
+                    if (!confirm('My ARTfive! Are you sure you want to ' + (status === 'active' ? 'activate' : 'deactivate') + ' "' + service.name + '"?')) return;
+                    this.appServicesError = ''; this.appServicesMessage = '';
+                    try {
+                        await this.apiRequest('/api/owner/services', { method: 'POST', body: { action: 'status', id: service.id, status } });
+                        this.appServicesMessage = 'My ARTfive! Service status updated.'; await this.loadAppServices();
+                    } catch (error) { this.appServicesError = error.message || 'Could not update service status.'; }
                 },
 
                 appManagementSectionTitle() {
