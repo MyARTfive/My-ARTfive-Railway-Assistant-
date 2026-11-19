@@ -367,8 +367,8 @@
                         <button type="button" @click="activeAppManagementSection = 'settings'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-orange-500/50 rounded-xl p-5 transition">
                             <i class="fa-solid fa-gear text-orange-300 text-xl"></i><h4 class="font-bold text-white mt-3">6. App Settings</h4><p class="text-xs text-slate-400 mt-1">Manage general application configuration.</p>
                         </button>
-                        <button type="button" @click="activeAppManagementSection = 'ai-github'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/50 rounded-xl p-5 transition sm:col-span-2 lg:col-span-1">
-                            <i class="fa-brands fa-github text-white text-xl"></i><h4 class="font-bold text-white mt-3">7. ChatGPT ↔ GitHub</h4><p class="text-xs text-slate-400 mt-1">Future AI assistant for project inspection and approved code changes.</p>
+                        <button type="button" @click="activeAppManagementSection = 'ai-github'" class="text-left bg-slate-800 hover:bg-slate-700 border border-emerald-500/40 hover:border-emerald-400 rounded-xl p-5 transition sm:col-span-2 lg:col-span-1">
+                            <i class="fa-brands fa-github text-white text-xl"></i><h4 class="font-bold text-white mt-3">7. ChatGPT ↔ GitHub</h4><p class="text-xs text-slate-400 mt-1">Use this ChatGPT conversation with your connected GitHub repository.</p>
                         </button>
                     </div>
 
@@ -378,12 +378,61 @@
                                 <p class="text-[10px] uppercase tracking-wider font-bold text-violet-300">App Management Workspace</p>
                                 <h4 class="text-lg font-extrabold text-white" x-text="appManagementSectionTitle()"></h4>
                             </div>
-                            <button type="button" @click="activeAppManagementSection = null" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg"><i class="fa-solid fa-arrow-left mr-1"></i> Back to App Management</button>
+                            <button type="button" @click="activeAppManagementSection = null" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg"><i class="fa-solid fa-arrow-left mr-1"></i> <span x-text="activeAppManagementSection === 'ai-github' ? 'Back to options menu' : 'Back to App Management'"></span></button>
                         </div>
-                        <p class="text-sm text-slate-300" x-text="appManagementSectionDescription()"></p>
-                        <div class="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
-                            <p class="text-xs font-bold text-amber-200"><i class="fa-solid fa-circle-info mr-1"></i> Setup stage</p>
-                            <p class="text-xs text-amber-100/90 mt-1">This section is now placed inside My Dashboard. Its management controls and secure server connections must be implemented and tested before it can change live app data. No customer records, payments, tickets, notifications or existing services are changed by opening this page.</p>
+                        <div x-show="activeAppManagementSection === 'ai-github'" class="space-y-5">
+                            <div class="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 space-y-2">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300"><i class="fa-solid fa-check mr-1"></i> Free-first workflow</span>
+                                    <span class="rounded-full bg-slate-700 px-3 py-1 text-xs font-bold text-slate-200">OpenAI API: Not used</span>
+                                </div>
+                                <h5 class="font-bold text-white">Use your existing ChatGPT conversation and GitHub connection</h5>
+                                <p class="text-sm text-slate-300">Write what you want to change below, copy the request, and send it in your current ChatGPT conversation. ChatGPT can use the GitHub connection available in that conversation to inspect files and prepare changes.</p>
+                                <p class="text-xs text-emerald-200">No API key, paid AI connection, or additional app-side AI service is required for this workflow.</p>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-2">
+                                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">GitHub repository</p>
+                                    <p class="font-bold text-white break-words">MyARTfive / My-ARTfive-Railway-Assistant-</p>
+                                    <a href="https://github.com/MyARTfive/My-ARTfive-Railway-Assistant-" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-3 py-2 text-xs font-bold text-white hover:bg-slate-600"><i class="fa-brands fa-github"></i> Open GitHub repository <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                                </div>
+                                <div class="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-2">
+                                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Connection status</p>
+                                    <p class="text-sm font-bold text-emerald-300"><i class="fa-solid fa-circle-check mr-1"></i> ChatGPT ↔ GitHub available in this ChatGPT conversation</p>
+                                    <p class="text-xs text-slate-400">This app page does not itself log in to ChatGPT or GitHub. It prepares requests for the connected ChatGPT workspace you already use.</p>
+                                </div>
+                            </div>
+                            <div class="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-3">
+                                <div>
+                                    <label for="app-assistant-request" class="block text-sm font-bold text-white">Tell ChatGPT what you want done</label>
+                                    <p class="mt-1 text-xs text-slate-400">Example: “Please inspect why Owner Option 7 is not opening and prepare a safe fix.”</p>
+                                </div>
+                                <textarea id="app-assistant-request" x-ref="appAssistantRequest" rows="5" class="w-full rounded-xl border border-slate-600 bg-slate-950 p-3 text-sm text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none" placeholder="Type your app change request here..."></textarea>
+                                <button type="button" @click="copyAppAssistantRequest()" class="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-500"><i class="fa-solid fa-copy mr-2"></i> Copy request for ChatGPT</button>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <button type="button" @click="$refs.appAssistantRequest.value = 'Please inspect the current My ARTfive! Railway Assistant GitHub repository. Explain the relevant files, identify the cause of the issue I describe, and propose a safe fix. Do not change protected ticket, payment, upload, download, customer ownership, staff privacy, or D1 workflows unless I explicitly authorise it. Create a Draft Pull Request for Preview testing; do not merge or deploy Production.'; copyAppAssistantRequest()" class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-xs font-bold text-slate-200 hover:bg-slate-700">Copy inspection prompt</button>
+                                    <button type="button" @click="$refs.appAssistantRequest.value = 'Please prepare the requested My ARTfive! Railway Assistant change on a separate GitHub branch and open a Draft Pull Request. Explain every changed file, preserve existing working features and D1 data, and wait for my approval. Do not merge or deploy Production.'; copyAppAssistantRequest()" class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-xs font-bold text-slate-200 hover:bg-slate-700">Copy safe-change prompt</button>
+                                </div>
+                            </div>
+                            <div class="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-2">
+                                <h5 class="font-bold text-white">Our safe working process</h5>
+                                <ol class="list-decimal pl-5 space-y-1 text-xs text-slate-300">
+                                    <li>ChatGPT inspects the connected GitHub repository and relevant files.</li>
+                                    <li>ChatGPT explains the issue and the proposed changes before implementation.</li>
+                                    <li>Approved work is prepared on a separate branch and Draft Pull Request.</li>
+                                    <li>GitHub checks and Cloudflare Preview are reviewed and tested.</li>
+                                    <li>Production is not merged or deployed until you explicitly approve it.</li>
+                                </ol>
+                                <p class="text-xs text-amber-200"><i class="fa-solid fa-shield-halved mr-1"></i> Never paste passwords, private keys, API tokens, or customer personal information into a request.</p>
+                            </div>
+                            <button type="button" @click="activeAppManagementSection = null" class="w-full rounded-xl border border-emerald-500/50 bg-slate-700 px-4 py-3 text-sm font-bold text-white hover:bg-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Back to options menu</button>
+                        </div>
+                        <div x-show="activeAppManagementSection !== 'ai-github'" class="space-y-3">
+                            <p class="text-sm text-slate-300" x-text="appManagementSectionDescription()"></p>
+                            <div class="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
+                                <p class="text-xs font-bold text-amber-200"><i class="fa-solid fa-circle-info mr-1"></i> Setup stage</p>
+                                <p class="text-xs text-amber-100/90 mt-1">This section is now placed inside My Dashboard. Its management controls and secure server connections must be implemented and tested before it can change live app data. No customer records, payments, tickets, notifications or existing services are changed by opening this page.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3393,6 +3442,33 @@
                     this.ticketAccessToken = '';
                     this.assignedTickets = [];
                     this.stopCustomerPaymentInstructionPolling();
+                },
+
+                async copyAppAssistantRequest() {
+                    const requestText = String(this.$refs.appAssistantRequest?.value || '').trim();
+                    if (!requestText) {
+                        this.showAppNotice('My ARTfive! Please write your request first.');
+                        return;
+                    }
+                    const fullPrompt = 'My ARTfive! Railway Assistant — GitHub task request\\n\\n' + requestText + '\\n\\nPlease inspect the repository before changing code. Preserve all protected working ticket, payment, upload, download, account-security and D1 workflows. Explain the proposed changes, use a separate branch and Draft Pull Request for Preview testing, and do not merge or deploy Production without my explicit approval.';
+                    try {
+                        if (navigator.clipboard && window.isSecureContext) {
+                            await navigator.clipboard.writeText(fullPrompt);
+                        } else {
+                            const helper = document.createElement('textarea');
+                            helper.value = fullPrompt;
+                            helper.style.position = 'fixed';
+                            helper.style.opacity = '0';
+                            document.body.appendChild(helper);
+                            helper.select();
+                            const copied = document.execCommand('copy');
+                            helper.remove();
+                            if (!copied) throw new Error('Clipboard copy was blocked');
+                        }
+                        this.showAppNotice('My ARTfive! Your ChatGPT request has been copied. Open your existing ChatGPT conversation and paste it there.');
+                    } catch (error) {
+                        this.showAppNotice('My ARTfive! Copy was not available on this device. Please select the request text and copy it manually.');
+                    }
                 },
 
                 appManagementSectionTitle() {
