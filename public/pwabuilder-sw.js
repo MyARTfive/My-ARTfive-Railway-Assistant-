@@ -1,4 +1,4 @@
-const CACHE_NAME = 'my-artfive-shell-v3';
+const CACHE_NAME = 'my-artfive-shell-v4';
 const SHELL_ASSETS = ['/', '/index.html', '/manifest.webmanifest'];
 
 self.addEventListener('install', event => {
