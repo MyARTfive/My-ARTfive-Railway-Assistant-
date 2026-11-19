@@ -1667,21 +1667,26 @@ export default {
           }
         ];
         const notificationExpiry = now + 15 * 60 * 1000;
-        // Keep the ticket, one-time payment confirmation and both notifications atomic.
+        // Keep the saved Owner payment confirmation. A successful send resets only
+        // the two dashboard switches; it never deletes ticket_payment_verifications.
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, setting_json TEXT NOT NULL, updated_by TEXT, updated_at INTEGER NOT NULL)").run();
         const sendResults = await env.DB.batch([
           env.DB.prepare(
             "INSERT INTO tickets (id, request_id, customer_id, customer_name, customer_phone, ticket_title, mime_type, file_data, payment_confirmed, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
           ).bind(id, requestId, customer.id, customer.name, customer.phone, ticketTitle, match[1], fileData, user.id, now),
-          env.DB.prepare(
-            "DELETE FROM ticket_payment_verifications WHERE request_id = ? AND customer_id = ?"
-          ).bind(requestId, customerId),
           ...ticketMessages.map(ticketMessage => env.DB.prepare(
             "INSERT INTO customer_notifications (id, customer_id, sender_id, message, created_at, ticket_id, target_option, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-          ).bind(crypto.randomUUID(), customer.id, user.id, ticketMessage.message, now, id, ticketMessage.targetOption, notificationExpiry))
+          ).bind(crypto.randomUUID(), customer.id, user.id, ticketMessage.message, now, id, ticketMessage.targetOption, notificationExpiry)),
+          env.DB.prepare(
+            "INSERT INTO app_settings (setting_key, setting_json, updated_by, updated_at) VALUES ('staff_payment_tick_enabled', 'false', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_json = 'false', updated_by = excluded.updated_by, updated_at = excluded.updated_at"
+          ).bind(user.id, now),
+          env.DB.prepare(
+            "INSERT INTO app_settings (setting_key, setting_json, updated_by, updated_at) VALUES ('staff_ticket_assignment_enabled', 'false', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_json = 'false', updated_by = excluded.updated_by, updated_at = excluded.updated_at"
+          ).bind(user.id, now)
         ]);
         if (!sendResults[0]?.meta || sendResults[0].meta.changes !== 1 ||
-            !sendResults[2]?.meta || sendResults[2].meta.changes !== 1 ||
-            !sendResults[3]?.meta || sendResults[3].meta.changes !== 1) {
+            !sendResults[1]?.meta || sendResults[1].meta.changes !== 1 ||
+            !sendResults[2]?.meta || sendResults[2].meta.changes !== 1) {
           return json({ success: false, message: "My ARTfive! Ticket and notifications could not be saved together. Please try again." }, 500);
         }
         return json({ success: true, id, message: "My ARTfive! Ticket uploaded and made available in Customer Option 4." }, 201);
