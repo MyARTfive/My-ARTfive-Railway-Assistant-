@@ -1694,7 +1694,8 @@ export default {
             message: "My ARTfive! Thank you for choosing us! Your confirmed railway ticket is ready. You can now view and download your ticket. You're always most welcome to visit us again. Have a safe and happy journey! ❤️"
           }
         ];
-        const notificationExpiry = now + 15 * 60 * 1000;
+        // Ticket upload notifications are permanent records. They remain visible until the related ticket is explicitly deleted.
+        const notificationExpiry = null;
         // Keep the saved Owner payment confirmation. A successful send resets only
         // the two dashboard switches; it never deletes ticket_payment_verifications.
         await env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, setting_json TEXT NOT NULL, updated_by TEXT, updated_at INTEGER NOT NULL)").run();
