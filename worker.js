@@ -1103,6 +1103,69 @@ export default {
         return json({ success: true, message: "My ARTfive! Visitor access unblocked." });
       }
 
+      if (path === "/api/staff/signup" && method === "POST") {
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS staff_signup_requests (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            password_hash TEXT,
+            status TEXT NOT NULL CHECK (status IN ('pending','approved','rejected')),
+            created_at INTEGER NOT NULL,
+            reviewed_at INTEGER
+          )
+        `).run();
+        if (await loginRateLimited(env, ip, "staff_signup_attempt", now)) return json({ success: false, message: "Error!" }, 429);
+        const body = await readJson(request);
+        const name = String(body.name || "").trim();
+        const phone = String(body.phone || "").trim();
+        const password = String(body.password || "");
+        if (!name || !phone || password.length < 8 || name.length > 100 || phone.length > 30) return json({ success: false, message: "Error!" }, 400);
+        const existingUser = await env.DB.prepare("SELECT id FROM users WHERE phone = ? LIMIT 1").bind(phone).first();
+        const pending = await env.DB.prepare("SELECT id FROM staff_signup_requests WHERE phone = ? AND status = 'pending' LIMIT 1").bind(phone).first();
+        if (existingUser || pending) return json({ success: false, message: "Error!" }, 409);
+        const passwordHash = await hashPassword(password);
+        const id = crypto.randomUUID();
+        await env.DB.prepare("INSERT INTO staff_signup_requests (id, name, phone, password_hash, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)").bind(id, name, phone, passwordHash, now).run();
+        return json({ success: true, message: "My ARTfive! Staff registration request submitted for Owner approval." }, 201);
+      }
+
+      if (path === "/api/owner/staff-signup-requests" && (method === "GET" || method === "POST")) {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") return json({ success: false, message: "Owner sign-in is required." }, 403);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS staff_signup_requests (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            password_hash TEXT,
+            status TEXT NOT NULL CHECK (status IN ('pending','approved','rejected')),
+            created_at INTEGER NOT NULL,
+            reviewed_at INTEGER
+          )
+        `).run();
+        if (method === "GET") {
+          const rows = await env.DB.prepare("SELECT id, name, phone, status, created_at AS createdAt FROM staff_signup_requests WHERE status = 'pending' ORDER BY created_at ASC").all();
+          return json({ success: true, requests: rows.results || [] });
+        }
+        const body = await readJson(request);
+        const requestId = String(body.requestId || "").trim();
+        const decision = String(body.decision || "").trim().toLowerCase();
+        if (!requestId || !["approve","reject"].includes(decision)) return json({ success: false, message: "Invalid staff approval action." }, 400);
+        const signup = await env.DB.prepare("SELECT id, name, phone, password_hash, status FROM staff_signup_requests WHERE id = ? LIMIT 1").bind(requestId).first();
+        if (!signup || signup.status !== "pending") return json({ success: false, message: "This staff request is no longer pending. Refresh the list." }, 409);
+        if (decision === "approve") {
+          const existingUser = await env.DB.prepare("SELECT id FROM users WHERE phone = ? LIMIT 1").bind(signup.phone).first();
+          if (existingUser) return json({ success: false, message: "This phone number is already registered." }, 409);
+          const staffId = crypto.randomUUID();
+          await env.DB.prepare("INSERT INTO users (id, name, email, phone, role, password_hash, active, created_at) VALUES (?, ?, NULL, ?, 'staff', ?, 1, ?)").bind(staffId, signup.name, signup.phone, signup.password_hash, now).run();
+          await env.DB.prepare("UPDATE staff_signup_requests SET status = 'approved', password_hash = NULL, reviewed_at = ? WHERE id = ? AND status = 'pending'").bind(now, requestId).run();
+        } else {
+          await env.DB.prepare("UPDATE staff_signup_requests SET status = 'rejected', password_hash = NULL, reviewed_at = ? WHERE id = ? AND status = 'pending'").bind(now, requestId).run();
+        }
+        return json({ success: true, message: decision === "approve" ? "My ARTfive! Staff account approved successfully." : "Staff request rejected." });
+      }
+
       if (path === "/api/owner/login" && method === "POST") {
         if (await loginRateLimited(env, ip, "staff_owner_login_failed", now)) return json({ success: false, message: "Too many sign-in attempts. Please wait 15 minutes and try again." }, 429);
         const body = await readJson(request);
@@ -1115,6 +1178,11 @@ export default {
               OR (role = 'staff' AND (lower(email) = lower(?) OR phone = ?))
            ORDER BY CASE WHEN role = 'owner' THEN 0 ELSE 1 END LIMIT 1`
         ).bind(identifier, identifier, identifier).first();
+        if (!user) {
+          await env.DB.prepare(`CREATE TABLE IF NOT EXISTS staff_signup_requests (id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL, password_hash TEXT, status TEXT NOT NULL CHECK (status IN ('pending','approved','rejected')), created_at INTEGER NOT NULL, reviewed_at INTEGER)`).run();
+          const rejected = await env.DB.prepare("SELECT id FROM staff_signup_requests WHERE phone = ? AND status = 'rejected' ORDER BY reviewed_at DESC LIMIT 1").bind(identifier).first();
+          if (rejected) return json({ success: false, message: "Error!" }, 401);
+        }
         if (!user || user.active !== 1 || !(await verifyPassword(password, user.password_hash))) {
           await logSecurity(env, ip, "staff_owner_login_failed", "Invalid Owner/Staff sign-in", now);
           return json({ success: false, message: "Email or password was not accepted." }, 401);
