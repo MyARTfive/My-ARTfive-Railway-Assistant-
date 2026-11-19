@@ -377,7 +377,7 @@
                         <div class="space-y-3">
                             <div class="rounded-xl border border-sky-500/30 bg-slate-900 p-4 space-y-3">
                                 <div class="flex items-center justify-between gap-3">
-                                    <div><h4 class="font-extrabold text-sky-300">Payment Confirmation Tick ✅</h4><p class="text-xs text-slate-400">Controls only whether Staff can see the blue tick after you manually confirm payment in My Dashboard Option 9.</p></div>
+                                    <div><h4 class="font-extrabold text-sky-300">Confirmed Payment</h4><p class="text-xs text-slate-400">ON/OFF controls the payment confirmation tick. Switching OFF never deletes the payment confirmation saved in My Dashboard Option 9.</p></div>
                                     <span class="text-xs font-extrabold px-3 py-1.5 rounded-full" :class="staffPaymentTickEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'" x-text="staffPaymentTickEnabled ? 'ON' : 'OFF'"></span>
                                 </div>
                                 <div class="flex gap-2">
@@ -387,7 +387,7 @@
                             </div>
                             <div class="rounded-xl border border-emerald-500/30 bg-slate-900 p-4 space-y-3">
                                 <div class="flex items-center justify-between gap-3">
-                                    <div><h4 class="font-extrabold text-emerald-300">Staff “Send it” Button</h4><p class="text-xs text-slate-400">Controls only whether Staff can send tickets. Owner preview keeps the button visible in Staff Dashboard.</p></div>
+                                    <div><h4 class="font-extrabold text-emerald-300">Allow / Disabled Send Button</h4><p class="text-xs text-slate-400">ON allows Staff to use Send it. OFF disables Staff sending.</p></div>
                                     <span class="text-xs font-extrabold px-3 py-1.5 rounded-full" :class="staffTicketAssignmentEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'" x-text="staffTicketAssignmentEnabled ? 'ON' : 'OFF'"></span>
                                 </div>
                                 <div class="flex gap-2">
@@ -4234,8 +4234,11 @@
                             fileData: this.uploadForm.fileData,
                             confirmOption3Payment: true
                         });
-                        // The Worker consumes the one-time confirmation only after the
-                        // ticket is saved successfully. Refresh the visible status now.
+                        // A successful send turns both dashboard switches OFF.
+                        // The Owner's saved payment confirmation remains in D1.
+                        this.staffPaymentTickEnabled = false;
+                        this.staffTicketAssignmentEnabled = false;
+                        // Refresh the visible payment status after the successful send.
                         if (this.currentUser && this.currentUser.role === 'owner') await this.refreshOwnerTicketPaymentVerification();
                         this.uploadForm.confirmOption3Payment = false;
                         this.uploadForm.requestId = '';
