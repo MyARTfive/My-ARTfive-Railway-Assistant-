@@ -30,7 +30,40 @@
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Alpine.js for reactive UI -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        /* Keep Alpine-controlled screens hidden until the interaction engine is ready. */
+        [x-cloak] { display: none !important; }
+        html:not(.alpine-ready) [x-show],
+        html.alpine-load-failed [x-show] { display: none !important; }
+    </style>
+    <script>
+        // Load a pinned Alpine.js build with a second CDN fallback. The UI remains
+        // hidden until Alpine has initialized, so a failed CDN cannot expose every dashboard.
+        document.addEventListener('alpine:initialized', () => {
+            document.documentElement.classList.add('alpine-ready');
+        });
+        (function loadAlpineRuntime() {
+            const sources = [
+                'https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js',
+                'https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js'
+            ];
+            let nextSource = 0;
+            function loadNextSource() {
+                if (nextSource >= sources.length) {
+                    document.documentElement.classList.add('alpine-load-failed');
+                    const errorPanel = document.getElementById('alpine-load-error');
+                    if (errorPanel) errorPanel.hidden = false;
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = sources[nextSource++];
+                script.async = false;
+                script.onerror = loadNextSource;
+                document.head.appendChild(script);
+            }
+            loadNextSource();
+        })();
+    </script>
     <style id="artfive-design-theme">
         body { background-color: var(--artfive-design-bg, #0f172a) !important; }
         body .bg-slate-900 { background-color: var(--artfive-design-bg, #0f172a) !important; }
@@ -44,6 +77,13 @@
     </style>
 </head>
 <body class="h-full bg-slate-900 text-slate-100 font-sans antialiased" x-data="railwayApp()" x-init="initApp()">
+    <div id="alpine-load-error" hidden role="alert" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950 p-6">
+        <div class="w-full max-w-md rounded-2xl border border-rose-500/50 bg-slate-900 p-6 text-center space-y-4">
+            <h1 class="text-xl font-extrabold text-white">My ARTfive! App could not start</h1>
+            <p class="text-sm leading-relaxed text-rose-200">The interactive dashboard could not load. Please check your internet connection and reload the app. Your account, payment and ticket records have not been changed.</p>
+            <button type="button" onclick="window.location.reload()" class="w-full rounded-xl bg-rose-700 px-4 py-3 font-bold text-white">Reload App</button>
+        </div>
+    </div>
 
     <div x-show="appNotice.open" x-cloak class="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4" @keydown.escape.window="closeAppNotice()">
         <div class="w-full max-w-sm rounded-2xl border bg-slate-900 p-6 shadow-2xl space-y-4" :class="appNotice.isError ? 'border-rose-500/60' : 'border-emerald-500/40'" role="dialog" aria-modal="true" aria-labelledby="app-notice-title">
