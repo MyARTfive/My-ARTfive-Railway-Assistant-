@@ -1638,6 +1638,11 @@
                                     <i class="fa-solid fa-floppy-disk"></i> Save Protected Code Draft
                                 </button>
                             </div>
+                            <div class="rounded-xl border border-sky-500/30 bg-slate-900 p-4 space-y-2">
+                                <h4 class="font-bold text-white"><i class="fa-solid fa-cloud-arrow-up text-sky-300 mr-2"></i>My ARTfive! Cloudflare Deployment</h4>
+                                <p class="text-xs text-slate-300">Real deployment is run through the protected GitHub Actions workflow, not by saving this code draft. After the workflow is available on the repository default branch and Cloudflare secrets are configured, choose Preview to publish an isolated test Worker. Production is restricted to the main branch and requires the exact approval phrase.</p>
+                                <a href="https://github.com/MyARTfive/My-ARTfive-Railway-Assistant-/actions/workflows/manual-cloudflare-deploy.yml" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-lg bg-sky-700 hover:bg-sky-600 px-4 py-2.5 text-xs font-bold text-white"><i class="fa-brands fa-github"></i> Open Deployment Workflow</a>
+                            </div>
                         </div>
                     </template>
                 </div>
