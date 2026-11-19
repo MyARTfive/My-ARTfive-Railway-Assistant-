@@ -241,6 +241,27 @@ function isSameOrigin(request) {
   catch { return false; }
 }
 
+async function ensureStaffChatSchema(env) {
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS staff_chat_messages (
+      id TEXT PRIMARY KEY,
+      staff_id TEXT,
+      sender_id TEXT NOT NULL REFERENCES users(id),
+      sender_role TEXT NOT NULL CHECK (sender_role IN ('owner','staff')),
+      sender_name TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )
+  `).run();
+  const info = await env.DB.prepare("PRAGMA table_info(staff_chat_messages)").all();
+  const columns = new Set((info.results || []).map(column => column.name));
+  if (!columns.has("staff_id")) await env.DB.prepare("ALTER TABLE staff_chat_messages ADD COLUMN staff_id TEXT").run();
+  // Legacy Staff messages belong to their sender. Old Owner messages had no recipient,
+  // so they are intentionally not exposed in any private Staff conversation.
+  await env.DB.prepare("UPDATE staff_chat_messages SET staff_id = sender_id WHERE sender_role = 'staff' AND staff_id IS NULL").run();
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_staff_chat_messages_staff_created ON staff_chat_messages(staff_id, created_at)").run();
+}
+
 async function purgeExpiredChatMessages(env, now = Date.now()) {
   const cutoff = now - 24 * 60 * 60 * 1000;
   await env.DB.prepare(`
@@ -254,16 +275,7 @@ async function purgeExpiredChatMessages(env, now = Date.now()) {
       created_at INTEGER NOT NULL
     )
   `).run();
-  await env.DB.prepare(`
-    CREATE TABLE IF NOT EXISTS staff_chat_messages (
-      id TEXT PRIMARY KEY,
-      sender_id TEXT NOT NULL REFERENCES users(id),
-      sender_role TEXT NOT NULL CHECK (sender_role IN ('owner','staff')),
-      sender_name TEXT NOT NULL,
-      message TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    )
-  `).run();
+  await ensureStaffChatSchema(env);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM staff_chat_messages WHERE created_at <= ?").bind(cutoff),
     env.DB.prepare("DELETE FROM customer_enquiry_messages WHERE created_at <= ?").bind(cutoff)
@@ -475,7 +487,7 @@ export default {
           ["tickets", "customer_id = ?", [customerId]],
           ["requests", "customer_id = ?", [customerId]],
           ["customer_enquiry_messages", "customer_id = ? OR sender_id = ?", [customerId, customerId]],
-          ["staff_chat_messages", "sender_id = ?", [customerId]],
+          ["staff_chat_messages", "sender_id = ? OR staff_id = ?", [customerId, customerId]],
           ["customer_notifications", "customer_id = ?", [customerId]],
           ["staff_notifications", "staff_id = ?", [customerId]],
           ["customer_payment_instructions", "customer_id = ?", [customerId]],
@@ -656,36 +668,50 @@ export default {
         return json({ success: true, enabled });
       }
 
+      if (path === "/api/staff-chat/recipients" && method === "GET") {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the Owner can view Staff chat recipients." }, 403);
+        const rows = await env.DB.prepare(
+          "SELECT id, name, phone FROM users WHERE role = 'staff' AND active = 1 ORDER BY name COLLATE NOCASE"
+        ).all();
+        return json({ success: true, staff: rows.results || [] });
+      }
+
       if (path === "/api/staff-chat" && (method === "GET" || method === "POST")) {
         const user = await getSessionUser(request, env, now);
         if (!user || !["owner", "staff"].includes(user.role)) return json({ success: false, message: "Only Owner and Staff can access Staff Chat." }, 403);
-        await env.DB.prepare(`
-          CREATE TABLE IF NOT EXISTS staff_chat_messages (
-            id TEXT PRIMARY KEY,
-            sender_id TEXT NOT NULL REFERENCES users(id),
-            sender_role TEXT NOT NULL CHECK (sender_role IN ('owner','staff')),
-            sender_name TEXT NOT NULL,
-            message TEXT NOT NULL,
-            created_at INTEGER NOT NULL
-          )
-        `).run();
+        await ensureStaffChatSchema(env);
         await purgeExpiredChatMessages(env, now);
         if (method === "GET") {
+          let staffId = user.id;
+          if (user.role === "owner") {
+            staffId = String(url.searchParams.get("staffId") || "").trim();
+            if (!staffId) return json({ success: true, messages: [] });
+            const target = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND role = 'staff' AND active = 1 LIMIT 1").bind(staffId).first();
+            if (!target) return json({ success: false, message: "The selected Staff account was not found." }, 404);
+          }
           const rows = await env.DB.prepare(
-            "SELECT id, sender_role AS senderRole, sender_name AS sender, message AS text, created_at AS createdAt FROM staff_chat_messages ORDER BY created_at ASC LIMIT 300"
-          ).all();
+            "SELECT id, sender_role AS senderRole, sender_name AS sender, message AS text, created_at AS createdAt FROM staff_chat_messages WHERE staff_id = ? ORDER BY created_at ASC LIMIT 300"
+          ).bind(staffId).all();
           return json({ success: true, messages: rows.results || [] });
         }
         const body = await readJson(request);
         const messageText = String(body.message || "").trim();
         if (!messageText || messageText.length > 2000) return json({ success: false, message: "Enter a message up to 2,000 characters." }, 400);
-        const senderName = user.role === "owner" ? "My ARTfive!" : "Staff";
+        let staffId = user.id;
+        if (user.role === "owner") {
+          staffId = String(body.staffId || "").trim();
+          if (!staffId) return json({ success: false, message: "Select the exact Staff member before sending a message." }, 400);
+          const target = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND role = 'staff' AND active = 1 LIMIT 1").bind(staffId).first();
+          if (!target) return json({ success: false, message: "The selected Staff account was not found." }, 404);
+        }
+        const senderName = user.role === "owner" ? "My ARTfive!" : String(user.name || "Staff");
         const finalMessage = user.role === "owner" && !/^My ARTfive!/i.test(messageText) ? "My ARTfive! " + messageText : messageText;
         const id = crypto.randomUUID();
         await env.DB.prepare(
-          "INSERT INTO staff_chat_messages (id, sender_id, sender_role, sender_name, message, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-        ).bind(id, user.id, user.role, senderName, finalMessage, now).run();
-        return json({ success: true, id, message: "My ARTfive! Staff message saved." }, 201);
+          "INSERT INTO staff_chat_messages (id, staff_id, sender_id, sender_role, sender_name, message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        ).bind(id, staffId, user.id, user.role, senderName, finalMessage, now).run();
+        return json({ success: true, id, message: "My ARTfive! Private Staff message saved." }, 201);
       }
 
       if (path === "/api/public/cms" && method === "GET") {
