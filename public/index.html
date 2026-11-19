@@ -377,6 +377,24 @@
                         <h3 class="text-lg font-bold text-white" x-text="cms.ownerChat2Title"></h3>
                         <button @click="activeMenuOption = null" class="bg-slate-700 text-white text-xs px-3.5 py-2 rounded-lg">Back</button>
                     </div>
+                    <div class="bg-slate-800 border border-amber-500/30 p-5 rounded-2xl space-y-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <div><h4 class="font-extrabold text-amber-300">Staff Signup Requests</h4><p class="text-xs text-slate-400">Review each new Staff Dashboard registration. Only approved people can sign in as Staff.</p></div>
+                            <button @click="loadStaffSignupRequests()" class="bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold px-3 py-2 rounded-lg">Refresh</button>
+                        </div>
+                        <template x-if="staffSignupRequests.length === 0"><p class="text-sm text-slate-400">No pending staff signup requests.</p></template>
+                        <template x-for="request in staffSignupRequests" :key="request.id">
+                            <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-3">
+                                <p class="font-bold text-white" x-text="request.name"></p>
+                                <p class="text-xs text-slate-300" x-text="'Staff phone number: ' + request.phone"></p>
+                                <p class="text-[11px] text-slate-500" x-text="'Request received: ' + new Date(Number(request.createdAt)).toLocaleString()"></p>
+                                <div class="flex gap-2">
+                                    <button @click="decideStaffSignup(request, 'approve')" class="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-extrabold px-3 py-2.5 rounded-lg">Staff approved</button>
+                                    <button @click="decideStaffSignup(request, 'reject')" class="flex-1 bg-rose-700 hover:bg-rose-600 text-white text-xs font-extrabold px-3 py-2.5 rounded-lg">Reject</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                     <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4">
                         <div class="bg-slate-900 p-4 rounded-xl h-64 overflow-y-auto space-y-3 border border-slate-700">
                             <template x-for="msg in staffChatMessages" :key="msg.id">
@@ -2046,6 +2064,7 @@
                 <!-- 2. STAFF LOGIN -->
                 <template x-if="loginRole === 'staff'">
                     <div class="space-y-4">
+                        <p x-show="staffSignupError" x-text="staffSignupError" class="text-center text-sm font-extrabold text-red-500"></p>
                         <div><label class="block text-xs font-bold text-slate-300 mb-1">Staff Full Name</label><input type="text" x-model="loginStaffName" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter staff full name"></div>
                         <div><label class="block text-xs font-bold text-slate-300 mb-1">Phone Number</label><input type="text" x-model="loginPhone" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter phone number"></div>
                         <div class="relative">
@@ -2059,7 +2078,7 @@
                         </div>
                         <div class="flex justify-between items-center text-xs">
                             <a href="#" @click.prevent="forgotPassword('Staff')" class="text-emerald-400 hover:underline">Forgot password?</a>
-                            <a href="#" @click.prevent="loginRole = 'staff_new'" class="text-sky-400 hover:underline">New Sign In? Register Here</a>
+                            <a href="#" @click.prevent="staffSignupError = ''; loginRole = 'staff_new'" class="text-sky-400 hover:underline">New Sign In? Register Here</a>
                         </div>
                     </div>
                 </template>
@@ -2496,6 +2515,8 @@
                 customerReplyText: '',
                 customerEnquiryMessages: [],
                 staffChatMessages: [],
+                staffSignupRequests: [],
+                staffSignupError: '',
                 customerNotifications: [],
                 newStaffChatText: '',
 
@@ -2555,6 +2576,32 @@
                         this.customerReplyText = '';
                         await this.loadCustomerEnquiryChat();
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not send your enquiry message.'); }
+                },
+
+                async loadStaffSignupRequests() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/staff-signup-requests');
+                        this.staffSignupRequests = result.requests || [];
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not load Staff signup requests.');
+                    }
+                },
+
+                async decideStaffSignup(request, decision) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner' || !request) return;
+                    const actionLabel = decision === 'approve' ? 'approve' : 'reject';
+                    if (!confirm('My ARTfive! Do you want to ' + actionLabel + ' the Staff signup request for ' + request.name + '?')) return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/staff-signup-requests', {
+                            method: 'POST',
+                            body: { requestId: request.id, decision }
+                        });
+                        await this.loadStaffSignupRequests();
+                        this.showAppNotice(result.message || 'My ARTfive! Staff signup decision saved.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not update the Staff signup request.');
+                    }
                 },
 
                 async loadStaffChat() {
@@ -3151,7 +3198,7 @@
                     // Option 9 must reload the central uploaded-ticket list whenever the Owner opens it.
                     if (optNum === 9) { this.loadAssignedTicketsFromDB(); this.refreshOwnerPaymentInstructions(); }
                     if (optNum === 'custChat') this.loadCustomerChatSettings();
-                    if (optNum === 'staffChat') this.loadStaffChat();
+                    if (optNum === 'staffChat') { this.loadStaffChat(); this.loadStaffSignupRequests(); }
                     if (optNum === 10) {
                         this.option10Authenticated = false;
                         this.option10Phone = '';
@@ -3900,7 +3947,16 @@
                                 return;
                             }
                             if (this.loginRole === 'staff_new') {
-                                alert('My ARTfive! Staff registration is controlled by the Owner. Ask the Owner to create your staff account first.');
+                                this.staffSignupError = '';
+                                await this.apiRequest('/api/staff/signup', {
+                                    method: 'POST',
+                                    body: { name: this.loginStaffName.trim(), phone: identifier, password }
+                                });
+                                this.loginPassword = '';
+                                this.loginStaffName = '';
+                                this.loginPhone = '';
+                                this.showLoginModal = false;
+                                this.showAppNotice('My ARTfive! Your Staff signup request has been sent to the Owner for approval.');
                                 return;
                             }
                             if (this.loginRole === 'owner' && this.ownerExists === false) {
@@ -3983,6 +4039,8 @@
                             this.showAppNotice(safeMessage ? 'My ARTfive! ' + safeMessage : 'My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
                         } else if (this.loginRole === 'customer' || this.loginRole === 'customer_new') {
                             this.showAppNotice('My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
+                        } else if ((this.loginRole === 'staff' || this.loginRole === 'staff_new') && String(error && error.message || '') === 'Error!') {
+                            this.staffSignupError = 'Error!';
                         } else {
                             alert(error.message || 'My ARTfive! Sign-in failed. Please check your details.');
                         }
