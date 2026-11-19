@@ -374,13 +374,27 @@
                 <!-- Owner Chat 2 -->
                 <div x-show="activeMenuOption === 'staffChat'" class="space-y-6">
                     <div class="bg-slate-800 border border-sky-500/30 p-5 rounded-2xl space-y-3">
-                        <div class="flex items-center justify-between gap-3">
-                            <div><h4 class="font-extrabold text-sky-300">Staff Ticket Assignment</h4><p class="text-xs text-slate-400">ON allows Staff to use “Upload & Assign to Customer Option 4”. OFF blocks Staff from assigning tickets.</p></div>
-                            <span class="text-xs font-extrabold px-3 py-1.5 rounded-full" :class="staffTicketAssignmentEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'" x-text="staffTicketAssignmentEnabled ? 'ON' : 'OFF'"></span>
-                        </div>
-                        <div class="flex gap-2">
-                            <button type="button" @click="setStaffTicketAssignmentPermission(true)" :disabled="staffTicketAssignmentEnabled" class="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 px-4 py-2.5 text-xs font-extrabold text-white">ON — Allow Staff</button>
-                            <button type="button" @click="setStaffTicketAssignmentPermission(false)" :disabled="!staffTicketAssignmentEnabled" class="flex-1 rounded-lg bg-rose-700 hover:bg-rose-600 disabled:opacity-40 px-4 py-2.5 text-xs font-extrabold text-white">OFF — Block Staff</button>
+                        <div class="space-y-3">
+                            <div class="rounded-xl border border-sky-500/30 bg-slate-900 p-4 space-y-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div><h4 class="font-extrabold text-sky-300">Payment Confirmation Tick ✅</h4><p class="text-xs text-slate-400">Controls only whether Staff can see the blue tick after you manually confirm payment in My Dashboard Option 9.</p></div>
+                                    <span class="text-xs font-extrabold px-3 py-1.5 rounded-full" :class="staffPaymentTickEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'" x-text="staffPaymentTickEnabled ? 'ON' : 'OFF'"></span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button type="button" @click="setStaffPaymentTickPermission(true)" :disabled="staffPaymentTickEnabled" class="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 px-4 py-2.5 text-xs font-extrabold text-white">ON — Show Tick</button>
+                                    <button type="button" @click="setStaffPaymentTickPermission(false)" :disabled="!staffPaymentTickEnabled" class="flex-1 rounded-lg bg-rose-700 hover:bg-rose-600 disabled:opacity-40 px-4 py-2.5 text-xs font-extrabold text-white">OFF — Hide Tick</button>
+                                </div>
+                            </div>
+                            <div class="rounded-xl border border-emerald-500/30 bg-slate-900 p-4 space-y-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div><h4 class="font-extrabold text-emerald-300">Staff “Send it” Button</h4><p class="text-xs text-slate-400">Controls only whether Staff can send tickets. Owner preview keeps the button visible in Staff Dashboard.</p></div>
+                                    <span class="text-xs font-extrabold px-3 py-1.5 rounded-full" :class="staffTicketAssignmentEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'" x-text="staffTicketAssignmentEnabled ? 'ON' : 'OFF'"></span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button type="button" @click="setStaffTicketAssignmentPermission(true)" :disabled="staffTicketAssignmentEnabled" class="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 px-4 py-2.5 text-xs font-extrabold text-white">ON — Show Send it</button>
+                                    <button type="button" @click="setStaffTicketAssignmentPermission(false)" :disabled="!staffTicketAssignmentEnabled" class="flex-1 rounded-lg bg-rose-700 hover:bg-rose-600 disabled:opacity-40 px-4 py-2.5 text-xs font-extrabold text-white">OFF — Hide Send it</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
@@ -1828,7 +1842,7 @@
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt1Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt1Desc"></p>
                     </div>
-                    <div @click="activeStaffOption = 2; if (!ownerPreviewMode) { loadAssignedTicketsFromDB(); loadStaffTicketAssignmentPermission(); refreshOwnerTicketPaymentVerification(); }" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                    <div @click="activeStaffOption = 2; loadAssignedTicketsFromDB(); loadStaffTicketAssignmentPermission(); loadStaffPaymentTickPermission(); refreshOwnerTicketPaymentVerification();" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-cloud-arrow-up"></i></div>
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt2Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt2Desc"></p>
@@ -1898,9 +1912,10 @@
                                     <button type="button" @click="refreshOwnerTicketPaymentVerification()" :disabled="ownerPaymentStatusRefreshing" class="text-xs text-sky-300 underline disabled:opacity-50" x-text="ownerPaymentStatusRefreshing ? 'Refreshing…' : 'Refresh status'"></button>
                                 </div>
                                 <p class="text-xs text-slate-300">Only the Owner can personally confirm the customer's actual payment. Staff can only view this status.</p>
-                                <p x-show="uploadForm.customerId && uploadForm.requestId && staffTicketAssignmentEnabled && isOwnerTicketPaymentVerified()" class="text-xs font-extrabold text-sky-300">Owner payment confirmed <span class="text-sky-300">✓</span></p>
-                                <p x-show="uploadForm.customerId && uploadForm.requestId && staffTicketAssignmentEnabled && !isOwnerTicketPaymentVerified()" class="text-xs text-rose-300">Payment not confirmed — sending is locked</p>
-                                <p x-show="!staffTicketAssignmentEnabled" class="text-xs text-amber-300">Staff ticket assignment is OFF.</p>
+                                <p x-show="uploadForm.customerId && uploadForm.requestId && staffPaymentTickEnabled && isOwnerTicketPaymentVerified()" class="text-xs font-extrabold text-sky-300">Owner payment confirmed <span class="text-sky-300">✓</span></p>
+                                <p x-show="uploadForm.customerId && uploadForm.requestId && staffPaymentTickEnabled && !isOwnerTicketPaymentVerified()" class="text-xs text-rose-300">Payment not confirmed yet.</p>
+                                <p x-show="!staffPaymentTickEnabled" class="text-xs text-amber-300">Staff payment confirmation tick is OFF.</p>
+                                <p x-show="!staffTicketAssignmentEnabled && !ownerPreviewMode" class="text-xs text-amber-300">Staff “Send it” permission is OFF.</p>
                                 <p x-show="!uploadForm.customerId || !uploadForm.requestId" class="text-xs text-amber-300">Select the customer and exact ticket request to view its payment status.</p>
                             </div>
                                                         <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
@@ -1927,7 +1942,7 @@
                         </div>
 
                         <p x-show="staffTicketUploadError" class="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm font-extrabold text-rose-300" x-text="staffTicketUploadError"></p>
-                        <button x-show="!ownerPreviewMode" @click="uploadAndAssignTicket()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm transition shadow">Send it</button>
+                        <button x-show="ownerPreviewMode || staffTicketAssignmentEnabled" @click="uploadAndAssignTicket()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm transition shadow">Send it</button>
                     </div>
                 </div>
 
@@ -2550,6 +2565,7 @@
                 staffSignupRequests: [],
                 staffSignupError: '',
                 staffTicketAssignmentEnabled: false,
+                staffPaymentTickEnabled: false,
                 customerNotifications: [],
                 newStaffChatText: '',
 
@@ -2617,7 +2633,28 @@
                         this.staffTicketAssignmentEnabled = !!result.enabled;
                     } catch (error) {
                         this.staffTicketAssignmentEnabled = false;
-                        if (this.currentUser && this.currentUser.role === 'owner') this.showAppNotice(error.message || 'My ARTfive! Could not load Staff ticket permission.');
+                        if (this.currentUser && this.currentUser.role === 'owner') this.showAppNotice(error.message || 'My ARTfive! Could not load Staff Send it permission.');
+                    }
+                },
+
+                async loadStaffPaymentTickPermission() {
+                    try {
+                        const result = await this.apiRequest('/api/owner/staff-payment-tick');
+                        this.staffPaymentTickEnabled = !!result.enabled;
+                    } catch (error) {
+                        this.staffPaymentTickEnabled = false;
+                        if (this.currentUser && this.currentUser.role === 'owner') this.showAppNotice(error.message || 'My ARTfive! Could not load Staff payment tick permission.');
+                    }
+                },
+
+                async setStaffPaymentTickPermission(enabled) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/staff-payment-tick', { method: 'POST', body: { enabled: !!enabled } });
+                        this.staffPaymentTickEnabled = !!result.enabled;
+                        this.showAppNotice(this.staffPaymentTickEnabled ? 'My ARTfive! Staff payment confirmation tick is ON.' : 'My ARTfive! Staff payment confirmation tick is OFF.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not change Staff payment tick permission.');
                     }
                 },
 
@@ -4176,10 +4213,6 @@
                 },
 
                 async uploadAndAssignTicket() {
-                    if (this.ownerPreviewMode) {
-                        this.showAppNotice('My ARTfive! Ticket uploads are disabled in Owner preview.');
-                        return;
-                    }
                     this.staffTicketUploadError = '';
                     if (this.currentUser && this.currentUser.role === 'staff') {
                         await this.loadStaffTicketAssignmentPermission();
