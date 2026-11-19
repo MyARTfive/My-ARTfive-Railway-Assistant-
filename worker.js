@@ -446,6 +446,79 @@ export default {
         });
       }
 
+      if (path === "/api/owner/control/customer-accounts" && method === "GET") {
+        const owner = await getManagerVerifiedOwner(request, env, now);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required to view registered accounts." }, 403);
+        const result = await env.DB.prepare(
+          "SELECT id, name, phone, role, created_at AS createdAt, active FROM users WHERE role IN ('customer', 'staff') ORDER BY created_at DESC, role, name COLLATE NOCASE"
+        ).all();
+        return json({ success: true, customers: result.results || [] });
+      }
+
+      if (path === "/api/owner/control/customer-accounts/delete" && method === "POST") {
+        const owner = await getManagerVerifiedOwner(request, env, now);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required to delete registered accounts." }, 403);
+        const body = await readJson(request);
+        const customerId = String(body.accountId || body.customerId || "").trim();
+        if (!customerId) return json({ success: false, message: "Select a Customer ID or Staff ID to delete." }, 400);
+        const customer = await env.DB.prepare(
+          "SELECT id, name, phone, role FROM users WHERE id = ? AND role IN ('customer', 'staff') LIMIT 1"
+        ).bind(customerId).first();
+        if (!customer) return json({ success: false, message: "The selected account was not found. Refresh the list and try again." }, 404);
+
+        // Delete only records belonging to this selected customer or staff account. Keep owner accounts, shared settings, visitor/security logs, and unrelated accounts untouched.
+        const tableResult = await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table'"
+        ).all();
+        const tables = new Set((tableResult.results || []).map(row => row.name));
+        const cleanup = [
+          ["tickets", "customer_id = ?", [customerId]],
+          ["requests", "customer_id = ?", [customerId]],
+          ["customer_enquiry_messages", "customer_id = ? OR sender_id = ?", [customerId, customerId]],
+          ["staff_chat_messages", "sender_id = ?", [customerId]],
+          ["customer_notifications", "customer_id = ?", [customerId]],
+          ["staff_notifications", "staff_id = ?", [customerId]],
+          ["customer_payment_instructions", "customer_id = ?", [customerId]],
+          ["ticket_payment_verifications", "customer_id = ?", [customerId]],
+          ["customer_ticket_access", "customer_id = ?", [customerId]],
+          ["customer_passenger_profiles", "customer_id = ?", [customerId]],
+          ["customer_engagement", "customer_id = ?", [customerId]],
+          ["password_change_requests", "user_id = ?", [customerId]],
+          ["manager_sessions", "owner_id = ?", [customerId]],
+          ["sessions", "user_id = ?", [customerId]]
+        ];
+        const statements = cleanup
+          .filter(([table]) => tables.has(table))
+          .map(([table, where, values]) => env.DB.prepare("DELETE FROM " + table + " WHERE " + where).bind(...values));
+
+        // Preserve customer-facing records when a staff account is deleted by transferring
+        // uploader/sender/creator references to the verified Owner before removing the account.
+        if (tables.has("tickets")) {
+          statements.push(env.DB.prepare("UPDATE tickets SET uploaded_by = ? WHERE uploaded_by = ?").bind(owner.id, customerId));
+        }
+        if (tables.has("customer_notifications")) {
+          statements.push(env.DB.prepare("UPDATE customer_notifications SET sender_id = ? WHERE sender_id = ?").bind(owner.id, customerId));
+        }
+        if (tables.has("app_updates")) {
+          statements.push(env.DB.prepare("UPDATE app_updates SET created_by = ? WHERE created_by = ?").bind(owner.id, customerId));
+        }
+
+        statements.push(
+          env.DB.prepare("DELETE FROM users WHERE id = ? AND role IN ('customer', 'staff')").bind(customerId)
+        );
+        const results = await env.DB.batch(statements);
+        const deletedAccount = results[results.length - 1];
+        if (!Number(deletedAccount?.meta?.changes || 0)) {
+          return json({ success: false, message: "The selected account could not be deleted. Refresh and try again." }, 409);
+        }
+        await logSecurity(env, ip, "account_id_deleted", "Owner permanently deleted registered account " + customerId, now);
+        return json({
+          success: true,
+          customerId,
+          message: "My ARTfive! The selected account was permanently deleted from D1. The person may register again later."
+        });
+      }
+
       if (path === "/api/owner/apk-download-settings" && (method === "GET" || method === "POST")) {
         const owner = await getSessionUser(request, env, now);
         if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the Owner can manage the APK download link." }, 403);
@@ -666,7 +739,7 @@ export default {
         if (user.role !== "owner") return json({ success: false, message: "Only the Owner can send customer notifications." }, 403);
         const body = await readJson(request);
         let message = String(body.message || "").trim();
-        const customerId = String(body.customerId || "").trim();
+        const customerId = String(body.accountId || body.customerId || "").trim();
         const category = String(body.category || "All");
         if (!message || message.length > 2000) return json({ success: false, message: "Enter a notification message up to 2,000 characters." }, 400);
         if (!/^My ARTfive!/i.test(message)) message = "My ARTfive! " + message;
@@ -1373,7 +1446,7 @@ export default {
         }
         if (user.role !== "owner") return json({ success: false, message: "Only the Owner can confirm ticket collection payment." }, 403);
         const body = await readJson(request);
-        const customerId = String(body.customerId || "").trim();
+        const customerId = String(body.accountId || body.customerId || "").trim();
         const requestId = String(body.requestId || "").trim();
         if (!customerId || !requestId) return json({ success: false, message: "Select the customer and exact ticket request." }, 400);
         const requestRow = await env.DB.prepare(
@@ -1423,7 +1496,7 @@ export default {
           return json({ success: false, message: "Owner or Staff sign-in is required to send tickets." }, 403);
         }
         const body = await readJson(request);
-        const customerId = String(body.customerId || "").trim();
+        const customerId = String(body.accountId || body.customerId || "").trim();
         const requestId = String(body.requestId || "").trim();
         const ticketTitle = String(body.ticketTitle || "").trim();
         const fileData = String(body.fileData || "");
