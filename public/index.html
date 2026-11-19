@@ -1828,7 +1828,7 @@
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt1Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt1Desc"></p>
                     </div>
-                    <div @click="activeStaffOption = 2; if (!ownerPreviewMode) { loadAssignedTicketsFromDB(); loadStaffTicketAssignmentPermission(); }" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                    <div @click="activeStaffOption = 2; if (!ownerPreviewMode) { loadAssignedTicketsFromDB(); loadStaffTicketAssignmentPermission(); refreshOwnerTicketPaymentVerification(); }" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-cloud-arrow-up"></i></div>
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt2Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt2Desc"></p>
