@@ -2269,10 +2269,10 @@
                         if (this.currentUser && this.currentUser.role === 'customer' && this.currentDashboard === 'customer' && this.activeCustOption === 1) this.loadCustomerEnquiryChat();
                         if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'custChat' && this.paymentForm.customerId) this.loadCustomerEnquiryChat(this.paymentForm.customerId);
                         if (this.currentUser && ['owner', 'staff'].includes(this.currentUser.role) && (this.activeMenuOption === 'staffChat' || this.activeStaffOption === 3)) this.loadStaffChat();
+                        if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'staffChat') this.loadStaffSignupRequests();
                     }, 7000);
 
                     let timer = setInterval(() => {
-                        if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'staffChat') this.loadStaffSignupRequests();
                         if (this.activeSplashIndex < this.totalSplashSlides - 1) {
                             this.activeSplashIndex++;
                         } else {
