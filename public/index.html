@@ -2779,7 +2779,7 @@
                 staffChatSelectedId: '',
                 staffSignupRequests: [],
                 staffSignupError: '',
-                staffSignupRequestId: '',
+                staffSignupRequestId: localStorage.getItem('artfive_staff_signup_request_id') || '',
                 staffSignupStatus: '',
                 staffSignupStatusMessage: '',
                 staffNotifications: [],
@@ -3240,7 +3240,13 @@
                     try {
                         const result = await this.apiRequest('/api/me');
                         this.currentUser = result.user;
-                        if (result.user && result.user.role === 'staff') await this.loadStaffNotifications();
+                        if (result.user && result.user.role === 'staff') {
+                            await this.loadStaffNotifications();
+                            localStorage.removeItem('artfive_staff_signup_request_id');
+                            this.staffSignupRequestId = '';
+                            this.staffSignupStatus = '';
+                            this.staffSignupStatusMessage = '';
+                        }
                         this.ownerPreviewMode = false;
                         if (result.user.role === 'customer') {
                             this.currentDashboard = 'public';
@@ -4342,6 +4348,7 @@
                                 this.staffSignupError = '';
                                 const signupResult = await this.apiRequest('/api/staff/signup', { method: 'POST', body: { name: this.loginStaffName.trim(), phone: identifier, password } });
                                 this.staffSignupRequestId = String(signupResult.requestId || '');
+                                if (this.staffSignupRequestId) localStorage.setItem('artfive_staff_signup_request_id', this.staffSignupRequestId);
                                 this.staffSignupStatus = 'pending';
                                 this.staffSignupStatusMessage = 'My ARTfive! Your Staff registration is waiting for Owner approval. Keep this screen to check the decision.';
                                 this.loginPassword = '';
@@ -4388,7 +4395,13 @@
                         }
                         this.ticketAccessToken = this.loginRole === 'customer_verify' ? String(result.ticketAccessToken || '') : '';
                         this.currentUser = result.user;
-                        if (result.user && result.user.role === 'staff') await this.loadStaffNotifications();
+                        if (result.user && result.user.role === 'staff') {
+                            await this.loadStaffNotifications();
+                            localStorage.removeItem('artfive_staff_signup_request_id');
+                            this.staffSignupRequestId = '';
+                            this.staffSignupStatus = '';
+                            this.staffSignupStatusMessage = '';
+                        }
                         this.ownerPreviewMode = false;
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
                         this.offlineMode = false;
