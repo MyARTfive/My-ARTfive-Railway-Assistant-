@@ -1884,7 +1884,7 @@
                                 <label class="block text-xs font-bold text-slate-400 mt-3 mb-1">Select the exact ticket request</label>
                                 <button type="button" @click="refreshUploadRequestList()" class="text-xs text-sky-300 underline">Refresh requests</button>
                             </div>
-                            <select x-model="uploadForm.requestId" @change="refreshOwnerPaymentInstructions()" :disabled="!uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50">
+                            <select x-model="uploadForm.requestId" @change="" :disabled="!uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50">
                                 <option value="">-- Choose Ticket Request --</option>
                                 <template x-for="req in uploadRequestsForSelectedCustomer()" :key="'owner-uploadreq-'+req.id">
                                     <option :value="String(req.id)" x-text="uploadRequestLabel(req)"></option>
@@ -1901,10 +1901,10 @@
                             <input type="file" x-ref="staffDashFile" accept=".pdf,application/pdf" @change="handleFileUpload($event)" class="hidden">
                             <input type="file" x-ref="staffDashImage" accept="image/png,image/jpeg,image/webp" @change="handleFileUpload($event)" class="hidden">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <button @click="$refs.ownerFile.click()" type="button" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-4 text-xs text-emerald-300 font-bold flex items-center justify-center gap-2 transition shadow">
+                                <button @click="$refs.staffDashFile.click()" type="button" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-4 text-xs text-emerald-300 font-bold flex items-center justify-center gap-2 transition shadow">
                                     <i class="fa-solid fa-file-arrow-up text-lg"></i> Upload file
                                 </button>
-                                <button @click="$refs.ownerImage.click()" type="button" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-4 text-xs text-sky-300 font-bold flex items-center justify-center gap-2 transition shadow">
+                                <button @click="$refs.staffDashImage.click()" type="button" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-4 text-xs text-sky-300 font-bold flex items-center justify-center gap-2 transition shadow">
                                     <i class="fa-solid fa-image text-lg"></i> Upload image
                                 </button>
                             </div>
@@ -4196,6 +4196,13 @@
                         this.showAppNotice('My ARTfive! Ticket uploads are disabled in Owner preview.');
                         return;
                     }
+                    if (this.currentUser && this.currentUser.role === 'staff') {
+                        await this.loadStaffTicketAssignmentPermission();
+                        if (!this.staffTicketAssignmentEnabled) {
+                            this.showAppNotice('My ARTfive! Staff ticket assignment is currently OFF. Please contact the Owner.');
+                            return;
+                        }
+                    }
                     if (!this.uploadForm.customerId || !this.uploadForm.requestId || !this.uploadForm.ticketTitle || !this.uploadForm.fileData) {
                         alert('My ARTfive! Select the customer, exact ticket request and ticket file.');
                         return;
@@ -4210,7 +4217,7 @@
                         });
                         // The Worker consumes the one-time confirmation only after the
                         // ticket is saved successfully. Refresh the visible status now.
-                        await this.refreshOwnerTicketPaymentVerification();
+                        if (this.currentUser && this.currentUser.role === 'owner') await this.refreshOwnerTicketPaymentVerification();
                         this.uploadForm.confirmOption3Payment = false;
                         this.uploadForm.requestId = '';
                         this.uploadForm.ticketTitle = '';
