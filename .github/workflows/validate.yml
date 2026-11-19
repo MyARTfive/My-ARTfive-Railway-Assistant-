@@ -51,3 +51,29 @@ jobs:
           NODE
       - name: Validate Cloudflare Preview deployment configuration without deploying
         run: npx --yes wrangler@4.165.0 deploy --dry-run --env preview
+      - name: Check critical app workflow connections
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const ui = fs.readFileSync('public/index.html', 'utf8');
+          const worker = fs.readFileSync('worker.js', 'utf8');
+          const deployment = fs.readFileSync('.github/workflows/manual-cloudflare-deploy.yml', 'utf8');
+          const checks = [
+            ['Staff inbox UI', ui.includes('/api/staff/notifications') && ui.includes('markStaffNotificationRead')],
+            ['Staff inbox API', worker.includes('path === "/api/staff/notifications"')],
+            ['Staff approval status UI', ui.includes('/api/staff/signup-status') && ui.includes('checkStaffSignupStatus')],
+            ['Staff approval status API', worker.includes('path === "/api/staff/signup-status"')],
+            ['Owner account block UI', ui.includes('/api/owner/control/customer-accounts/status') && ui.includes('setOption10AccountStatus')],
+            ['Owner account block API', worker.includes('path === "/api/owner/control/customer-accounts/status"')],
+            ['Existing customer ticket request', ui.includes("apiRequest('/api/requests'") && worker.includes('path === "/api/requests"')],
+            ['Existing customer payment notifications', ui.includes('/api/customer/payment-instructions') && worker.includes('path === "/api/customer/payment-instructions"')],
+            ['Existing ticket upload', ui.includes('/api/tickets') && worker.includes('path === "/api/tickets"')],
+            ['Existing manual notification SEND/UNSEND', ui.includes('/api/notifications') && worker.includes('path === "/api/notifications"')],
+            ['Manual-only deployment trigger', deployment.includes('workflow_dispatch:') && !/^  push:/m.test(deployment)],
+            ['Production branch and confirmation gate', deployment.includes("github.ref == 'refs/heads/main'") && deployment.includes('I APPROVE PRODUCTION DEPLOY')],
+            ['Isolated Preview Worker', fs.readFileSync('wrangler.jsonc', 'utf8').includes('my-artfive-railway-assistant-preview')]
+          ];
+          const failed = checks.filter(([, ok]) => !ok);
+          for (const [name, ok] of checks) console.log((ok ? 'PASS ' : 'FAIL ') + name);
+          if (failed.length) throw new Error(failed.length + ' critical workflow connection check(s) failed.');
+          NODE
