@@ -622,7 +622,8 @@ export default {
 
       if (path === "/api/owner/staff-ticket-assignment" && (method === "GET" || method === "POST")) {
         const owner = await getSessionUser(request, env, now);
-        if (!owner || owner.role !== "owner") return json({ success: false, message: "Owner sign-in is required." }, 403);
+        if (!owner || !["owner", "staff"].includes(owner.role)) return json({ success: false, message: "Owner or Staff sign-in is required." }, 403);
+        if (method === "POST" && owner.role !== "owner") return json({ success: false, message: "Only the Owner can change Staff ticket assignment permission." }, 403);
         await env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, setting_json TEXT NOT NULL, updated_by TEXT, updated_at INTEGER NOT NULL)").run();
         if (method === "POST") {
           const body = await readJson(request);
