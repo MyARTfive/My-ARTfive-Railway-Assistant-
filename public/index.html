@@ -351,8 +351,9 @@
                         <p class="text-xs text-emerald-400"><i class="fa-solid fa-arrows-rotate"></i> Messages are stored centrally for the selected customer and appear in Customer Dashboard Option 1.</p>
                         <select x-model="paymentForm.customerId" @change="loadCustomerEnquiryChat(paymentForm.customerId)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                             <option value="">-- Select customer conversation --</option>
-                            <template x-for="cust in customers" :key="'chat-customer-'+cust.id"><option :value="cust.id" x-text="cust.name + ' (' + (cust.phone || 'No phone') + ')'"></option></template>
+                            <template x-for="cust in customers" :key="'chat-customer-'+cust.id"><option :value="cust.id" x-text="cust.name + ' — Customer ID: ' + cust.id + ' (' + (cust.phone || 'No phone') + ')'"></option></template>
                         </select>
+                        <p x-show="paymentForm.customerId" class="text-xs text-emerald-300" x-text="'Selected Customer ID: ' + paymentForm.customerId"></p>
                         <div class="bg-slate-900 p-4 rounded-xl h-64 overflow-y-auto space-y-3 border border-slate-700">
                             <template x-for="msg in customerEnquiryMessages" :key="msg.id">
                                 <div class="p-3 rounded-lg text-xs" :class="msg.sender === 'My ARTfive!' ? 'bg-emerald-900/30 border border-emerald-500/30 ml-8' : 'bg-slate-800 border border-slate-700 mr-8'">
@@ -420,6 +421,16 @@
                         </template>
                     </div>
                     <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4">
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-slate-300">Choose the exact Staff member to message</label>
+                            <select x-model="staffChatSelectedId" @change="loadStaffChat(staffChatSelectedId)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                                <option value="">-- Select Staff member --</option>
+                                <template x-for="staff in staffAccounts" :key="'staff-chat-recipient-'+staff.id">
+                                    <option :value="String(staff.id)" x-text="staff.name + ' — Staff ID: ' + staff.id + ' (' + (staff.phone || 'No phone') + ')'"></option>
+                                </template>
+                            </select>
+                            <p x-show="staffChatSelectedId" class="text-xs text-emerald-300" x-text="'Private conversation with Staff ID: ' + staffChatSelectedId"></p>
+                        </div>
                         <div class="bg-slate-900 p-4 rounded-xl h-64 overflow-y-auto space-y-3 border border-slate-700">
                             <template x-for="msg in staffChatMessages" :key="msg.id">
                                 <div class="p-3 rounded-lg text-xs space-y-2" :class="msg.sender === 'My ARTfive!' ? 'bg-emerald-900/30 border border-emerald-500/30 ml-8' : 'bg-sky-900/30 border border-sky-500/30 mr-8'">
@@ -559,8 +570,8 @@
                             </template>
                         </div>
                         <div class="flex gap-2">
-                            <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage('My ARTfive!')" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Type message...">
-                            <button @click="sendStaffChatMessage('My ARTfive!')" class="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-xs font-bold">Send</button>
+                            <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage()" :disabled="!staffChatSelectedId" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50" placeholder="Type message to selected Staff member...">
+                            <button @click="sendStaffChatMessage()" :disabled="!staffChatSelectedId" class="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-xs font-bold disabled:opacity-50">Send</button>
                         </div>
                     </div>
                 </div>
@@ -1847,7 +1858,7 @@
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt2Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt2Desc"></p>
                     </div>
-                    <div @click="activeStaffOption = 3; loadStaffChat()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                    <div @click="activeStaffOption = 3; if (ownerPreviewMode) loadStaffChatRecipients(); else loadStaffChat()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-comments"></i></div>
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt3Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt3Desc"></p>
@@ -1948,17 +1959,26 @@
 
                 <div x-show="activeStaffOption === 3" class="space-y-4">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.staffOpt3Title"></h3><button @click="activeStaffOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
+                    <div x-show="ownerPreviewMode" class="space-y-2">
+                        <label class="block text-xs font-bold text-slate-300">Choose Staff conversation to preview</label>
+                        <select x-model="staffChatSelectedId" @change="loadStaffChat(staffChatSelectedId)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                            <option value="">-- Select Staff member --</option>
+                            <template x-for="staff in staffAccounts" :key="'staff-preview-recipient-'+staff.id">
+                                <option :value="String(staff.id)" x-text="staff.name + ' — Staff ID: ' + staff.id"></option>
+                            </template>
+                        </select>
+                    </div>
                     <div class="bg-slate-900 p-4 rounded-xl h-48 overflow-y-auto space-y-3 border border-slate-700">
                         <template x-for="msg in staffChatMessages" :key="msg.id">
-                            <div class="p-3 rounded-lg text-xs space-y-2" :class="msg.sender === 'Staff' ? 'bg-sky-900/30 border border-sky-500/30 ml-8' : 'bg-slate-800 border border-slate-700 mr-8'">
-                                <div class="flex justify-between font-bold mb-1" :class="msg.sender === 'Staff' ? 'text-sky-400' : 'text-emerald-400'"><span x-text="msg.sender"></span><span class="text-[10px] text-slate-400" x-text="msg.time"></span></div>
+                            <div class="p-3 rounded-lg text-xs space-y-2" :class="msg.senderRole === 'staff' ? 'bg-sky-900/30 border border-sky-500/30 ml-8' : 'bg-slate-800 border border-slate-700 mr-8'">
+                                <div class="flex justify-between font-bold mb-1" :class="msg.senderRole === 'staff' ? 'text-sky-400' : 'text-emerald-400'"><span x-text="msg.sender"></span><span class="text-[10px] text-slate-400" x-text="msg.time"></span></div>
                                 <p class="text-slate-200" x-text="msg.text"></p>
                             </div>
                         </template>
                     </div>
                     <div class="flex gap-2">
-                        <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage()" class="flex-1 min-w-0 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" :placeholder="ownerPreviewMode ? 'Type message as My ARTfive!...' : 'Type message as Staff...'">
-                        <button @click="sendStaffChatMessage()" class="bg-sky-600 hover:bg-sky-500 text-white px-4 py-2.5 rounded-lg text-xs font-bold">Send</button>
+                        <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage()" :disabled="ownerPreviewMode && !staffChatSelectedId" class="flex-1 min-w-0 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50" :placeholder="ownerPreviewMode ? 'Type message as My ARTfive!...' : 'Type message as your registered Staff name...'">
+                        <button @click="sendStaffChatMessage()" :disabled="ownerPreviewMode && !staffChatSelectedId" class="bg-sky-600 hover:bg-sky-500 text-white px-4 py-2.5 rounded-lg text-xs font-bold disabled:opacity-50">Send</button>
                     </div>
                 </div>
             </div>
@@ -2308,7 +2328,9 @@
                     setInterval(() => {
                         if (this.currentUser && this.currentUser.role === 'customer' && this.currentDashboard === 'customer' && this.activeCustOption === 1) this.loadCustomerEnquiryChat();
                         if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'custChat' && this.paymentForm.customerId) this.loadCustomerEnquiryChat(this.paymentForm.customerId);
-                        if (this.currentUser && ['owner', 'staff'].includes(this.currentUser.role) && (this.activeMenuOption === 'staffChat' || this.activeStaffOption === 3)) this.loadStaffChat();
+                        if (this.currentUser && this.currentUser.role === 'staff' && this.currentDashboard === 'staff' && this.activeStaffOption === 3) this.loadStaffChat();
+                        if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'staffChat' && this.staffChatSelectedId) this.loadStaffChat(this.staffChatSelectedId);
+                        if (this.currentUser && this.currentUser.role === 'owner' && this.ownerPreviewMode && this.activeStaffOption === 3 && this.staffChatSelectedId) this.loadStaffChat(this.staffChatSelectedId);
                         if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'staffChat') {
                             this.loadStaffSignupRequests();
                             // Reflect automatic OFF resets after Staff successfully sends a ticket.
@@ -2568,6 +2590,8 @@
                 customerReplyText: '',
                 customerEnquiryMessages: [],
                 staffChatMessages: [],
+                staffAccounts: [],
+                staffChatSelectedId: '',
                 staffSignupRequests: [],
                 staffSignupError: '',
                 staffTicketAssignmentEnabled: false,
@@ -2701,10 +2725,26 @@
                     }
                 },
 
-                async loadStaffChat() {
-                    if (!this.currentUser || !['owner', 'staff'].includes(this.currentUser.role)) return;
+                async loadStaffChatRecipients() {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
                     try {
-                        const result = await this.apiRequest('/api/staff-chat');
+                        const result = await this.apiRequest('/api/staff-chat/recipients');
+                        this.staffAccounts = result.staff || [];
+                        if (this.staffChatSelectedId && !this.staffAccounts.some(item => String(item.id) === String(this.staffChatSelectedId))) {
+                            this.staffChatSelectedId = '';
+                            this.staffChatMessages = [];
+                        }
+                        if (this.staffChatSelectedId) await this.loadStaffChat(this.staffChatSelectedId);
+                    } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not load Staff chat recipients.'); }
+                },
+
+                async loadStaffChat(staffId = '') {
+                    if (!this.currentUser || !['owner', 'staff'].includes(this.currentUser.role)) return;
+                    const targetId = this.currentUser.role === 'staff' ? '' : String(staffId || this.staffChatSelectedId || '');
+                    if (this.currentUser.role === 'owner' && !targetId) { this.staffChatMessages = []; return; }
+                    try {
+                        const endpoint = this.currentUser.role === 'owner' ? '/api/staff-chat?staffId=' + encodeURIComponent(targetId) : '/api/staff-chat';
+                        const result = await this.apiRequest(endpoint);
                         this.staffChatMessages = (result.messages || []).map(msg => ({ ...msg, time: new Date(Number(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not load Staff Chat.'); }
                 },
@@ -2712,8 +2752,13 @@
                 async sendStaffChatMessage() {
                     const message = String(this.newStaffChatText || '').trim();
                     if (!message) return;
+                    const body = { message };
+                    if (this.currentUser && this.currentUser.role === 'owner') {
+                        if (!this.staffChatSelectedId) return this.showAppNotice('My ARTfive! Please select the exact Staff member before sending a message.');
+                        body.staffId = this.staffChatSelectedId;
+                    }
                     try {
-                        await this.apiRequest('/api/staff-chat', { method: 'POST', body: { message } });
+                        await this.apiRequest('/api/staff-chat', { method: 'POST', body });
                         this.newStaffChatText = '';
                         await this.loadStaffChat();
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not send the Staff Chat message.'); }
@@ -3296,7 +3341,7 @@
                     // Option 9 must reload the central uploaded-ticket list whenever the Owner opens it.
                     if (optNum === 9) { this.loadAssignedTicketsFromDB(); this.refreshOwnerPaymentInstructions(); }
                     if (optNum === 'custChat') this.loadCustomerChatSettings();
-                    if (optNum === 'staffChat') { this.loadStaffChat(); this.loadStaffSignupRequests(); this.loadStaffTicketAssignmentPermission(); this.loadStaffPaymentTickPermission(); }
+                    if (optNum === 'staffChat') { this.loadStaffChatRecipients(); this.loadStaffSignupRequests(); this.loadStaffTicketAssignmentPermission(); this.loadStaffPaymentTickPermission(); }
                     if (optNum === 10) {
                         this.option10Authenticated = false;
                         this.option10Phone = '';
