@@ -328,7 +328,7 @@
                         <div @click="ownerSelectOption('appManagement')" class="bg-slate-800 hover:bg-violet-900/30 border border-violet-500/40 hover:border-violet-400 p-5 rounded-xl cursor-pointer transition shadow group">
                             <div class="flex items-center justify-between mb-3"><span class="text-xs font-bold text-violet-300 bg-violet-500/10 px-2.5 py-1 rounded-lg">APP MANAGEMENT</span><i class="fa-solid fa-sliders text-violet-300 text-xl"></i></div>
                             <h3 class="font-bold text-white text-base mb-1">My ARTfive! App management!</h3>
-                            <p class="text-xs text-slate-400">Manage services, notifications, design, accounts, features, settings and AI development.</p>
+                            <p class="text-xs text-slate-400">Manage services, notifications, design, accounts, features and settings.</p>
                         </div>
                         <div @click="goHome()" class="bg-slate-800 hover:bg-red-900/30 border border-slate-700 hover:border-red-500/50 p-5 rounded-xl cursor-pointer transition shadow group">
                             <div class="flex items-center justify-between mb-3"><span class="text-xs font-bold text-red-400 bg-red-500/10 px-2.5 py-1 rounded-lg">OPTION 12</span><i class="fa-solid fa-right-from-bracket text-red-400 text-xl"></i></div>
@@ -366,9 +366,6 @@
                         </button>
                         <button type="button" @click="activeAppManagementSection = 'settings'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-orange-500/50 rounded-xl p-5 transition">
                             <i class="fa-solid fa-gear text-orange-300 text-xl"></i><h4 class="font-bold text-white mt-3">6. App Settings</h4><p class="text-xs text-slate-400 mt-1">Manage general application configuration.</p>
-                        </button>
-                        <button type="button" @click="activeAppManagementSection = 'ai-github'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/50 rounded-xl p-5 transition sm:col-span-2 lg:col-span-1">
-                            <i class="fa-brands fa-github text-white text-xl"></i><h4 class="font-bold text-white mt-3">7. ChatGPT ↔ GitHub</h4><p class="text-xs text-slate-400 mt-1">Future AI assistant for project inspection and approved code changes.</p>
                         </button>
                     </div>
 
@@ -3403,7 +3400,6 @@
                         accounts: '4. Manage Customers & Staff',
                         features: '5. Add New Features',
                         settings: '6. App Settings',
-                        'ai-github': '7. ChatGPT ↔ GitHub'
                     };
                     return titles[this.activeAppManagementSection] || 'App Management';
                 },
@@ -3416,7 +3412,6 @@
                         accounts: 'The planned account manager will provide secure customer and staff account administration, role permissions and account status controls. Passwords will never be displayed.',
                         features: 'The planned feature manager will support reusable modules and controlled activation. Code, database or dependency changes will still require a build and Preview validation.',
                         settings: 'The planned settings workspace will contain general application configuration and security controls restricted to authorised Owner access.',
-                        'ai-github': 'The planned AI Assistant will accept natural-language requests, inspect the authorised GitHub repository, explain proposed changes and prepare a branch or Pull Request. Code changes, merges and Production deployment will follow separate approval steps.'
                     };
                     return descriptions[this.activeAppManagementSection] || 'Choose a management section.';
                 },
