@@ -5,6 +5,7 @@ on:
     branches:
       - feature/central-d1-ticket-sync
       - feature/24-hour-chat-message-expiry
+      - feature/option10-delete-customer-id
   pull_request:
     branches:
       - main
