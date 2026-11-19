@@ -50,17 +50,30 @@
                 'https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.9/cdn.min.js'
             ];
             let nextSource = 0;
+            const failedSources = [];
             function loadNextSource() {
                 if (nextSource >= sources.length) {
                     document.documentElement.classList.add('alpine-load-failed');
                     const errorPanel = document.getElementById('alpine-load-error');
+                    const diagnostic = document.getElementById('alpine-load-diagnostic');
+                    if (diagnostic) {
+                        diagnostic.textContent = [
+                            'Browser connection: ' + (navigator.onLine ? 'online' : 'offline'),
+                            'Service worker active: ' + (navigator.serviceWorker && navigator.serviceWorker.controller ? 'yes' : 'no'),
+                            'Failed script sources: ' + failedSources.join(' | ')
+                        ].join('\\n');
+                    }
                     if (errorPanel) errorPanel.hidden = false;
                     return;
                 }
+                const source = sources[nextSource++];
                 const script = document.createElement('script');
-                script.src = sources[nextSource++];
+                script.src = source;
                 script.async = false;
-                script.onerror = loadNextSource;
+                script.onerror = () => {
+                    failedSources.push(source);
+                    loadNextSource();
+                };
                 document.head.appendChild(script);
             }
             // Wait until the full document is parsed so railwayApp() and the body
@@ -89,6 +102,7 @@
         <div class="w-full max-w-md rounded-2xl border border-rose-500/50 bg-slate-900 p-6 text-center space-y-4">
             <h1 class="text-xl font-extrabold text-white">My ARTfive! App could not start</h1>
             <p class="text-sm leading-relaxed text-rose-200">The interactive dashboard could not load. Please check your internet connection and reload the app. Your account, payment and ticket records have not been changed.</p>
+            <p id="alpine-load-diagnostic" class="mt-3 whitespace-pre-wrap break-all text-left text-xs text-slate-400" aria-live="polite"></p>
             <button type="button" onclick="window.location.reload()" class="w-full rounded-xl bg-rose-700 px-4 py-3 font-bold text-white">Reload App</button>
         </div>
     </div>
