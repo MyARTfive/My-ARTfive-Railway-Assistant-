@@ -373,6 +373,16 @@
 
                 <!-- Owner Chat 2 -->
                 <div x-show="activeMenuOption === 'staffChat'" class="space-y-6">
+                    <div class="bg-slate-800 border border-sky-500/30 p-5 rounded-2xl space-y-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <div><h4 class="font-extrabold text-sky-300">Staff Ticket Assignment</h4><p class="text-xs text-slate-400">ON allows Staff to use “Upload & Assign to Customer Option 4”. OFF blocks Staff from assigning tickets.</p></div>
+                            <span class="text-xs font-extrabold px-3 py-1.5 rounded-full" :class="staffTicketAssignmentEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'" x-text="staffTicketAssignmentEnabled ? 'ON' : 'OFF'"></span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" @click="setStaffTicketAssignmentPermission(true)" :disabled="staffTicketAssignmentEnabled" class="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 px-4 py-2.5 text-xs font-extrabold text-white">ON — Allow Staff</button>
+                            <button type="button" @click="setStaffTicketAssignmentPermission(false)" :disabled="!staffTicketAssignmentEnabled" class="flex-1 rounded-lg bg-rose-700 hover:bg-rose-600 disabled:opacity-40 px-4 py-2.5 text-xs font-extrabold text-white">OFF — Block Staff</button>
+                        </div>
+                    </div>
                     <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
                         <h3 class="text-lg font-bold text-white" x-text="cms.ownerChat2Title"></h3>
                         <button @click="activeMenuOption = null" class="bg-slate-700 text-white text-xs px-3.5 py-2 rounded-lg">Back</button>
@@ -1818,7 +1828,7 @@
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt1Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt1Desc"></p>
                     </div>
-                    <div @click="activeStaffOption = 2; if (!ownerPreviewMode) loadAssignedTicketsFromDB()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                    <div @click="activeStaffOption = 2; if (!ownerPreviewMode) { loadAssignedTicketsFromDB(); loadStaffTicketAssignmentPermission(); }" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-cloud-arrow-up"></i></div>
                         <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt2Title"></h3>
                         <p class="text-xs text-slate-400" x-text="cms.staffOpt2Desc"></p>
@@ -1846,63 +1856,101 @@
                     </div>
                 </div>
 
-                <div x-show="activeStaffOption === 2" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4">
-                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.staffOpt2Title"></h3><button @click="activeStaffOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
-                    <div class="space-y-4">
+                <!-- Staff Option 2: Upload Ticket from Mobile; no permanent-delete controls -->
+                <div x-show="activeStaffOption === 2" class="space-y-6">
+                    <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
+                        <h3 class="text-lg font-bold text-white" x-text="cms.staffOpt2Title"></h3>
+                        <button @click="activeStaffOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
+                    </div>
+                    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-6 max-w-2xl mx-auto">
                         <div>
                             <label class="block text-xs font-bold text-slate-400 mb-1">Find Customer by Name or Phone Number</label>
-                                <input type="search" x-model="customerSearch" placeholder="Search customer name or phone..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
-                            <select x-model="uploadForm.customerId" @change="uploadForm.requestId = ''" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
-                                <option value="">-- Choose Customer --</option>
-                                <template x-for="cust in filteredCustomers()" :key="cust.id"><option :value="cust.id" x-text="cust.name + ' (' + cust.phone + ')'"></option></template>
-                            </select>
-                            <label class="block text-xs font-bold text-slate-400 mt-3 mb-1">Select the exact ticket request</label>
-                            <select x-model="uploadForm.requestId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
-                                <option value="">-- Choose Ticket Request --</option>
-                                <template x-for="req in ticketRequests.filter(item => String(item.customerId) === String(uploadForm.customerId))" :key="'staff-uploadreq-'+req.id">
-                                    <option :value="req.id" x-text="paymentRequestLabel(req)"></option>
+                            <input type="search" x-model="customerSearch" placeholder="Type to search customers..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                            <div x-show="customerSearch.trim().length > 0" class="max-h-40 overflow-y-auto rounded-lg border border-slate-600 bg-slate-900 mb-3">
+                                <template x-for="cust in filteredCustomers()" :key="'upload-customer-'+cust.id">
+                                    <button type="button" @click="uploadForm.customerId = cust.id; uploadForm.requestId = ''; customerSearch = cust.name; uploadCustomerFilter = String(cust.id)" class="w-full text-left px-3 py-2.5 text-sm text-white hover:bg-slate-700 border-b border-slate-800 last:border-0" x-text="cust.name + ' (' + cust.phone + ')'"></button>
+                                </template>
+                                <div x-show="filteredCustomers().length === 0" class="px-3 py-3 text-xs text-slate-400">No matching customer found.</div>
+                            </div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Or choose a customer from the filter</label>
+                            <select x-model="uploadCustomerFilter" @change="selectUploadCustomerFromFilter($event.target.value)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                                <option value="">-- Filter / Choose Customer --</option>
+                                <template x-for="cust in customers" :key="'upload-filter-customer-'+cust.id">
+                                    <option :value="String(cust.id)" x-text="cust.name + ' (' + cust.phone + ')'"></option>
                                 </template>
                             </select>
-                            <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
+                            <p x-show="uploadForm.customerId" class="text-sm text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Selected customer: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
+                            <div class="flex items-center justify-between gap-2">
+                                <label class="block text-xs font-bold text-slate-400 mt-3 mb-1">Select the exact ticket request</label>
+                                <button type="button" @click="refreshUploadRequestList()" class="text-xs text-sky-300 underline">Refresh requests</button>
+                            </div>
+                            <select x-model="uploadForm.requestId" @change="refreshOwnerPaymentInstructions()" :disabled="!uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50">
+                                <option value="">-- Choose Ticket Request --</option>
+                                <template x-for="req in uploadRequestsForSelectedCustomer()" :key="'owner-uploadreq-'+req.id">
+                                    <option :value="String(req.id)" x-text="uploadRequestLabel(req)"></option>
+                                </template>
+                            </select>
+                            <p x-show="uploadForm.customerId && uploadRequestsForSelectedCustomer().length === 0" class="text-xs text-amber-300 mt-2">No ticket requests are currently linked to this customer. Tap “Refresh requests” to check the latest saved requests.</p>
+                            <p x-show="!uploadForm.customerId" class="text-xs text-slate-400 mt-2">Choose a customer above to load their ticket requests.</p>
+                            <p class="text-xs text-emerald-300 mt-3">The Owner must confirm the customer’s payment before Staff can assign the ticket.</p>
+                                                        <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
                         </div>
-                            <p class="text-xs text-emerald-300">Upload is allowed only after the Owner or authorized Staff manually verifies Option 3 payment.</p>
 
-                        <div x-show="!ownerPreviewMode" class="space-y-3">
+                        <div class="space-y-3">
                             <label class="block text-xs font-bold text-slate-400 mb-1">Choose Upload Method</label>
                             <input type="file" x-ref="staffDashFile" accept=".pdf,application/pdf" @change="handleFileUpload($event)" class="hidden">
                             <input type="file" x-ref="staffDashImage" accept="image/png,image/jpeg,image/webp" @change="handleFileUpload($event)" class="hidden">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <button @click="$refs.staffDashFile.click()" type="button" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-4 text-xs text-emerald-300 font-bold flex items-center justify-center gap-2 transition shadow">
+                                <button @click="$refs.ownerFile.click()" type="button" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-4 text-xs text-emerald-300 font-bold flex items-center justify-center gap-2 transition shadow">
                                     <i class="fa-solid fa-file-arrow-up text-lg"></i> Upload file
                                 </button>
-                                <button @click="$refs.staffDashImage.click()" type="button" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-4 text-xs text-sky-300 font-bold flex items-center justify-center gap-2 transition shadow">
+                                <button @click="$refs.ownerImage.click()" type="button" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-4 text-xs text-sky-300 font-bold flex items-center justify-center gap-2 transition shadow">
                                     <i class="fa-solid fa-image text-lg"></i> Upload image
                                 </button>
                             </div>
-                            <div x-show="uploadForm.ticketTitle" class="bg-slate-900 p-3 rounded-lg text-xs text-emerald-400 font-bold text-center border border-emerald-500/30">
-                                Selected: <span x-text="uploadForm.ticketTitle"></span>
+                            <div x-show="uploadForm.ticketTitle" class="bg-slate-900 p-3 rounded-lg text-xs text-emerald-400 font-bold flex items-center justify-between border border-emerald-500/30">
+                                <span>Selected: <span x-text="uploadForm.ticketTitle"></span></span>
+                                <button @click="clearSelectedUpload()" class="text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-1 font-bold">
+                                    <i class="fa-solid fa-trash"></i> Clear Selected File
+                                </button>
                             </div>
                         </div>
 
-                        <button x-show="!ownerPreviewMode" @click="uploadAndAssignTicket()" class="w-full bg-sky-600 text-white font-bold py-3 rounded-xl text-sm">Upload & Assign File</button>
-                    </div>
-                    <div class="border-t border-slate-700 pt-4 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <h4 class="font-bold text-white text-sm">Tickets sent to customers</h4>
-                            <button @click="loadAssignedTicketsFromDB()" class="text-xs text-sky-300 underline">Refresh</button>
-                        </div>
-                        <template x-for="tkt in assignedTickets" :key="tkt.id">
-                            <div class="bg-slate-900 border border-slate-700 rounded-lg p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-                                <div>
-                                    <span class="block text-white font-bold" x-text="tkt.ticketTitle"></span>
-                                    <span class="text-slate-400" x-text="(tkt.customerName || 'Customer') + ' · ' + (tkt.customerPhone || '')"></span>
-                                </div>
-                                <button @click="openFileViewer(tkt)" class="bg-emerald-600 text-white px-3 py-1.5 rounded font-bold">View ticket</button>
+                        <button x-show="!ownerPreviewMode" :disabled="!staffTicketAssignmentEnabled" @click="uploadAndAssignTicket()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm transition shadow disabled:opacity-40 disabled:cursor-not-allowed">Upload & Assign to Customer Option 4</button>
+
+                        <div class="border-t border-slate-700 pt-5 space-y-3">
+                            <h4 class="font-bold text-white text-sm flex items-center justify-between gap-2">
+                                <span>Tickets sent to customers</span>
+                                <span class="text-xs text-slate-400 font-normal" x-text="assignedTickets.length + ' item(s) stored'"></span>
+                            </h4>
+                            <div class="flex justify-end">
+                                <button type="button" @click="refreshAssignedTicketFiles()" :disabled="ticketFilesRefreshing" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50 disabled:cursor-wait">
+                                    <i class="fa-solid" :class="ticketFilesRefreshing ? 'fa-spinner fa-spin' : 'fa-rotate'"></i>
+                                    <span x-text="ticketFilesRefreshing ? 'Refreshing files...' : 'Refresh Uploaded Ticket Files'"></span>
+                                </button>
                             </div>
-                        </template>
-                        <template x-if="assignedTickets.length === 0">
-                            <p class="text-slate-400 text-xs">No tickets have been sent yet.</p>
-                        </template>
+                            <p x-show="ticketFilesRefreshMessage" x-text="ticketFilesRefreshMessage" class="rounded-lg border border-sky-500/30 bg-sky-500/10 p-3 text-xs text-sky-200"></p>
+                            <p x-show="ticketLoadError" x-text="'My ARTfive! ' + ticketLoadError" class="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300"></p>
+                            <div class="space-y-2 max-h-56 overflow-y-auto">
+                                <template x-for="tkt in assignedTickets" :key="tkt.id">
+                                    <div class="bg-slate-900 border border-slate-700 p-3 rounded-xl flex items-center justify-between text-xs">
+                                        <div>
+                                            <span class="font-bold text-white block" x-text="tkt.ticketTitle"></span>
+                                            <span class="text-slate-400 text-[10px]" x-text="'Customer: ' + tkt.customerName + ' (' + tkt.customerPhone + ')'></span>
+                                        </div>
+                                        <div class="flex flex-col items-stretch gap-4 min-w-[150px] sm:min-w-[180px]">
+                                            <button type="button" @click="openFileViewer(tkt)" class="w-full bg-sky-600 hover:bg-sky-500 text-white px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow">
+                                                <i class="fa-solid fa-eye"></i> View Ticket
+                                            </button>
+                                            
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="assignedTickets.length === 0">
+                                    <div class="text-center py-4 text-slate-500 text-xs italic">No active files stored in system storage.</div>
+                                </template>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -2519,6 +2567,7 @@
                 staffChatMessages: [],
                 staffSignupRequests: [],
                 staffSignupError: '',
+                staffTicketAssignmentEnabled: false,
                 customerNotifications: [],
                 newStaffChatText: '',
 
@@ -2578,6 +2627,27 @@
                         this.customerReplyText = '';
                         await this.loadCustomerEnquiryChat();
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not send your enquiry message.'); }
+                },
+
+                async loadStaffTicketAssignmentPermission() {
+                    try {
+                        const result = await this.apiRequest('/api/owner/staff-ticket-assignment');
+                        this.staffTicketAssignmentEnabled = !!result.enabled;
+                    } catch (error) {
+                        this.staffTicketAssignmentEnabled = false;
+                        if (this.currentUser && this.currentUser.role === 'owner') this.showAppNotice(error.message || 'My ARTfive! Could not load Staff ticket permission.');
+                    }
+                },
+
+                async setStaffTicketAssignmentPermission(enabled) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner') return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/staff-ticket-assignment', { method: 'POST', body: { enabled: !!enabled } });
+                        this.staffTicketAssignmentEnabled = !!result.enabled;
+                        this.showAppNotice(this.staffTicketAssignmentEnabled ? 'My ARTfive! Staff ticket assignment is ON.' : 'My ARTfive! Staff ticket assignment is OFF.');
+                    } catch (error) {
+                        this.showAppNotice(error.message || 'My ARTfive! Could not change Staff ticket permission.');
+                    }
                 },
 
                 async loadStaffSignupRequests() {
