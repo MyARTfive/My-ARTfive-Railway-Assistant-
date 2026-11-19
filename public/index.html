@@ -2966,7 +2966,9 @@
                     let result = {};
                     try { result = await response.json(); } catch (e) {}
                     if (!response.ok || result.success === false) {
-                        throw new Error(result.message || 'My ARTfive! Server request failed.');
+                        const error = new Error(result.message || 'My ARTfive! Server request failed.');
+                        error.status = response.status;
+                        throw error;
                     }
                     return result;
                 },
@@ -3013,6 +3015,10 @@
                 },
 
                 async restoreCentralSession() {
+                    let cachedProfile = null;
+                    try {
+                        cachedProfile = JSON.parse(localStorage.getItem('artfive_last_signed_in_profile') || 'null');
+                    } catch (profileError) {}
                     try {
                         const result = await this.apiRequest('/api/me');
                         this.currentUser = result.user;
@@ -3030,19 +3036,23 @@
                         this.assignedTickets = [];
                         this.customers = [];
                         if (!navigator.onLine) {
-                            try {
-                                const cachedProfile = JSON.parse(localStorage.getItem('artfive_last_signed_in_profile') || 'null');
-                                if (cachedProfile && ['owner', 'staff', 'customer'].includes(cachedProfile.role)) {
-                                    this.currentUser = cachedProfile;
-                                    this.currentDashboard = cachedProfile.role === 'customer' ? 'public' : cachedProfile.role;
-                                    this.offlineMode = true;
-                                    this.showAppNotice('My ARTfive! You are offline. Dashboard options are available, but requests, messages, payments and ticket downloads cannot be sent or verified until you reconnect.');
-                                    return;
-                                }
-                            } catch (profileError) {}
+                            if (cachedProfile && ['owner', 'staff', 'customer'].includes(cachedProfile.role)) {
+                                this.currentUser = cachedProfile;
+                                this.currentDashboard = cachedProfile.role === 'customer' ? 'public' : cachedProfile.role;
+                                this.offlineMode = true;
+                                this.showAppNotice('My ARTfive! You are offline. Dashboard options are available, but requests, messages, payments and ticket downloads cannot be sent or verified until you reconnect.');
+                                return;
+                            }
                         }
                         this.currentUser = null;
                         this.offlineMode = false;
+                        // A previously signed-in customer whose server session has expired
+                        // must sign in again; never redirect them to New Customer Sign Up.
+                        if (e && e.status === 401 && cachedProfile && cachedProfile.role === 'customer') {
+                            localStorage.removeItem('artfive_last_signed_in_profile');
+                            this.openLoginModal('customer');
+                            this.showAppNotice('My ARTfive! Your customer sign-in session has expired. Please sign in again. You do not need to create a new account.');
+                        }
                     }
                 },
 
