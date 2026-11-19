@@ -46,10 +46,10 @@
 <body class="h-full bg-slate-900 text-slate-100 font-sans antialiased" x-data="railwayApp()" x-init="initApp()">
 
     <div x-show="appNotice.open" x-cloak class="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4" @keydown.escape.window="closeAppNotice()">
-        <div class="w-full max-w-sm rounded-2xl border border-emerald-500/40 bg-slate-900 p-6 shadow-2xl space-y-4" role="dialog" aria-modal="true" aria-labelledby="app-notice-title">
-            <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center"><i class="fa-solid fa-check"></i></div><h2 id="app-notice-title" class="text-lg font-extrabold text-white">My ARTfive!</h2></div>
-            <p class="text-sm leading-relaxed text-slate-200" x-text="appNotice.message"></p>
-            <button type="button" @click="closeAppNotice()" class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-3 text-sm font-bold text-white">OK</button>
+        <div class="w-full max-w-sm rounded-2xl border bg-slate-900 p-6 shadow-2xl space-y-4" :class="appNotice.isError ? 'border-rose-500/60' : 'border-emerald-500/40'" role="dialog" aria-modal="true" aria-labelledby="app-notice-title">
+            <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full flex items-center justify-center" :class="appNotice.isError ? 'bg-rose-500/15 text-rose-400' : 'bg-emerald-500/15 text-emerald-400'"><i :class="appNotice.isError ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-check'"></i></div><h2 id="app-notice-title" class="text-lg font-extrabold" :class="appNotice.isError ? 'text-rose-300' : 'text-white'">My ARTfive!</h2></div>
+            <p class="text-sm leading-relaxed" :class="appNotice.isError ? 'text-rose-200' : 'text-slate-200'" :role="appNotice.isError ? 'alert' : 'status'" aria-live="polite" x-text="appNotice.message"></p>
+            <button type="button" @click="closeAppNotice()" class="w-full rounded-xl px-4 py-3 text-sm font-bold text-white" :class="appNotice.isError ? 'bg-rose-700 hover:bg-rose-600' : 'bg-emerald-600 hover:bg-emerald-500'">OK</button>
         </div>
     </div>
 
@@ -2316,6 +2316,7 @@
 
                 showAppNotice(message, durationMs = null) {
                     this.appNotice.message = String(message || '');
+                    this.appNotice.isError = /\\b(?:error|failed|failure|could not|unable|denied|blocked|expired|invalid|unavailable|not found|too many|did not|does not|cannot|rejected|not received|not connected)\\b/i.test(this.appNotice.message);
                     this.appNotice.open = true;
                     if (this.appNoticeTimer) clearTimeout(this.appNoticeTimer);
                     const words = this.appNotice.message.trim().split(/\s+/).filter(Boolean).length;
@@ -2638,7 +2639,7 @@
                 offlineMode: false,
                 ticketAccessToken: '',
                 offlineTicketDraft: !!localStorage.getItem('artfive_ticket_request_draft'),
-                appNotice: { open: false, message: '' },
+                appNotice: { open: false, message: '', isError: false },
                 appNoticeTimer: null,
 
                 option10Authenticated: false,
