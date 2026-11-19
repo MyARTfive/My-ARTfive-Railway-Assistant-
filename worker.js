@@ -478,6 +478,8 @@ export default {
         ).bind(customerId).first();
         if (!customer) return json({ success: false, message: "The selected account was not found. Refresh the list and try again." }, 404);
 
+        // Ensure the private Staff conversation recipient column exists before account cleanup.
+        await ensureStaffChatSchema(env);
         // Delete only records belonging to this selected customer or staff account. Keep owner accounts, shared settings, visitor/security logs, and unrelated accounts untouched.
         const tableResult = await env.DB.prepare(
           "SELECT name FROM sqlite_master WHERE type = 'table'"
