@@ -35,6 +35,7 @@
         body { background-color: var(--artfive-design-bg, #0f172a) !important; }
         body .bg-slate-900 { background-color: var(--artfive-design-bg, #0f172a) !important; }
         body .bg-slate-800 { background-color: var(--artfive-design-panel, #1e293b) !important; }
+        body .bg-slate-700 { background-color: color-mix(in srgb, var(--artfive-design-panel, #1e293b), white 12%) !important; }
         body .bg-emerald-600 { background-color: var(--artfive-design-primary, #059669) !important; }
         body [class~="hover:bg-emerald-500"]:hover { background-color: var(--artfive-design-primary, #059669) !important; filter: brightness(1.12); }
         body .text-emerald-400, body .text-emerald-300 { color: var(--artfive-design-accent, #34d399) !important; }
@@ -2484,6 +2485,7 @@
                             slide.style.backgroundPosition = 'center';
                         }
                     }
+                    const manifestLink = document.querySelector('link[rel="manifest"]');
                     if (this.cms.designAppIcon) {
                         let iconLink = document.querySelector('link[rel="icon"]');
                         if (!iconLink) { iconLink = document.createElement('link'); iconLink.rel = 'icon'; document.head.appendChild(iconLink); }
@@ -2491,13 +2493,20 @@
                         const appleLink = document.querySelector('link[rel="apple-touch-icon"]') || document.createElement('link');
                         appleLink.rel = 'apple-touch-icon'; appleLink.href = this.cms.designAppIcon;
                         if (!appleLink.parentNode) document.head.appendChild(appleLink);
-                        const manifestLink = document.querySelector('link[rel="manifest"]');
                         if (manifestLink) {
                             if (this.designManifestUrl) URL.revokeObjectURL(this.designManifestUrl);
-                            const manifest = {name:'My ARTfive! Railway Assistant',short_name:'My ARTfive!',start_url:'/',scope:'/',display:'standalone',background_color:background,theme_color:primary,icons:[{src:this.cms.designAppIcon,sizes:'192x192',type:this.cms.designAppIcon.startsWith('data:image/png')?'image/png':this.cms.designAppIcon.startsWith('data:image/webp')?'image/webp':'image/jpeg',purpose:'any'}]};
+                            const mime = this.cms.designAppIcon.startsWith('data:image/png') ? 'image/png' : this.cms.designAppIcon.startsWith('data:image/webp') ? 'image/webp' : 'image/jpeg';
+                            const manifest = {name:'My ARTfive! Railway Assistant',short_name:'My ARTfive!',start_url:'/',scope:'/',display:'standalone',background_color:background,theme_color:primary,icons:[{src:this.cms.designAppIcon,sizes:'192x192',type:mime,purpose:'any'},{src:this.cms.designAppIcon,sizes:'512x512',type:mime,purpose:'any'}]};
                             this.designManifestUrl = URL.createObjectURL(new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'}));
                             manifestLink.href = this.designManifestUrl;
                         }
+                    } else {
+                        const iconLink = document.querySelector('link[rel="icon"]');
+                        if (iconLink) iconLink.remove();
+                        const appleLink = document.querySelector('link[rel="apple-touch-icon"]');
+                        if (appleLink) appleLink.remove();
+                        if (manifestLink) manifestLink.href = '/manifest.webmanifest';
+                        if (this.designManifestUrl) { URL.revokeObjectURL(this.designManifestUrl); this.designManifestUrl = ''; }
                     }
                     document.querySelectorAll('[data-artfive-splash]').forEach((node, index) => {
                         const n = index + 1;
