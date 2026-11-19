@@ -2309,7 +2309,12 @@
                         if (this.currentUser && this.currentUser.role === 'customer' && this.currentDashboard === 'customer' && this.activeCustOption === 1) this.loadCustomerEnquiryChat();
                         if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'custChat' && this.paymentForm.customerId) this.loadCustomerEnquiryChat(this.paymentForm.customerId);
                         if (this.currentUser && ['owner', 'staff'].includes(this.currentUser.role) && (this.activeMenuOption === 'staffChat' || this.activeStaffOption === 3)) this.loadStaffChat();
-                        if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'staffChat') this.loadStaffSignupRequests();
+                        if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'staffChat') {
+                            this.loadStaffSignupRequests();
+                            // Reflect automatic OFF resets after Staff successfully sends a ticket.
+                            this.loadStaffTicketAssignmentPermission();
+                            this.loadStaffPaymentTickPermission();
+                        }
                         // Keep Staff's payment tick synchronized with the Owner's ON/OFF switch and saved payment confirmation.
                         if (this.currentUser && this.currentUser.role === 'staff' && this.currentDashboard === 'staff' && this.activeStaffOption === 2) {
                             this.loadStaffTicketAssignmentPermission();
