@@ -2313,6 +2313,7 @@
                         // Keep Staff's payment tick synchronized with the Owner's ON/OFF switch and saved payment confirmation.
                         if (this.currentUser && this.currentUser.role === 'staff' && this.currentDashboard === 'staff' && this.activeStaffOption === 2) {
                             this.loadStaffTicketAssignmentPermission();
+                            this.loadStaffPaymentTickPermission();
                             this.refreshOwnerTicketPaymentVerification();
                         }
                     }, 7000);
@@ -3291,7 +3292,7 @@
                     // Option 9 must reload the central uploaded-ticket list whenever the Owner opens it.
                     if (optNum === 9) { this.loadAssignedTicketsFromDB(); this.refreshOwnerPaymentInstructions(); }
                     if (optNum === 'custChat') this.loadCustomerChatSettings();
-                    if (optNum === 'staffChat') { this.loadStaffChat(); this.loadStaffSignupRequests(); this.loadStaffTicketAssignmentPermission(); }
+                    if (optNum === 'staffChat') { this.loadStaffChat(); this.loadStaffSignupRequests(); this.loadStaffTicketAssignmentPermission(); this.loadStaffPaymentTickPermission(); }
                     if (optNum === 10) {
                         this.option10Authenticated = false;
                         this.option10Phone = '';
