@@ -37,19 +37,20 @@
     </style>
     <script defer src="/vendor/alpine-3.14.9.min.js" data-alpine-runtime></script>
     <script>
+        window.__artfiveShowStartupError = function (message) {
+            document.documentElement.classList.add('alpine-load-failed');
+            const errorPanel = document.getElementById('alpine-load-error');
+            const diagnostic = document.getElementById('alpine-load-diagnostic');
+            if (diagnostic) diagnostic.textContent = String(message || 'Unknown startup error').slice(0, 600);
+            if (errorPanel) errorPanel.hidden = false;
+        };
         document.addEventListener('alpine:initialized', () => {
             document.documentElement.classList.add('alpine-ready');
         });
         const alpineRuntime = document.querySelector('script[data-alpine-runtime]');
         if (alpineRuntime) {
             alpineRuntime.addEventListener('error', () => {
-                document.documentElement.classList.add('alpine-load-failed');
-                const errorPanel = document.getElementById('alpine-load-error');
-                const diagnostic = document.getElementById('alpine-load-diagnostic');
-                if (diagnostic) {
-                    diagnostic.textContent = 'The app could not load its bundled Alpine.js runtime from this website. Please reload or contact My ARTfive! support.';
-                }
-                if (errorPanel) errorPanel.hidden = false;
+                window.__artfiveShowStartupError('Alpine.js runtime file failed to load from this Preview deployment.');
             }, { once: true });
         }
     </script>
@@ -2392,6 +2393,7 @@
                 },
 
                 initApp() {
+                    try {
                     const savedCms = localStorage.getItem('artfive_master_cms');
                     if (savedCms) {
                         try {
@@ -2496,6 +2498,15 @@
                     this.checkOwnerSetup();
 
                     // Keep customer selection empty until the Owner chooses by search or filter.
+                    } catch (error) {
+                        console.error('My ARTfive! Dashboard initialization failed:', error);
+                        const detail = error && error.message ? error.message : String(error);
+                        if (typeof window.__artfiveShowStartupError === 'function') {
+                            window.__artfiveShowStartupError('Dashboard initialization failed: ' + detail);
+                        } else {
+                            throw error;
+                        }
+                    }
                 },
 
                 hasOwnerAccount() {
