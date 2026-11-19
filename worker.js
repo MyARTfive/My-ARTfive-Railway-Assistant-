@@ -679,7 +679,7 @@ export default {
         const body = await readJson(request);
         const messageText = String(body.message || "").trim();
         if (!messageText || messageText.length > 2000) return json({ success: false, message: "Enter a message up to 2,000 characters." }, 400);
-        const senderName = user.role === "owner" ? "My ARTfive!" : user.name;
+        const senderName = user.role === "owner" ? "My ARTfive!" : "Staff";
         const finalMessage = user.role === "owner" && !/^My ARTfive!/i.test(messageText) ? "My ARTfive! " + messageText : messageText;
         const id = crypto.randomUUID();
         await env.DB.prepare(
