@@ -1116,6 +1116,7 @@ export default {
           )
         `).run();
         if (await loginRateLimited(env, ip, "staff_signup_attempt", now)) return json({ success: false, message: "Error!" }, 429);
+        await logSecurity(env, ip, "staff_signup_attempt", "Staff signup request submitted", now);
         const body = await readJson(request);
         const name = String(body.name || "").trim();
         const phone = String(body.phone || "").trim();
