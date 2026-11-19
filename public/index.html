@@ -29,61 +29,29 @@
     </script>
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Alpine.js for reactive UI -->
+    <!-- Alpine.js is bundled locally so dashboard startup does not depend on third-party CDNs. -->
     <style>
-        /* Keep Alpine-controlled screens hidden until the interaction engine is ready. */
         [x-cloak] { display: none !important; }
         html:not(.alpine-ready) [x-show],
         html.alpine-load-failed [x-show] { display: none !important; }
     </style>
+    <script defer src="/vendor/alpine-3.14.9.min.js" data-alpine-runtime></script>
     <script>
-        // Load a pinned Alpine.js build with a second CDN fallback. The UI remains
-        // hidden until Alpine has initialized, so a failed CDN cannot expose every dashboard.
         document.addEventListener('alpine:initialized', () => {
             document.documentElement.classList.add('alpine-ready');
         });
-        (function loadAlpineRuntime() {
-            const sources = [
-                // Try three independent CDNs so a single blocked provider cannot stop the app.
-                'https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js',
-                'https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js',
-                'https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.9/cdn.min.js'
-            ];
-            let nextSource = 0;
-            const failedSources = [];
-            function loadNextSource() {
-                if (nextSource >= sources.length) {
-                    document.documentElement.classList.add('alpine-load-failed');
-                    const errorPanel = document.getElementById('alpine-load-error');
-                    const diagnostic = document.getElementById('alpine-load-diagnostic');
-                    if (diagnostic) {
-                        diagnostic.textContent = [
-                            'Browser connection: ' + (navigator.onLine ? 'online' : 'offline'),
-                            'Service worker active: ' + (navigator.serviceWorker && navigator.serviceWorker.controller ? 'yes' : 'no'),
-                            'Failed script sources: ' + failedSources.join(' | ')
-                        ].join('\\n');
-                    }
-                    if (errorPanel) errorPanel.hidden = false;
-                    return;
+        const alpineRuntime = document.querySelector('script[data-alpine-runtime]');
+        if (alpineRuntime) {
+            alpineRuntime.addEventListener('error', () => {
+                document.documentElement.classList.add('alpine-load-failed');
+                const errorPanel = document.getElementById('alpine-load-error');
+                const diagnostic = document.getElementById('alpine-load-diagnostic');
+                if (diagnostic) {
+                    diagnostic.textContent = 'The app could not load its bundled Alpine.js runtime from this website. Please reload or contact My ARTfive! support.';
                 }
-                const source = sources[nextSource++];
-                const script = document.createElement('script');
-                script.src = source;
-                script.async = false;
-                script.onerror = () => {
-                    failedSources.push(source);
-                    loadNextSource();
-                };
-                document.head.appendChild(script);
-            }
-            // Wait until the full document is parsed so railwayApp() and the body
-            // exist before Alpine scans and initializes the dashboard.
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', loadNextSource, { once: true });
-            } else {
-                loadNextSource();
-            }
-        })();
+                if (errorPanel) errorPanel.hidden = false;
+            }, { once: true });
+        }
     </script>
     <style id="artfive-design-theme">
         body { background-color: var(--artfive-design-bg, #0f172a) !important; }
