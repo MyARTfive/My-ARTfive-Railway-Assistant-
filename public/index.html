@@ -1884,7 +1884,7 @@
                                 <label class="block text-xs font-bold text-slate-400 mt-3 mb-1">Select the exact ticket request</label>
                                 <button type="button" @click="refreshUploadRequestList()" class="text-xs text-sky-300 underline">Refresh requests</button>
                             </div>
-                            <select x-model="uploadForm.requestId"  :disabled="!uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50">
+                            <select x-model="uploadForm.requestId" @change="refreshOwnerTicketPaymentVerification()" :disabled="!uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50">
                                 <option value="">-- Choose Ticket Request --</option>
                                 <template x-for="req in uploadRequestsForSelectedCustomer()" :key="'owner-uploadreq-'+req.id">
                                     <option :value="String(req.id)" x-text="uploadRequestLabel(req)"></option>
@@ -1892,7 +1892,15 @@
                             </select>
                             <p x-show="uploadForm.customerId && uploadRequestsForSelectedCustomer().length === 0" class="text-xs text-amber-300 mt-2">No ticket requests are currently linked to this customer. Tap “Refresh requests” to check the latest saved requests.</p>
                             <p x-show="!uploadForm.customerId" class="text-xs text-slate-400 mt-2">Choose a customer above to load their ticket requests.</p>
-                            <p class="text-xs text-emerald-300 mt-3">The Owner must confirm the customer’s payment before Staff can assign the ticket.</p>
+                            <div class="rounded-lg border border-slate-700 bg-slate-900 p-3 mt-4 space-y-2" aria-label="Read-only Owner Payment Confirmation status">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="text-xs font-bold text-slate-200">Owner Payment Confirmation</p>
+                                    <button type="button" @click="refreshOwnerTicketPaymentVerification()" :disabled="ownerPaymentStatusRefreshing" class="text-xs text-sky-300 underline disabled:opacity-50" x-text="ownerPaymentStatusRefreshing ? 'Refreshing…' : 'Refresh status'"></button>
+                                </div>
+                                <p class="text-xs text-slate-300">Only the Owner can personally confirm the customer's actual payment. Staff can only view this status.</p>
+                                <p x-show="uploadForm.customerId && uploadForm.requestId" class="text-xs" :class="isOwnerTicketPaymentVerified() ? 'text-emerald-300' : 'text-rose-300'" x-text="isOwnerTicketPaymentVerified() ? 'Owner payment confirmed ✅' : 'Payment not confirmed — sending is locked'"></p>
+                                <p x-show="!uploadForm.customerId || !uploadForm.requestId" class="text-xs text-amber-300">Select the customer and exact ticket request to view its payment status.</p>
+                            </div>
                                                         <p x-show="uploadForm.customerId" class="text-xs text-emerald-300 mt-2" x-text="(() => { const c = customers.find(item => String(item.id) === String(uploadForm.customerId)); return c ? 'Ticket recipient: ' + c.name + ' (' + c.phone + ')' : ''; })()"></p>
                         </div>
 
@@ -1916,14 +1924,8 @@
                             </div>
                         </div>
 
-                        <button x-show="!ownerPreviewMode" :disabled="!staffTicketAssignmentEnabled" @click="uploadAndAssignTicket()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm transition shadow disabled:opacity-40 disabled:cursor-not-allowed">Upload & Assign to Customer Option 4</button>
-
-                        <div class="border-t border-slate-700 pt-5">
-                            <div class="rounded-lg border border-slate-700 bg-slate-900 p-4 flex items-center justify-between gap-3">
-                                <span class="text-sm font-bold text-slate-200">Staff Total Sent Ticket</span>
-                                <span class="text-2xl font-extrabold text-emerald-300 tabular-nums" x-text="assignedTickets.filter(tkt => String(tkt.uploadedBy) === String(currentUser && currentUser.id)).length">0</span>
-                            </div>
-                        </div>
+                        <p x-show="staffTicketUploadError" class="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm font-extrabold text-rose-300" x-text="staffTicketUploadError"></p>
+                        <button x-show="!ownerPreviewMode" @click="uploadAndAssignTicket()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm transition shadow">Send it</button>
                     </div>
                 </div>
 
@@ -3017,6 +3019,7 @@
                 customerSearch: '',
                 uploadCustomerFilter: '',
                 ticketLoadError: '',
+                staffTicketUploadError: '',
 
                 filteredCustomers() {
                     const query = String(this.customerSearch || '').trim().toLowerCase();
@@ -3035,6 +3038,7 @@
                     this.uploadForm.requestId = '';
                     this.customerSearch = '';
                     this.refreshOwnerPaymentInstructions();
+                    this.refreshOwnerTicketPaymentVerification();
                 },
 
                 uploadRequestsForSelectedCustomer() {
@@ -3698,8 +3702,8 @@
                     await this.refreshOwnerTicketPaymentVerification();
                 },
                 async refreshOwnerTicketPaymentVerification() {
-                    if (!this.currentUser || this.currentUser.role !== 'owner') {
-                        this.showAppNotice('My ARTfive! Owner sign-in is required to refresh payment status.');
+                    if (!this.currentUser || !['owner', 'staff'].includes(this.currentUser.role)) {
+                        this.showAppNotice('My ARTfive! Owner or Staff sign-in is required to refresh payment status.');
                         return false;
                     }
                     if (this.ownerPaymentStatusRefreshing) return false;
@@ -4169,10 +4173,11 @@
                         this.showAppNotice('My ARTfive! Ticket uploads are disabled in Owner preview.');
                         return;
                     }
+                    this.staffTicketUploadError = '';
                     if (this.currentUser && this.currentUser.role === 'staff') {
                         await this.loadStaffTicketAssignmentPermission();
                         if (!this.staffTicketAssignmentEnabled) {
-                            this.showAppNotice('My ARTfive! Staff ticket assignment is currently OFF. Please contact the Owner.');
+                            this.staffTicketUploadError = 'Error!';
                             return;
                         }
                     }
@@ -4203,6 +4208,11 @@
                             this.showAppNotice('My ARTfive! have saved the ticket. The file list could not refresh; tap Refresh files to check it.');
                         }
                     } catch (error) {
+                        if (this.currentUser && this.currentUser.role === 'staff' &&
+                            /staff ticket assignment is currently off/i.test(String(error && error.message || ''))) {
+                            this.staffTicketUploadError = 'Error!';
+                            return;
+                        }
                         alert(error.message || 'My ARTfive! Ticket upload failed.');
                     }
                 },
