@@ -471,7 +471,7 @@
                             <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt2Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.staffOpt2Desc"></p>
                         </div>
-                        <div @click="ownerInspectStaffOpt = 3" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
+                        <div @click="ownerInspectStaffOpt = 3; loadStaffChatRecipients()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                             <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-comments"></i></div>
                             <h3 class="font-bold text-white text-base mb-1" x-text="cms.staffOpt3Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.staffOpt3Desc"></p>
@@ -561,6 +561,15 @@
 
                     <div x-show="ownerInspectStaffOpt === 3" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4">
                         <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.staffOpt3Title"></h3><button @click="ownerInspectStaffOpt = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-slate-300">Choose the exact Staff member to message</label>
+                            <select x-model="staffChatSelectedId" @change="loadStaffChat(staffChatSelectedId)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
+                                <option value="">-- Select Staff member --</option>
+                                <template x-for="staff in staffAccounts" :key="'staff-owner-preview-'+staff.id">
+                                    <option :value="String(staff.id)" x-text="staff.name + ' — Staff ID: ' + staff.id + ' (' + (staff.phone || 'No phone') + ')'"></option>
+                                </template>
+                            </select>
+                        </div>
                         <div class="bg-slate-900 p-4 rounded-xl h-48 overflow-y-auto space-y-3 border border-slate-700">
                             <template x-for="msg in staffChatMessages" :key="msg.id">
                                 <div class="p-3 rounded-lg text-xs space-y-2" :class="msg.sender === 'My ARTfive!' ? 'bg-emerald-900/30 border border-emerald-500/30 ml-8' : 'bg-slate-800 border border-slate-700 mr-8'">
@@ -1959,8 +1968,8 @@
 
                 <div x-show="activeStaffOption === 3" class="space-y-4">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.staffOpt3Title"></h3><button @click="activeStaffOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
-                    <div class="space-y-2">
-                        <label class="block text-xs font-bold text-slate-300" x-text="ownerPreviewMode ? 'Choose Staff conversation to preview' : 'Your private Staff conversation'"></label>
+                    <div x-show="ownerPreviewMode" class="space-y-2">
+                        <label class="block text-xs font-bold text-slate-300">Choose Staff conversation to preview</label>
                         <select x-model="staffChatSelectedId" @change="loadStaffChat(staffChatSelectedId)" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
                             <option value="">-- Select Staff member --</option>
                             <template x-for="staff in staffAccounts" :key="'staff-preview-recipient-'+staff.id">
