@@ -1884,7 +1884,7 @@
                                 <label class="block text-xs font-bold text-slate-400 mt-3 mb-1">Select the exact ticket request</label>
                                 <button type="button" @click="refreshUploadRequestList()" class="text-xs text-sky-300 underline">Refresh requests</button>
                             </div>
-                            <select x-model="uploadForm.requestId" @change="" :disabled="!uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50">
+                            <select x-model="uploadForm.requestId"  :disabled="!uploadForm.customerId" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50">
                                 <option value="">-- Choose Ticket Request --</option>
                                 <template x-for="req in uploadRequestsForSelectedCustomer()" :key="'owner-uploadreq-'+req.id">
                                     <option :value="String(req.id)" x-text="uploadRequestLabel(req)"></option>
