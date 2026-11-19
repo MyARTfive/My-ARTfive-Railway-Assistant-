@@ -1957,8 +1957,8 @@
                         </template>
                     </div>
                     <div class="flex gap-2">
-                        <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage('Staff')" :disabled="ownerPreviewMode" class="flex-1 min-w-0 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed" :placeholder="ownerPreviewMode ? 'Message box — read-only preview' : 'Type message as Staff...'">
-                        <button @click="sendStaffChatMessage('Staff')" :disabled="ownerPreviewMode" :title="ownerPreviewMode ? 'Sending is disabled in read-only preview' : 'Send message'" class="bg-sky-600 hover:bg-sky-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-xs font-bold">Send</button>
+                        <input type="text" x-model="newStaffChatText" @keyup.enter="sendStaffChatMessage()" class="flex-1 min-w-0 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" :placeholder="ownerPreviewMode ? 'Type message as My ARTfive!...' : 'Type message as Staff...'">
+                        <button @click="sendStaffChatMessage()" class="bg-sky-600 hover:bg-sky-500 text-white px-4 py-2.5 rounded-lg text-xs font-bold">Send</button>
                     </div>
                 </div>
             </div>
@@ -2710,7 +2710,6 @@
                 },
 
                 async sendStaffChatMessage() {
-                    if (this.ownerPreviewMode) { this.showAppNotice('My ARTfive! Staff messages cannot be sent from Owner preview.'); return; }
                     const message = String(this.newStaffChatText || '').trim();
                     if (!message) return;
                     try {
