@@ -53,6 +53,19 @@
                 window.__artfiveShowStartupError('Alpine.js runtime file failed to load from this Preview deployment.');
             }, { once: true });
         }
+        // Surface JavaScript/Alpine expression failures that occur before the dashboard is ready.
+        window.addEventListener('error', (event) => {
+            if (document.documentElement.classList.contains('alpine-ready')) return;
+            if (event.target && event.target !== window) return;
+            const detail = event.message || (event.error && event.error.message) || 'Unknown JavaScript startup error';
+            window.__artfiveShowStartupError('JavaScript startup failed: ' + detail);
+        }, true);
+        window.addEventListener('unhandledrejection', (event) => {
+            if (document.documentElement.classList.contains('alpine-ready')) return;
+            const reason = event.reason;
+            const detail = reason && reason.message ? reason.message : String(reason || 'Unknown rejected promise');
+            window.__artfiveShowStartupError('Startup promise failed: ' + detail);
+        });
     </script>
     <style id="artfive-design-theme">
         body { background-color: var(--artfive-design-bg, #0f172a) !important; }
