@@ -240,7 +240,7 @@
         <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
 
             <!-- ================= PUBLIC FIRST SCREEN ================= -->
-            <div x-show="currentDashboard === 'public'" x-init="loadAppUpdates(); loadPublicCms()" class="space-y-8">
+            <div x-show="currentDashboard === 'public' && activeCustOption === null" x-init="loadAppUpdates(); loadPublicCms()" class="space-y-8">
                 <div x-show="appUpdates.length > 0" class="bg-slate-800 border border-emerald-500/30 rounded-2xl p-5 space-y-3">
                     <h3 class="text-sm font-bold text-emerald-300">My ARTfive! Latest App Updates</h3>
                     <template x-for="item in appUpdates.slice(0,4)" :key="'public-update-'+item.id">
@@ -1721,7 +1721,7 @@
             </div>
 
             <!-- ================= 2. CUSTOMER DASHBOARD ================= -->
-            <div x-show="currentDashboard === 'customer'" class="space-y-6">
+            <div x-show="(currentDashboard === 'public' && activeCustOption !== null && !ownerPreviewMode) || (currentDashboard === 'customer' && ownerPreviewMode)" class="space-y-6">
                 <div x-show="ownerPreviewMode" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-950/30 p-4">
                     <p class="text-xs text-amber-100">My ARTfive! You are viewing the live Customer Dashboard layout in read-only preview mode. Customer sign-in and private account data remain protected.</p>
                     <button type="button" @click="closeOwnerDashboardPreview()" class="rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold text-white">Back to My Dashboard</button>
@@ -2511,7 +2511,7 @@
                     // Keep ticket notifications in open customer Options 3 and 4 current.
                     setInterval(() => {
                         if (this.currentUser && this.currentUser.role === 'customer' &&
-                            this.currentDashboard === 'customer' &&
+                            (this.currentDashboard === 'customer' || this.currentDashboard === 'public') &&
                             (this.activeCustOption === 3 || this.activeCustOption === 4)) {
                             this.loadCustomerNotifications();
                         }
@@ -2520,7 +2520,7 @@
                     // Keep personal payment messages and amounts fresh in open customer Options 2 and 3.
                     setInterval(() => {
                         if (this.currentUser && this.currentUser.role === 'customer' &&
-                            this.currentDashboard === 'customer' &&
+                            (this.currentDashboard === 'customer' || this.currentDashboard === 'public') &&
                             (this.activeCustOption === 2 || this.activeCustOption === 3)) {
                             this.loadCustomerPaymentInstructions();
                         }
@@ -2535,7 +2535,7 @@
                             (this.currentUser.role === 'owner' && this.currentDashboard === 'owner' && this.ownerInspectStaffOpt === 1)
                         )) this.refreshTicketRequestsOnly();
                         // Customer Option 1 and Owner Chat 1 share the same D1 enquiry conversation.
-                        if (this.currentUser && this.currentUser.role === 'customer' && this.currentDashboard === 'customer' && this.activeCustOption === 1) this.loadCustomerEnquiryChat();
+                        if (this.currentUser && this.currentUser.role === 'customer' && (this.currentDashboard === 'customer' || this.currentDashboard === 'public') && this.activeCustOption === 1) this.loadCustomerEnquiryChat();
                         if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'custChat' && this.paymentForm.customerId) this.loadCustomerEnquiryChat(this.paymentForm.customerId);
                         if (this.currentUser && this.currentUser.role === 'staff' && this.currentDashboard === 'staff' && this.activeStaffOption === 3) this.loadStaffChat();
                         if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'staffChat' && this.staffChatSelectedId) this.loadStaffChat(this.staffChatSelectedId);
@@ -4617,7 +4617,7 @@
                         this.offlineMode = false;
                         this.currentDashboard = this.currentUser.role === 'owner' ? 'owner' :
                             (this.currentUser.role === 'staff' ? 'staff' :
-                                (this.loginRole === 'customer_verify' ? 'customer' : 'public'));
+                                'public');
                         if (this.loginRole === 'customer_verify') this.activeCustOption = 4;
                         else if (this.currentUser.role === 'customer') this.activeCustOption = null;
                         this.activeMenuOption = null;
@@ -4725,7 +4725,8 @@
                         this.openLoginModal('customer');
                         return;
                     }
-                    this.currentDashboard = 'customer';
+                    this.currentDashboard = 'public';
+                    // Render the selected option in place of the public home content.
                     // Activate the selected option before fetching its notifications so the
                     // Option 3 ticket-upload message is loaded for the visible customer page.
                     this.activeCustOption = optNum;
