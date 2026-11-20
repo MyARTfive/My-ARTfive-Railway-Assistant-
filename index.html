@@ -173,6 +173,9 @@
                             <button @click="openLoginModal('customer')" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-6 py-3 rounded-xl text-sm transition shadow flex items-center gap-2 border border-slate-600">
                                 <i class="fa-solid fa-right-to-bracket"></i> <span x-text="cms.signInBtnText"></span>
                             </button>
+                            <button @click="shareApp()" aria-label="Share My ARTfive! app" class="ml-auto bg-sky-700/80 hover:bg-sky-600 text-white font-semibold px-3 py-2 rounded-lg text-xs transition shadow flex items-center gap-2 border border-sky-500/40">
+                                <i class="fa-solid fa-share-nodes"></i> Share App!
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2431,6 +2434,34 @@
                     if (!this.newStaffChatText.trim()) return;
                     this.staffChatMessages.push({ id: Date.now(), sender: senderName, text: this.newStaffChatText, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
                     this.newStaffChatText = '';
+                },
+
+                async shareApp() {
+                    const appTitle = 'My ARTfive! (Railway Assistant!)';
+                    const appUrl = window.location.origin + '/';
+                    const shareText = appTitle + '\\nInstall App';
+
+                    if (navigator.share) {
+                        try {
+                            await navigator.share({
+                                title: appTitle,
+                                text: shareText,
+                                url: appUrl
+                            });
+                        } catch (error) {
+                            if (error && error.name !== 'AbortError') {
+                                console.error('My ARTfive! Share App failed:', error);
+                            }
+                        }
+                        return;
+                    }
+
+                    try {
+                        await navigator.clipboard.writeText(shareText + '\\n' + appUrl);
+                        alert('My ARTfive! Install App link copied. You can now share it through WhatsApp, Instagram, or another app.');
+                    } catch (error) {
+                        window.prompt('Copy this My ARTfive! Install App link:', shareText + '\\n' + appUrl);
+                    }
                 },
 
                 copyToClipboard(text) {
