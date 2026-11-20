@@ -1726,7 +1726,7 @@
                     <p class="text-xs text-amber-100">My ARTfive! You are viewing the live Customer Dashboard layout in read-only preview mode. Customer sign-in and private account data remain protected.</p>
                     <button type="button" @click="closeOwnerDashboardPreview()" class="rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold text-white">Back to My Dashboard</button>
                 </div>
-                <div class="bg-gradient-to-r from-slate-800 to-railway-900 border border-slate-700 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div x-show="ownerPreviewMode" class="bg-gradient-to-r from-slate-800 to-railway-900 border border-slate-700 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <span class="bg-railway-500/20 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full uppercase" x-text="cms.custBadgeText"></span>
                         <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1" x-text="ownerPreviewMode ? 'Customer Dashboard Preview' : 'Welcome, ' + (currentUser ? currentUser.name : 'Customer')"></h2>
@@ -1793,7 +1793,7 @@
                 <div x-show="activeCustOption === 1" class="bg-slate-800 border border-slate-700 p-6 sm:p-8 rounded-2xl space-y-6 max-w-3xl mx-auto">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-4">
                         <h3 class="text-xl font-extrabold text-white" x-text="cms.custOpt1Title"></h3>
-                        <button @click="activeCustOption = null; currentDashboard = 'customer'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
+                        <button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <div class="space-y-6">
                         <template x-for="(pax, index) in ticketReqForm.passengers" :key="index">
@@ -1879,7 +1879,7 @@
 
                 <!-- Customer Option 2: Booking Request Payment -->
                 <div x-show="activeCustOption === 2" x-effect="if (!ownerPreviewMode && activeCustOption === 2) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
-                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null; currentDashboard = 'customer'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
+                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Personal message notification -->
                     <section class="w-full min-w-0 rounded-xl border-2 border-emerald-500/50 bg-slate-900 p-4 space-y-3" aria-label="Option 2 message notification">
@@ -1928,7 +1928,7 @@
 
                 <!-- Customer Option 3: Ticket Collection Charges -->
                 <div x-show="activeCustOption === 3" x-effect="if (!ownerPreviewMode && activeCustOption === 3) { loadCustomerNotifications(); loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
-                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null; currentDashboard = 'customer'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
+                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Both Option 3 message types appear together -->
                     <section class="w-full min-w-0 rounded-xl border-2 border-sky-500/50 bg-slate-900 p-4 space-y-3" aria-label="Option 3 message notifications">
@@ -1985,7 +1985,7 @@
                 <div x-show="activeCustOption === 4" x-effect="if (!ownerPreviewMode && activeCustOption === 4) loadCustomerNotifications()" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-2xl mx-auto">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                         <h3 class="font-bold text-white text-lg" x-text="cms.custOpt4Title"></h3>
-                        <button @click="activeCustOption = null; currentDashboard = 'customer'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
+                        <button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <p class="text-xs text-slate-300" x-text="cms.myTicketsInstruction"></p>
                     <p x-show="ownerPreviewMode" class="rounded-lg border border-amber-500/30 bg-amber-950/30 p-3 text-xs text-amber-100">My ARTfive! Private tickets can only be viewed after the customer's own Option 4 sign-in. This owner preview shows the page layout only.</p>
@@ -4965,7 +4965,7 @@
                         await this.loadTicketRequestsFromStorage();
                         this.showAppNotice('My ARTfive! have received your railway ticket request form successfully! Please visit Customer Dashboard Option 2 to view the details of your ticket booking payment charges.', 3500);
                         this.activeCustOption = null;
-                        if (!this.ownerPreviewMode) this.currentDashboard = 'customer';
+                        if (!this.ownerPreviewMode) this.currentDashboard = 'public';
                         this.ownerInspectCustOpt = null;
                     } catch (error) {
                         console.error('My ARTfive! Ticket request submission failed:', error);
