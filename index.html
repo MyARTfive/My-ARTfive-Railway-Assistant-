@@ -156,7 +156,7 @@
 
             <!-- ================= PUBLIC FIRST SCREEN ================= -->
             <div x-show="currentDashboard === 'public'" class="space-y-8">
-                <div class="relative overflow-hidden bg-gradient-to-r from-slate-800 via-slate-800 to-railway-900 border border-slate-700 rounded-3xl p-8 sm:p-12 shadow-2xl">
+                <div class="relative overflow-hidden bg-gradient-to-r from-slate-800 via-slate-800 to-railway-900 border border-slate-700 rounded-3xl p-5 sm:p-12 shadow-2xl">
                     <div class="absolute -right-10 -bottom-10 opacity-10 text-emerald-500 text-9xl pointer-events-none">
                         <i class="fa-solid fa-train"></i>
                     </div>
@@ -166,16 +166,16 @@
                             <p class="text-slate-300 text-base sm:text-lg mt-2" x-text="cms.heroSubtitle"></p>
                         </div>
 
-                        <div class="flex items-center gap-3 pt-2">
-                            <div class="flex flex-col gap-3">
-                                <button @click="openLoginModal('customer_new')" class="whitespace-nowrap bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl text-sm transition shadow flex items-center gap-2">
+                        <div class="flex w-full max-w-full items-center gap-2 pt-2">
+                            <div class="flex shrink-0 flex-col gap-3">
+                                <button @click="openLoginModal('customer_new')" class="whitespace-nowrap bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-3 rounded-xl text-xs transition shadow flex items-center gap-2">
                                     <i class="fa-solid fa-user-plus"></i> <span x-text="cms.signUpBtnText"></span>
                                 </button>
-                                <button @click="openLoginModal('customer')" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-6 py-3 rounded-xl text-sm transition shadow flex items-center gap-2 border border-slate-600">
+                                <button @click="openLoginModal('customer')" class="whitespace-nowrap bg-slate-700 hover:bg-slate-600 text-white font-bold px-3 py-3 rounded-xl text-xs transition shadow flex items-center gap-2 border border-slate-600">
                                     <i class="fa-solid fa-right-to-bracket"></i> <span x-text="cms.signInBtnText"></span>
                                 </button>
                             </div>
-                            <button @click="shareApp()" aria-label="Share My ARTfive! app" class="shrink-0 bg-sky-700/80 hover:bg-sky-600 text-white font-semibold px-3 py-2 rounded-lg text-xs transition shadow flex items-center gap-2 border border-sky-500/40">
+                            <button @click="shareApp()" aria-label="Share My ARTfive! app" class="ml-auto shrink-0 bg-sky-700/80 hover:bg-sky-600 text-white font-semibold px-2 py-2 rounded-lg text-[11px] transition shadow flex items-center gap-2 border border-sky-500/40">
                                 <i class="fa-solid fa-share-nodes"></i> Share App!
                             </button>
                         </div>
