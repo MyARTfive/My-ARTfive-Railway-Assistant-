@@ -290,6 +290,7 @@ async function purgeExpiredChatMessages(env, now = Date.now()) {
   await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS customer_enquiry_messages (
       id TEXT PRIMARY KEY,
+      request_id TEXT,
       customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       sender_id TEXT NOT NULL REFERENCES users(id),
       sender_role TEXT NOT NULL CHECK (sender_role IN ('owner','staff','customer')),
@@ -298,6 +299,13 @@ async function purgeExpiredChatMessages(env, now = Date.now()) {
       created_at INTEGER NOT NULL
     )
   `).run();
+  // Link an optional enquiry submitted with a ticket request to that exact request.
+  // Existing chat history is preserved when this column is added.
+  const enquiryColumns = await env.DB.prepare("PRAGMA table_info(customer_enquiry_messages)").all();
+  if (!(enquiryColumns.results || []).some(column => column.name === "request_id")) {
+    await env.DB.prepare("ALTER TABLE customer_enquiry_messages ADD COLUMN request_id TEXT").run();
+  }
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_customer_enquiry_request ON customer_enquiry_messages(request_id)").run();
   await ensureStaffChatSchema(env);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM staff_chat_messages WHERE created_at <= ?").bind(cutoff),
@@ -1506,9 +1514,23 @@ export default {
         const id = crypto.randomUUID();
         const createdAt = now;
         const fileData = typeof body.file_data === "string" ? body.file_data : null;
-        await env.DB.prepare(
-          `INSERT INTO requests (id, data, file_data, created_at, customer_id) VALUES (?, ?, ?, ?, ?)`
-        ).bind(id, JSON.stringify(data), fileData, createdAt, user.id).run();
+        const enquiryText = String(data.enquiry || "").trim().slice(0, 2000);
+        if (enquiryText) await purgeExpiredChatMessages(env, now);
+        const statements = [
+          env.DB.prepare(
+            `INSERT INTO requests (id, data, file_data, created_at, customer_id) VALUES (?, ?, ?, ?, ?)`
+          ).bind(id, JSON.stringify(data), fileData, createdAt, user.id)
+        ];
+        // The optional Customer Option 1 enquiry is also placed in the same
+        // customer conversation shown in the customer form and Owner Chat 1.
+        // Keep it linked so deleting this request removes only this request's
+        // enquiry message, without touching other conversation messages.
+        if (enquiryText) {
+          statements.push(env.DB.prepare(
+            "INSERT INTO customer_enquiry_messages (id, request_id, customer_id, sender_id, sender_role, sender_name, message, created_at) VALUES (?, ?, ?, ?, 'customer', ?, ?, ?)"
+          ).bind(crypto.randomUUID(), id, user.id, user.id, user.name, enquiryText, createdAt));
+        }
+        await env.DB.batch(statements);
         return json({ success: true, id, created_at: createdAt, customer_id: user.id }, 201);
       }
 
@@ -1518,11 +1540,20 @@ export default {
         const body = await readJson(request);
         const id = String(body.id || "").trim();
         if (!id) return json({ success: false, message: "Request ID is required." }, 400);
-        // Option 8 deletes only the selected request form row from D1.
-        // It must not delete payment instructions, uploaded tickets, or ticket file data.
-        const result = await env.DB.prepare("DELETE FROM requests WHERE id = ?").bind(id).run();
-        if (!result.meta || result.meta.changes === 0) return json({ success: false, message: "Ticket request was not found." }, 404);
-        return json({ success: true, message: "Ticket request deleted." });
+        // Option 8 permanently deletes the selected request from D1. Its linked
+        // optional enquiry is removed from the Customer Option 1 / Owner Chat 1
+        // conversation too. Other chat messages, payment instructions and tickets
+        // are deliberately preserved.
+        await purgeExpiredChatMessages(env, now);
+        const requestRow = await env.DB.prepare("SELECT id, customer_id FROM requests WHERE id = ? LIMIT 1").bind(id).first();
+        if (!requestRow) return json({ success: false, message: "Ticket request was not found." }, 404);
+        const deleted = await env.DB.batch([
+          env.DB.prepare("DELETE FROM customer_enquiry_messages WHERE request_id = ? AND customer_id = ?").bind(id, requestRow.customer_id),
+          env.DB.prepare("DELETE FROM requests WHERE id = ? AND customer_id = ?").bind(id, requestRow.customer_id)
+        ]);
+        const deletedRequestCount = deleted[1]?.meta ? Number(deleted[1].meta.changes || 0) : 0;
+        if (deletedRequestCount === 0) return json({ success: false, message: "Ticket request was not found." }, 404);
+        return json({ success: true, message: "Ticket request and its linked enquiry were permanently deleted from D1. Other messages, payment instructions and uploaded tickets remain unchanged." });
       }
 
 
