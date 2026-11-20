@@ -22,6 +22,11 @@ jobs:
         with:
           ref: feature/google-play-store-preparation
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Verify Preview source and isolated Wrangler configuration
         run: |
           echo "Preview source branch: $(git branch --show-current)"
@@ -41,13 +46,8 @@ jobs:
               console.error("Preview D1 binding is missing or does not match the isolated Preview database.");
               process.exit(1);
             }
-            console.log("Verified Preview Worker and Preview D1 database. Production configuration was not selected.");
+            console.log("Verified Preview Worker and Preview D1 database.");
           '
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
 
       - name: Verify Cloudflare credentials are configured
         env:
