@@ -14,6 +14,7 @@ on:
       - feature/central-d1-ticket-sync
       - feature/24-hour-chat-message-expiry
       - feature/app-management-dashboard-foundation
+      - feature/full-app-workflow-audit-fixes
 
 jobs:
   syntax-check:
