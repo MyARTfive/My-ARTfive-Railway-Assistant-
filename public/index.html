@@ -2897,7 +2897,7 @@
                     if (!targetId) { this.customerEnquiryMessages = []; return; }
                     try {
                         const result = await this.apiRequest('/api/customer-enquiry?customerId=' + encodeURIComponent(targetId));
-                        this.customerEnquiryMessages = (result.messages || []).map(msg => ({ ...msg, text: msg.senderRole === 'owner' || msg.sender === 'My ARTfive!' ? String(msg.text || '').replace(/^My ARTfive!\\s*/i, '') : msg.text, time: new Date(Number(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
+                        this.customerEnquiryMessages = (result.messages || []).map(msg => ({ ...msg, text: msg.senderRole === 'owner' || msg.sender === 'My ARTfive!' ? String(msg.text || '').replace(/^My ARTfive!\s*/i, '') : msg.text, time: new Date(Number(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not load the enquiry conversation.'); }
                 },
 
