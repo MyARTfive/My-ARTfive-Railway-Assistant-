@@ -781,7 +781,7 @@ export default {
           if (!target) return json({ success: false, message: "The selected Staff account was not found." }, 404);
         }
         const senderName = user.role === "owner" ? "My ARTfive!" : String(user.name || "Staff");
-        const finalMessage = user.role === "owner" && !/^My ARTfive!/i.test(messageText) ? "My ARTfive! " + messageText : messageText;
+        const finalMessage = messageText;
         const id = crypto.randomUUID();
         await env.DB.prepare(
           "INSERT INTO staff_chat_messages (id, staff_id, sender_id, sender_role, sender_name, message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -861,7 +861,7 @@ export default {
           await env.DB.prepare("DELETE FROM customer_notifications WHERE expires_at IS NOT NULL AND expires_at <= ?").bind(now).run();
           if (user.role === "customer") {
             const rows = await env.DB.prepare(
-              "SELECT id, message, created_at AS createdAt, read_at AS readAt, target_option AS targetOption, ticket_id AS ticketId, expires_at AS expiresAt FROM customer_notifications WHERE customer_id = ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC LIMIT 100"
+              "SELECT n.id, n.message, n.created_at AS createdAt, n.read_at AS readAt, n.target_option AS targetOption, n.ticket_id AS ticketId, n.expires_at AS expiresAt, CASE WHEN sender.role = 'owner' THEN 'My ARTfive!' ELSE COALESCE(sender.name, 'Staff') END AS senderName FROM customer_notifications n LEFT JOIN users sender ON sender.id = n.sender_id WHERE n.customer_id = ? AND (n.expires_at IS NULL OR n.expires_at > ?) ORDER BY n.created_at DESC LIMIT 100"
             ).bind(user.id, now).all();
             return json({ success: true, notifications: rows.results || [] });
           }
@@ -1752,7 +1752,7 @@ export default {
         let result;
         if (user.role === "owner" || user.role === "staff") {
           result = await env.DB.prepare(
-            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, uploaded_by AS uploadedBy, created_at AS createdAt FROM tickets ORDER BY created_at DESC"
+            "SELECT tickets.id, tickets.request_id AS requestId, tickets.customer_id AS customerId, tickets.customer_name AS customerName, tickets.customer_phone AS customerPhone, tickets.ticket_title AS ticketTitle, tickets.mime_type AS mimeType, tickets.file_data AS fileData, tickets.payment_confirmed AS paymentConfirmed, tickets.uploaded_by AS uploadedBy, uploader.role AS uploadedByRole, uploader.name AS uploadedByName, tickets.created_at AS createdAt FROM tickets LEFT JOIN users uploader ON uploader.id = tickets.uploaded_by ORDER BY tickets.created_at DESC"
           ).all();
         } else if (user.role === "customer") {
           const ticketAccessToken = request.headers.get("X-Ticket-Access") || "";
@@ -1763,7 +1763,7 @@ export default {
           ).bind(ticketAccessHash, user.id, now).first();
           if (!ticketAccess) return json({ success: false, message: "Your ticket access verification has expired. Please sign in again." }, 403);
           result = await env.DB.prepare(
-            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, uploaded_by AS uploadedBy, created_at AS createdAt FROM tickets WHERE customer_id = ? ORDER BY created_at DESC"
+            "SELECT tickets.id, tickets.request_id AS requestId, tickets.customer_id AS customerId, tickets.customer_name AS customerName, tickets.customer_phone AS customerPhone, tickets.ticket_title AS ticketTitle, tickets.mime_type AS mimeType, tickets.file_data AS fileData, tickets.payment_confirmed AS paymentConfirmed, tickets.uploaded_by AS uploadedBy, uploader.role AS uploadedByRole, uploader.name AS uploadedByName, tickets.created_at AS createdAt FROM tickets LEFT JOIN users uploader ON uploader.id = tickets.uploaded_by WHERE tickets.customer_id = ? ORDER BY tickets.created_at DESC"
           ).bind(user.id).all();
         } else {
           return json({ success: false, message: "Access denied." }, 403);
