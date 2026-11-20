@@ -476,7 +476,7 @@
                             <div class="sm:col-span-2 flex flex-wrap gap-2"><button type="submit" :disabled="appServicesBusy" class="bg-emerald-600 disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-bold text-white" x-text="appServicesBusy ? 'Saving...' : (appServiceForm.id ? 'Save Changes' : 'Add Service')"></button><button type="button" x-show="appServiceForm.id" @click="resetAppServiceForm()" class="bg-slate-700 px-4 py-2 rounded-lg text-sm font-bold">Cancel Edit</button></div>
                         </form>
                         <p x-show="appServicesMessage" x-text="appServicesMessage" class="text-sm text-emerald-300" role="status"></p><p x-show="appServicesError" x-text="appServicesError" class="text-sm text-red-300" role="alert"></p>
-                        <div class="space-y-2"><template x-for="service in appServices" :key="service.id"><div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/70 border border-slate-700 rounded-xl p-4"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><h5 class="font-bold text-white" x-text="service.name"></h5><span class="text-[10px] uppercase font-bold px-2 py-1 rounded bg-slate-700 text-slate-200" x-text="service.status"></span></div><p class="text-xs text-slate-400 mt-1" x-text="service.description || 'No description'"></p><p class="text-[10px] text-slate-500 mt-1">Order: <span x-text="service.displayOrder"></span></p></div><div class="flex flex-wrap gap-2 shrink-0"><button type="button" @click="editAppService(service)" class="bg-sky-700 px-3 py-2 rounded-lg text-xs font-bold">Edit</button><button type="button" @click="setAppServiceStatus(service, service.status === 'active' ? 'inactive' : 'active')" class="bg-amber-700 px-3 py-2 rounded-lg text-xs font-bold" x-text="service.status === 'active' ? 'Deactivate' : 'Activate'"></button></div></div></template><p x-show="!appServices.length && !appServicesBusy" class="text-xs text-slate-400 text-center py-5">No services have been added yet.</p></div>
+                        <div class="space-y-2"><template x-for="service in appServices" :key="service.id"><div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/70 border border-slate-700 rounded-xl p-4"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><h5 class="font-bold text-white" x-text="service.name"></h5><span class="text-[10px] uppercase font-bold px-2 py-1 rounded bg-slate-700 text-slate-200" x-text="service.status"></span></div><p class="text-xs text-slate-400 mt-1" x-text="service.description || 'No description'"></p><p class="text-[10px] text-slate-500 mt-1">Order: <span x-text="service.displayOrder"></span></p></div><div class="flex flex-wrap gap-2 shrink-0"><button type="button" @click="editAppService(service)" class="bg-sky-700 px-3 py-2 rounded-lg text-xs font-bold">Edit</button><button type="button" @click="setAppServiceStatus(service, service.status === 'active' ? 'inactive' : 'active')" class="bg-amber-700 px-3 py-2 rounded-lg text-xs font-bold" x-text="service.status === 'active' ? 'Deactivate' : 'Activate'"></button><button type="button" @click="deleteAppService(service)" class="bg-red-700 hover:bg-red-600 px-3 py-2 rounded-lg text-xs font-bold text-white">Delete</button></div></div></template><p x-show="!appServices.length && !appServicesBusy" class="text-xs text-slate-400 text-center py-5">No services have been added yet.</p></div>
                     </div>
                         <div x-show="activeAppManagementSection === 'ai-github'" class="space-y-4">
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-slate-900/70 p-4">
@@ -3952,6 +3952,16 @@
                         await this.apiRequest('/api/owner/services', { method: 'POST', body: { action: 'status', id: service.id, status } });
                         this.appServicesMessage = 'My ARTfive! Service status updated.'; await this.loadAppServices();
                     } catch (error) { this.appServicesError = error.message || 'Could not update service status.'; }
+                },
+                async deleteAppService(service) {
+                    if (!confirm('My ARTfive! Permanently delete the service "' + service.name + '"? This cannot be undone. Only this service catalogue entry will be deleted; customer accounts, ticket requests and payment records will not be deleted.')) return;
+                    this.appServicesError = ''; this.appServicesMessage = '';
+                    try {
+                        await this.apiRequest('/api/owner/services', { method: 'POST', body: { action: 'delete', id: service.id } });
+                        if (this.appServiceForm.id === service.id) this.resetAppServiceForm();
+                        this.appServicesMessage = 'My ARTfive! Service deleted successfully.';
+                        await this.loadAppServices();
+                    } catch (error) { this.appServicesError = error.message || 'Could not delete service.'; }
                 },
 
                 appManagementSectionTitle() {
