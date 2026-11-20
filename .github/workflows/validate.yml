@@ -102,7 +102,8 @@ jobs:
             ['App Settings links existing inquiry, staff and download controls', ui.includes("ownerSelectOption('custChat')") && ui.includes("ownerSelectOption('staffChat')") && ui.includes('ownerSelectOption(3)')],
             ['Assistant GitHub status is owner-authenticated and read-only GET', worker.includes('path === "/api/owner/assistant/github-status" && method === "GET"') && worker.includes('Only the signed-in Owner can inspect the GitHub project.') && !worker.includes('path === "/api/owner/assistant/github-status" && (method === "POST"')],
             ['App Management services API rejects non-owner sessions', worker.includes('path === "/api/owner/services"') && worker.includes('Only the signed-in Owner can manage services.') && worker.includes('owner.role !== "owner"')],
-            ['App Management assistant composer does not request credentials or paid AI keys', ui.includes('No GitHub password, token or paid AI API key is required.') && ui.includes('https://chatgpt.com/')]
+            ['App Management assistant composer does not request credentials or paid AI keys', ui.includes('No GitHub password, token or paid AI API key is required.') && ui.includes('https://chatgpt.com/')],
+            ['Assistant card accurately describes current read-only GitHub and ChatGPT request features', ui.includes('Prepare requests with ChatGPT and inspect read-only GitHub project status.') && !ui.includes('Future AI assistant for project inspection and approved code changes.')]
           ];
           const failed = checks.filter(([, ok]) => !ok);
           for (const [name, ok] of checks) console.log((ok ? 'PASS ' : 'FAIL ') + name);
