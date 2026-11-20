@@ -71,7 +71,15 @@ jobs:
             ['Existing manual notification SEND/UNSEND', ui.includes('/api/notifications') && worker.includes('path === "/api/notifications"')],
             ['Manual-only deployment trigger', deployment.includes('workflow_dispatch:') && !/^  push:/m.test(deployment)],
             ['Production branch and confirmation gate', deployment.includes("github.ref == 'refs/heads/main'") && deployment.includes('I APPROVE PRODUCTION DEPLOY')],
-            ['Isolated Preview Worker', fs.readFileSync('wrangler.jsonc', 'utf8').includes('my-artfive-railway-assistant-preview')]
+            ['Isolated Preview Worker', fs.readFileSync('wrangler.jsonc', 'utf8').includes('my-artfive-railway-assistant-preview')],
+            ['Owner customer preview Options 1–4', [1, 2, 3, 4].every(n => ui.includes('openOwnerCustomerOptionPreview(' + n + ')')) && ui.includes('[1, 2, 3, 4].includes(Number(optNum))')],
+            ['Option 8 permanent request deletion', ui.includes('async deleteTicketRequest(reqId)') && worker.includes('path === "/api/requests" && method === "DELETE"') && worker.includes('DELETE FROM requests WHERE id = ? AND customer_id = ?')],
+            ['Option 9 permanent ticket-file deletion', ui.includes('async deleteAssignedTicket(ticketId)') && worker.includes('path === "/api/tickets" && method === "DELETE"') && worker.includes('DELETE FROM tickets WHERE id = ?')],
+            ['Option 10 permanent account deletion', ui.includes('/api/owner/control/customer-accounts/delete') && worker.includes('path === "/api/owner/control/customer-accounts/delete"') && worker.includes('DELETE FROM users WHERE id = ? AND role IN (\'customer\', \'staff\')')],
+            ['Option 10 Staff re-registration cleanup', worker.includes('DELETE FROM staff_signup_requests WHERE phone = ?')],
+            ['Blocked account shows exact Error!', ui.includes("this.showAppNotice('Error!')") && worker.includes('message: "Error!"') && worker.includes('customer_login_blocked') && worker.includes('staff_owner_login_blocked')],
+            ['Customer and Staff password recovery workflow', ui.includes('submitPasswordChangeRequest()') && worker.includes('path === "/api/password-change/request"') && worker.includes('path === "/api/password-change/status"') && worker.includes('path === "/api/owner/control/password-requests/decision"')],
+            ['Manager forgot-password recovery workflow', ui.includes('resetOption10ManagerPassword()') && worker.includes('path === "/api/owner/manager/reset"')]
           ];
           const failed = checks.filter(([, ok]) => !ok);
           for (const [name, ok] of checks) console.log((ok ? 'PASS ' : 'FAIL ') + name);
