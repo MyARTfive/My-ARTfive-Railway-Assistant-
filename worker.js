@@ -538,10 +538,12 @@ export default {
             const description = String(body.description || "").trim().slice(0, 300);
             const icon = String(body.icon || "fa-solid fa-layer-group").trim().slice(0, 80);
             const displayOrder = Number.isInteger(Number(body.displayOrder)) ? Math.max(0, Math.min(9999, Number(body.displayOrder))) : 0;
+            const status = String(body.status || "");
             if (!name) return json({ success: false, message: "Enter a service name." }, 400);
+            if (!["active", "inactive", "draft"].includes(status)) return json({ success: false, message: "Choose a valid service status." }, 400);
             await env.DB.prepare(
-              "UPDATE app_services SET name = ?, description = ?, icon = ?, display_order = ?, updated_at = ? WHERE id = ?"
-            ).bind(name, description, icon, displayOrder, now, id).run();
+              "UPDATE app_services SET name = ?, description = ?, icon = ?, display_order = ?, status = ?, updated_at = ? WHERE id = ?"
+            ).bind(name, description, icon, displayOrder, status, now, id).run();
           }
           return json({ success: true, message: "My ARTfive! Service updated successfully." });
         }
