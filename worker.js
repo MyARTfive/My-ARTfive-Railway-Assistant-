@@ -567,7 +567,6 @@ export default {
           ["staff_chat_messages", "sender_id = ? OR staff_id = ?", [customerId, customerId]],
           ["customer_notifications", "customer_id = ?", [customerId]],
           ["staff_notifications", "staff_id = ?", [customerId]],
-          ["staff_notifications", "staff_id = ?", [customerId]],
           ["customer_payment_instructions", "customer_id = ?", [customerId]],
           ["ticket_payment_verifications", "customer_id = ?", [customerId]],
           ["customer_ticket_access", "customer_id = ?", [customerId]],
@@ -580,6 +579,9 @@ export default {
         const statements = cleanup
           .filter(([table]) => tables.has(table))
           .map(([table, where, values]) => env.DB.prepare("DELETE FROM " + table + " WHERE " + where).bind(...values));
+        if (customer.role === "staff" && tables.has("staff_signup_requests")) {
+          statements.push(env.DB.prepare("DELETE FROM staff_signup_requests WHERE phone = ?").bind(customer.phone));
+        }
 
         // Preserve customer-facing records when a staff account is deleted by transferring
         // uploader/sender/creator references to the verified Owner before removing the account.
@@ -1378,7 +1380,11 @@ export default {
           const rejected = await env.DB.prepare("SELECT id FROM staff_signup_requests WHERE phone = ? AND status = 'rejected' ORDER BY reviewed_at DESC LIMIT 1").bind(identifier).first();
           if (rejected) return json({ success: false, message: "Error!" }, 401);
         }
-        if (!user || user.active !== 1 || !(await verifyPassword(password, user.password_hash))) {
+        if (user && user.active !== 1) {
+          await logSecurity(env, ip, "staff_owner_login_blocked", "Blocked Staff sign-in attempt", now);
+          return json({ success: false, message: "Error!" }, 401);
+        }
+        if (!user || !(await verifyPassword(password, user.password_hash))) {
           await logSecurity(env, ip, "staff_owner_login_failed", "Invalid Owner/Staff sign-in", now);
           return json({ success: false, message: "Email or password was not accepted." }, 401);
         }
@@ -1424,7 +1430,11 @@ export default {
         const user = await env.DB.prepare(
           `SELECT id, name, email, phone, role, password_hash, active FROM users WHERE phone = ? AND role = 'customer' LIMIT 1`
         ).bind(phone).first();
-        if (!user || user.active !== 1 || !(await verifyPassword(password, user.password_hash))) {
+        if (user && user.active !== 1) {
+          await logSecurity(env, ip, "customer_login_blocked", "Blocked customer sign-in attempt", now);
+          return json({ success: false, message: "Error!" }, 401);
+        }
+        if (!user || !(await verifyPassword(password, user.password_hash))) {
           await logSecurity(env, ip, "customer_login_failed", "Invalid customer sign-in", now);
           return json({ success: false, message: "Phone number or password was not accepted." }, 401);
         }
