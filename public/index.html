@@ -520,9 +520,29 @@
                             <p class="text-xs text-violet-100/90">New code features must be reviewed against the current app, implemented on a separate working branch, validated and tested in Preview. The Assistant workspace prepares that request without directly changing live code.</p>
                             <button type="button" @click="activeAppManagementSection = 'ai-github'; loadAssistantGithubStatus()" class="bg-violet-700 hover:bg-violet-600 text-white text-xs font-bold px-4 py-2 rounded-lg">Open My ARTfive! Assistant!</button>
                         </div>
-                        <div x-show="activeAppManagementSection === 'settings'" class="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 space-y-2">
-                            <p class="text-sm font-bold text-amber-200">Application settings</p>
-                            <p class="text-xs text-amber-100/90">The current app already has separate protected settings within its existing Owner controls. I am keeping this section separate until each setting can be connected to its correct existing control or a tested new setting. No unrelated security or account setting is being exposed under the wrong label.</p>
+                        <div x-show="activeAppManagementSection === 'settings'" class="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 space-y-4">
+                            <div>
+                                <p class="text-sm font-bold text-amber-200">Existing application settings</p>
+                                <p class="text-xs text-amber-100/90 mt-1">These settings already work through the current Owner dashboard. Open the original control to view or change them. This page does not create duplicate settings or change any saved value by itself.</p>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="rounded-xl border border-emerald-500/25 bg-slate-900/70 p-4 space-y-2">
+                                    <h5 class="text-sm font-bold text-emerald-200"><i class="fa-solid fa-comments mr-2"></i>Customer Inquiry Replies</h5>
+                                    <p class="text-xs text-slate-300">Open the existing Customer Inquiry Box reply ON/OFF control. It determines whether customers can reply to messages from My ARTfive!.</p>
+                                    <button type="button" @click="ownerSelectOption('custChat')" class="w-full rounded-lg bg-emerald-700 hover:bg-emerald-600 px-3 py-2.5 text-xs font-bold text-white">Open Customer Inquiry Settings</button>
+                                </div>
+                                <div class="rounded-xl border border-sky-500/25 bg-slate-900/70 p-4 space-y-2">
+                                    <h5 class="text-sm font-bold text-sky-200"><i class="fa-solid fa-user-shield mr-2"></i>Staff Ticket Tools</h5>
+                                    <p class="text-xs text-slate-300">Open the existing Staff controls for Confirmed Payment tick visibility and the Staff Send it permission.</p>
+                                    <button type="button" @click="ownerSelectOption('staffChat')" class="w-full rounded-lg bg-sky-700 hover:bg-sky-600 px-3 py-2.5 text-xs font-bold text-white">Open Staff Permission Settings</button>
+                                </div>
+                                <div class="rounded-xl border border-violet-500/25 bg-slate-900/70 p-4 space-y-2">
+                                    <h5 class="text-sm font-bold text-violet-200"><i class="fa-solid fa-download mr-2"></i>App Download Link</h5>
+                                    <p class="text-xs text-slate-300">Open the existing App Analysis page to configure the direct APK source URL and copy the tracked My ARTfive! download link.</p>
+                                    <button type="button" @click="ownerSelectOption(3)" class="w-full rounded-lg bg-violet-700 hover:bg-violet-600 px-3 py-2.5 text-xs font-bold text-white">Open App Analysis & Download Settings</button>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-amber-100/70">My ARTfive! These controls retain their existing Owner-only access checks and save through the current server APIs. No database migration is needed for this connection.</p>
                         </div>
                     </div>
                 </div>
@@ -3940,7 +3960,7 @@
                         design: 'Open the existing single Manage App Design editor to update supported colours, welcome slides, app icon and displayed words.',
                         accounts: 'Open the existing protected Option 10 account and access controls. Manager verification remains required and passwords are never displayed.',
                         features: 'Prepare new feature requests through My ARTfive! Assistant! Changes must be reviewed, validated and tested in Preview before approval.',
-                        settings: 'A dedicated settings hub is being mapped to the correct existing Owner controls. This section does not expose unrelated security or account actions.',
+                        settings: 'Open the existing Owner settings for Customer Inquiry replies, Staff ticket tools and the app download link. Each button opens its current secure control; settings are not duplicated here.',
                         'ai-github': 'Use the free-first ChatGPT request composer and read-only GitHub project status. Repository writes, merges and Production deployment are not automatic.'
                     };
                     return descriptions[this.activeAppManagementSection] || 'Choose a management section.';
