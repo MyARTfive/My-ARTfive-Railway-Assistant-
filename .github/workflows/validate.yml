@@ -7,6 +7,7 @@ on:
       - feature/24-hour-chat-message-expiry
       - feature/option10-delete-customer-id
       - feature/full-app-workflow-audit-fixes
+      - feature/one-app-integration
   pull_request:
     branches:
       - main
@@ -89,7 +90,10 @@ jobs:
             ['Option 10 Staff re-registration cleanup', worker.includes('DELETE FROM staff_signup_requests WHERE phone = ?')],
             ['Blocked account shows exact Error!', ui.includes("this.showAppNotice('Error!')") && worker.includes('message: "Error!"') && worker.includes('customer_login_blocked') && worker.includes('staff_owner_login_blocked')],
             ['Customer and Staff password recovery workflow', ui.includes('submitPasswordChangeRequest()') && worker.includes('path === "/api/password-change/request"') && worker.includes('path === "/api/password-change/status"') && worker.includes('path === "/api/owner/control/password-requests/decision"')],
-            ['Manager forgot-password recovery workflow', ui.includes('resetOption10ManagerPassword()') && worker.includes('path === "/api/owner/manager/reset"')]
+            ['Manager forgot-password recovery workflow', ui.includes('resetOption10ManagerPassword()') && worker.includes('path === "/api/owner/manager/reset"')],
+            ['My ARTfive! App Management entry and owner access guard', ui.includes('My ARTfive! App Management!') && ui.includes("ownerSelectOption('appManagement')") && ui.includes('Only the signed-in Owner can open App Management.')],
+            ['App Management service catalogue UI and API', ui.includes('async loadAppServices()') && ui.includes('async saveAppService()') && worker.includes('path === "/api/owner/services"')],
+            ['App Management service catalogue migration', fs.readFileSync('migrations/0006_app_services.sql', 'utf8').includes('CREATE TABLE IF NOT EXISTS app_services')]
           ];
           const failed = checks.filter(([, ok]) => !ok);
           for (const [name, ok] of checks) console.log((ok ? 'PASS ' : 'FAIL ') + name);
