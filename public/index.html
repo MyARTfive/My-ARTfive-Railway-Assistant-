@@ -341,6 +341,11 @@
                             <h3 class="font-bold text-white text-base mb-1">Manage App Design</h3>
                             <p class="text-xs text-slate-400">Manage the app's visual design, images and displayed text.</p>
                         </div>
+                        <div @click="ownerSelectOption('appManagement')" class="bg-slate-800 hover:bg-violet-900/30 border border-violet-500/40 hover:border-violet-400 p-5 rounded-xl cursor-pointer transition shadow group">
+                            <div class="flex items-center justify-between mb-3"><span class="text-xs font-bold text-violet-300 bg-violet-500/10 px-2.5 py-1 rounded-lg">APP MANAGEMENT</span><i class="fa-solid fa-sliders text-violet-300 text-xl"></i></div>
+                            <h3 class="font-bold text-white text-base mb-1">My ARTfive! App Management!</h3>
+                            <p class="text-xs text-slate-400">Manage services, notifications, design, accounts, features and app settings.</p>
+                        </div>
                         <div @click="ownerSelectOption('custChat')" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-xl cursor-pointer transition shadow group">
                             <div class="flex items-center justify-between mb-3"><span class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg">NEW CHAT 1</span><i class="fa-solid fa-comments text-emerald-400 text-xl"></i></div>
                             <h3 class="font-bold text-white text-base mb-1" x-text="cms.ownerChat1Title"></h3>
@@ -417,7 +422,74 @@
                     </div>
                 </div>
 
-                <!-- Manage App Design: live editor backed by the existing owner Master CMS -->
+<!-- My ARTfive! App Management -->
+                <div x-show="activeMenuOption === 'appManagement'" class="space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-800 border border-violet-500/30 rounded-xl p-4">
+                        <div>
+                            <h3 class="text-xl font-extrabold text-white">My ARTfive! App Management!</h3>
+                            <p class="text-xs text-slate-400 mt-1">Central management workspace inside My Dashboard.</p>
+                        </div>
+                        <button @click="activeMenuOption = null; activeAppManagementSection = null" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg"><i class="fa-solid fa-arrow-left mr-1"></i> Back to My Dashboard</button>
+                    </div>
+
+                    <div x-show="activeAppManagementSection === null" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <button type="button" @click="activeAppManagementSection = 'services'; loadAppServices()" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/50 rounded-xl p-5 transition">
+                            <i class="fa-solid fa-layer-group text-emerald-400 text-xl"></i><h4 class="font-bold text-white mt-3">1. Manage Services</h4><p class="text-xs text-slate-400 mt-1">Add, edit, activate or deactivate customer services.</p>
+                        </button>
+                        <button type="button" @click="activeAppManagementSection = 'notifications'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 rounded-xl p-5 transition">
+                            <i class="fa-solid fa-bell text-amber-400 text-xl"></i><h4 class="font-bold text-white mt-3">2. Manage Notifications</h4><p class="text-xs text-slate-400 mt-1">Manage announcements and app messages.</p>
+                        </button>
+                        <button type="button" @click="activeAppManagementSection = 'design'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-pink-500/50 rounded-xl p-5 transition">
+                            <i class="fa-solid fa-palette text-pink-400 text-xl"></i><h4 class="font-bold text-white mt-3">3. Manage App Design</h4><p class="text-xs text-slate-400 mt-1">Manage colours, images and visible text.</p>
+                        </button>
+                        <button type="button" @click="activeAppManagementSection = 'accounts'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-sky-500/50 rounded-xl p-5 transition">
+                            <i class="fa-solid fa-users-gear text-sky-400 text-xl"></i><h4 class="font-bold text-white mt-3">4. Manage Customers &amp; Staff</h4><p class="text-xs text-slate-400 mt-1">Manage accounts, access and permissions.</p>
+                        </button>
+                        <button type="button" @click="activeAppManagementSection = 'features'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-violet-500/50 rounded-xl p-5 transition">
+                            <i class="fa-solid fa-puzzle-piece text-violet-300 text-xl"></i><h4 class="font-bold text-white mt-3">5. Add New Features</h4><p class="text-xs text-slate-400 mt-1">Prepare modular features for future expansion.</p>
+                        </button>
+                        <button type="button" @click="activeAppManagementSection = 'settings'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-orange-500/50 rounded-xl p-5 transition">
+                            <i class="fa-solid fa-gear text-orange-300 text-xl"></i><h4 class="font-bold text-white mt-3">6. App Settings</h4><p class="text-xs text-slate-400 mt-1">Manage general application configuration.</p>
+                        </button>
+                        <button type="button" @click="activeAppManagementSection = 'ai-github'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/50 rounded-xl p-5 transition sm:col-span-2 lg:col-span-1">
+                            <i class="fa-brands fa-github text-white text-xl"></i><h4 class="font-bold text-white mt-3">7. ChatGPT ↔ GitHub</h4><p class="text-xs text-slate-400 mt-1">Future AI assistant for project inspection and approved code changes.</p>
+                        </button>
+                    </div>
+
+                    <div x-show="activeAppManagementSection !== null" class="bg-slate-800 border border-slate-700 rounded-2xl p-5 sm:p-6 space-y-4">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div>
+                                <p class="text-[10px] uppercase tracking-wider font-bold text-violet-300">App Management Workspace</p>
+                                <h4 class="text-lg font-extrabold text-white" x-text="appManagementSectionTitle()"></h4>
+                            </div>
+                            <button type="button" @click="activeAppManagementSection = null" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg"><i class="fa-solid fa-arrow-left mr-1"></i> Back to App Management</button>
+                        </div>
+                        <p class="text-sm text-slate-300" x-text="appManagementSectionDescription()"></p>
+                    <div x-show="activeAppManagementSection === 'services'" class="space-y-4">
+                        <div class="flex flex-col sm:flex-row justify-between gap-3"><div><h4 class="font-bold text-white">Service Catalogue</h4><p class="text-xs text-slate-400">Saved in the current environment's D1 database. Deactivation does not delete existing records.</p></div><button type="button" @click="loadAppServices()" class="bg-slate-700 px-3 py-2 rounded-lg text-xs font-bold">Refresh</button></div>
+                        <form @submit.prevent="saveAppService()" class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-900/70 border border-slate-700 rounded-xl p-4">
+                            <label class="text-xs text-slate-300">Service name<input x-model="appServiceForm.name" maxlength="80" required class="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white" placeholder="e.g. Railway Ticket Service"></label>
+                            <label class="text-xs text-slate-300">Icon class<input x-model="appServiceForm.icon" maxlength="80" class="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white" placeholder="fa-solid fa-train"></label>
+                            <label class="text-xs text-slate-300 sm:col-span-2">Description<textarea x-model="appServiceForm.description" maxlength="300" rows="2" class="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white"></textarea></label>
+                            <label class="text-xs text-slate-300">Display order<input x-model.number="appServiceForm.displayOrder" type="number" min="0" max="9999" class="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white"></label>
+                            <label class="text-xs text-slate-300">Initial status<select x-model="appServiceForm.status" class="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white"><option value="draft">Draft</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+                            <div class="sm:col-span-2 flex flex-wrap gap-2"><button type="submit" :disabled="appServicesBusy" class="bg-emerald-600 disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-bold text-white" x-text="appServicesBusy ? 'Saving...' : (appServiceForm.id ? 'Save Changes' : 'Add Service')"></button><button type="button" x-show="appServiceForm.id" @click="resetAppServiceForm()" class="bg-slate-700 px-4 py-2 rounded-lg text-sm font-bold">Cancel Edit</button></div>
+                        </form>
+                        <p x-show="appServicesMessage" x-text="appServicesMessage" class="text-sm text-emerald-300" role="status"></p><p x-show="appServicesError" x-text="appServicesError" class="text-sm text-red-300" role="alert"></p>
+                        <div class="space-y-2"><template x-for="service in appServices" :key="service.id"><div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/70 border border-slate-700 rounded-xl p-4"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><h5 class="font-bold text-white" x-text="service.name"></h5><span class="text-[10px] uppercase font-bold px-2 py-1 rounded bg-slate-700 text-slate-200" x-text="service.status"></span></div><p class="text-xs text-slate-400 mt-1" x-text="service.description || 'No description'"></p><p class="text-[10px] text-slate-500 mt-1">Order: <span x-text="service.displayOrder"></span></p></div><div class="flex flex-wrap gap-2 shrink-0"><button type="button" @click="editAppService(service)" class="bg-sky-700 px-3 py-2 rounded-lg text-xs font-bold">Edit</button><button type="button" @click="setAppServiceStatus(service, service.status === 'active' ? 'inactive' : 'active')" class="bg-amber-700 px-3 py-2 rounded-lg text-xs font-bold" x-text="service.status === 'active' ? 'Deactivate' : 'Activate'"></button></div></div></template><p x-show="!appServices.length && !appServicesBusy" class="text-xs text-slate-400 text-center py-5">No services have been added yet.</p></div>
+                    </div>
+                        <div x-show="activeAppManagementSection === 'design'" class="rounded-xl border border-pink-500/30 bg-pink-950/10 p-4 space-y-3">
+                            <p class="text-sm text-slate-200">The existing Manage App Design editor is kept unchanged and remains the single place to edit the app's colours, welcome slides, icon and displayed words.</p>
+                            <button type="button" @click="activeMenuOption = 'manageAppDesign'; activeAppManagementSection = null" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg">Open Manage App Design</button>
+                        </div>
+                        <div x-show="!['services','design'].includes(activeAppManagementSection)" class="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
+                            <p class="text-xs font-bold text-amber-200"><i class="fa-solid fa-circle-info mr-1"></i> Setup stage</p>
+                            <p class="text-xs text-amber-100/90 mt-1">This section is now placed inside My Dashboard. Its management controls and secure server connections must be implemented and tested before it can change live app data. No customer records, payments, tickets, notifications or existing services are changed by opening this page.</p>
+                        </div>
+                    </div>
+                </div>
+
+                                <!-- Manage App Design: live editor backed by the existing owner Master CMS -->
                 <div x-show="activeMenuOption === 'manageAppDesign'" class="space-y-6">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-800 border border-pink-500/30 rounded-xl p-4">
                         <div><h3 class="text-xl font-extrabold text-white">Manage App Design</h3><p class="text-xs text-slate-400 mt-1">Edit app colours, first-screen slides, images, app icon and displayed words.</p></div>
@@ -2751,6 +2823,12 @@
                 currentDashboard: 'public',
                 ownerPreviewMode: false,
                 activeMenuOption: null,
+                activeAppManagementSection: null,
+                appServices: [],
+                appServicesBusy: false,
+                appServicesMessage: '',
+                appServicesError: '',
+                appServiceForm: { id: '', name: '', description: '', icon: 'fa-solid fa-layer-group', displayOrder: 0, status: 'draft' },
                 activeCustOption: null,
                 activeStaffOption: null,
                 ownerInspectStaffOpt: null,
@@ -3768,7 +3846,69 @@
                     this.assignedTickets = [];
                 },
 
+                resetAppServiceForm() {
+                    this.appServiceForm = { id: '', name: '', description: '', icon: 'fa-solid fa-layer-group', displayOrder: 0, status: 'draft' };
+                },
+                editAppService(service) {
+                    this.appServiceForm = { id: service.id, name: service.name, description: service.description || '', icon: service.icon || 'fa-solid fa-layer-group', displayOrder: Number(service.displayOrder || 0), status: service.status || 'draft' };
+                    this.appServicesMessage = ''; this.appServicesError = '';
+                },
+                async loadAppServices() {
+                    this.appServicesBusy = true; this.appServicesError = '';
+                    try { const result = await this.apiRequest('/api/owner/services'); this.appServices = Array.isArray(result.services) ? result.services : []; }
+                    catch (error) { this.appServicesError = error.message || 'Could not load services.'; }
+                    finally { this.appServicesBusy = false; }
+                },
+                async saveAppService() {
+                    this.appServicesBusy = true; this.appServicesMessage = ''; this.appServicesError = '';
+                    try {
+                        const payload = { ...this.appServiceForm, action: this.appServiceForm.id ? 'update' : 'create' };
+                        await this.apiRequest('/api/owner/services', { method: 'POST', body: payload });
+                        this.appServicesMessage = 'My ARTfive! Service saved successfully.'; this.resetAppServiceForm(); await this.loadAppServices();
+                    } catch (error) { this.appServicesError = error.message || 'Could not save service.'; }
+                    finally { this.appServicesBusy = false; }
+                },
+                async setAppServiceStatus(service, status) {
+                    if (!confirm('My ARTfive! Are you sure you want to ' + (status === 'active' ? 'activate' : 'deactivate') + ' "' + service.name + '"?')) return;
+                    this.appServicesError = ''; this.appServicesMessage = '';
+                    try {
+                        await this.apiRequest('/api/owner/services', { method: 'POST', body: { action: 'status', id: service.id, status } });
+                        this.appServicesMessage = 'My ARTfive! Service status updated.'; await this.loadAppServices();
+                    } catch (error) { this.appServicesError = error.message || 'Could not update service status.'; }
+                },
+
+                appManagementSectionTitle() {
+                    const titles = {
+                        services: '1. Manage Services',
+                        notifications: '2. Manage Notifications',
+                        design: '3. Manage App Design',
+                        accounts: '4. Manage Customers & Staff',
+                        features: '5. Add New Features',
+                        settings: '6. App Settings',
+                        'ai-github': '7. ChatGPT ↔ GitHub'
+                    };
+                    return titles[this.activeAppManagementSection] || 'App Management';
+                },
+
+                appManagementSectionDescription() {
+                    const descriptions = {
+                        services: 'The planned service catalogue will let the Owner add, edit, activate, deactivate and organise services. Existing ticket and payment records must remain preserved when a service is deactivated.',
+                        notifications: 'The planned notification manager will let the Owner manage approved announcement and message settings while preserving the existing ticket and manual payment notification workflows.',
+                        design: 'The planned design manager will provide controlled editing of colours, images, headings and visible text, with a preview and a way to restore the previous configuration.',
+                        accounts: 'The planned account manager will provide secure customer and staff account administration, role permissions and account status controls. Passwords will never be displayed.',
+                        features: 'The planned feature manager will support reusable modules and controlled activation. Code, database or dependency changes will still require a build and Preview validation.',
+                        settings: 'The planned settings workspace will contain general application configuration and security controls restricted to authorised Owner access.',
+                        'ai-github': 'The planned AI Assistant will accept natural-language requests, inspect the authorised GitHub repository, explain proposed changes and prepare a branch or Pull Request. Code changes, merges and Production deployment will follow separate approval steps.'
+                    };
+                    return descriptions[this.activeAppManagementSection] || 'Choose a management section.';
+                },
+
                 ownerSelectOption(optNum) {
+                    if (optNum === 'appManagement' && (!this.currentUser || this.currentUser.role !== 'owner')) {
+                        this.showAppNotice('My ARTfive! Only the signed-in Owner can open App Management.');
+                        return;
+                    }
+                    if (optNum === 'appManagement') this.activeAppManagementSection = null;
                     if (optNum === 1 || optNum === 2) {
                         if (!this.currentUser || this.currentUser.role !== 'owner') {
                             this.showAppNotice('My ARTfive! Only the signed-in Owner can preview these dashboards.');
