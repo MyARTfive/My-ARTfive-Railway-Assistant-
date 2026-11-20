@@ -169,6 +169,8 @@ async function ensureTicketNotificationColumns(env) {
   if (!columns.has("ticket_id")) await env.DB.prepare("ALTER TABLE customer_notifications ADD COLUMN ticket_id TEXT").run();
   if (!columns.has("target_option")) await env.DB.prepare("ALTER TABLE customer_notifications ADD COLUMN target_option INTEGER").run();
   if (!columns.has("expires_at")) await env.DB.prepare("ALTER TABLE customer_notifications ADD COLUMN expires_at INTEGER").run();
+  // Existing ticket-upload notices receive the same 15-minute lifetime as new notices.
+  await env.DB.prepare("UPDATE customer_notifications SET expires_at = created_at + 900000 WHERE ticket_id IS NOT NULL AND target_option IN (3, 4) AND expires_at IS NULL").run();
 }
 
 async function ensureStaffNotificationSchema(env) {
@@ -282,6 +284,9 @@ async function ensureStaffChatSchema(env) {
   // Legacy Staff messages belong to their sender. Old Owner messages had no recipient,
   // so they are intentionally not exposed in any private Staff conversation.
   await env.DB.prepare("UPDATE staff_chat_messages SET staff_id = sender_id WHERE sender_role = 'staff' AND staff_id IS NULL").run();
+  // Normalize historical sender labels as well as labels on newly sent messages.
+  await env.DB.prepare("UPDATE staff_chat_messages SET sender_name = 'My ARTfive!' WHERE sender_role = 'owner' AND sender_name <> 'My ARTfive!'").run();
+  await env.DB.prepare("UPDATE staff_chat_messages SET sender_name = COALESCE((SELECT name FROM users WHERE users.id = staff_chat_messages.sender_id), 'Staff') WHERE sender_role = 'staff'").run();
   await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_staff_chat_messages_staff_created ON staff_chat_messages(staff_id, created_at)").run();
 }
 
@@ -1293,16 +1298,16 @@ export default {
             reviewed_at INTEGER
           )
         `).run();
-        if (await loginRateLimited(env, ip, "staff_signup_attempt", now)) return json({ success: false, message: "Error!" }, 429);
+        if (await loginRateLimited(env, ip, "staff_signup_attempt", now)) return json({ success: false, message: "Too many Staff registration attempts from this connection. Please wait 15 minutes and try again." }, 429);
         await logSecurity(env, ip, "staff_signup_attempt", "Staff signup request submitted", now);
         const body = await readJson(request);
         const name = String(body.name || "").trim();
         const phone = String(body.phone || "").trim();
         const password = String(body.password || "");
-        if (!name || !phone || password.length < 8 || name.length > 100 || phone.length > 30) return json({ success: false, message: "Error!" }, 400);
+        if (!name || !phone || password.length < 8 || name.length > 100 || phone.length > 30) return json({ success: false, message: "Please enter your full name and phone number, and create a password with at least 8 characters." }, 400);
         const existingUser = await env.DB.prepare("SELECT id FROM users WHERE phone = ? LIMIT 1").bind(phone).first();
         const pending = await env.DB.prepare("SELECT id FROM staff_signup_requests WHERE phone = ? AND status = 'pending' LIMIT 1").bind(phone).first();
-        if (existingUser || pending) return json({ success: false, message: "Error!" }, 409);
+        if (existingUser || pending) return json({ success: false, message: "This phone number is already registered or has a Staff request waiting for approval. Please sign in or contact My ARTfive!." }, 409);
         const passwordHash = await hashPassword(password);
         const id = crypto.randomUUID();
         await env.DB.prepare("INSERT INTO staff_signup_requests (id, name, phone, password_hash, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)").bind(id, name, phone, passwordHash, now).run();
@@ -1842,8 +1847,8 @@ export default {
             message: "My ARTfive! Thank you for choosing us! Your confirmed railway ticket is ready. You can now view and download your ticket. You're always most welcome to visit us again. Have a safe and happy journey! ❤️"
           }
         ];
-        // Ticket upload notifications are permanent records. They remain visible until the related ticket is explicitly deleted.
-        const notificationExpiry = null;
+        // Both automatic ticket-upload notifications expire 15 minutes after the ticket is sent.
+        const notificationExpiry = now + 15 * 60 * 1000;
         // Keep the saved Owner payment confirmation. A successful send resets only
         // the two dashboard switches; it never deletes ticket_payment_verifications.
         await env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, setting_json TEXT NOT NULL, updated_by TEXT, updated_at INTEGER NOT NULL)").run();
