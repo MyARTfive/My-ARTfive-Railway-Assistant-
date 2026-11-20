@@ -92,6 +92,13 @@
         body .text-emerald-400, body .text-emerald-300 { color: var(--artfive-design-accent, #34d399) !important; }
         body .border-emerald-500, body [class~="border-emerald-500/30"], body [class~="border-emerald-500/40"] { border-color: var(--artfive-design-accent, #34d399) !important; }
         body .from-railway-600 { --tw-gradient-from: var(--artfive-design-primary, #059669) var(--tw-gradient-from-position) !important; }
+        /* Keep every enabled text field directly tappable and editable on touch devices. */
+        input:not(:disabled), textarea:not(:disabled), select:not(:disabled) {
+            pointer-events: auto !important;
+            touch-action: manipulation;
+            -webkit-user-select: text;
+            user-select: text;
+        }
     </style>
 </head>
 <body class="h-full bg-slate-900 text-slate-100 font-sans antialiased" x-data="railwayApp()" x-init="initApp()">
@@ -1786,7 +1793,7 @@
                 <div x-show="activeCustOption === 1" class="bg-slate-800 border border-slate-700 p-6 sm:p-8 rounded-2xl space-y-6 max-w-3xl mx-auto">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-4">
                         <h3 class="text-xl font-extrabold text-white" x-text="cms.custOpt1Title"></h3>
-                        <button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
+                        <button @click="activeCustOption = null; currentDashboard = 'customer'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <div class="space-y-6">
                         <template x-for="(pax, index) in ticketReqForm.passengers" :key="index">
@@ -1920,7 +1927,7 @@
                 </div>
 
                 <!-- Customer Option 3: Ticket Collection Charges -->
-                <div x-show="activeCustOption === 3" x-effect="if (!ownerPreviewMode && activeCustOption === 3) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
+                <div x-show="activeCustOption === 3" x-effect="if (!ownerPreviewMode && activeCustOption === 3) { loadCustomerNotifications(); loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null; currentDashboard = 'customer'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Both Option 3 message types appear together -->
@@ -4500,6 +4507,8 @@
                             }
                             if (this.loginRole === 'staff_new') {
                                 this.staffSignupError = '';
+                                if (!this.loginStaffName.trim()) { this.staffSignupError = 'My ARTfive! Please enter your full name.'; return; }
+                                if (password.length < 8) { this.staffSignupError = 'My ARTfive! Please create a password with at least 8 characters.'; return; }
                                 const signupResult = await this.apiRequest('/api/staff/signup', { method: 'POST', body: { name: this.loginStaffName.trim(), phone: identifier, password } });
                                 this.staffSignupRequestId = String(signupResult.requestId || '');
                                 if (this.staffSignupRequestId) localStorage.setItem('artfive_staff_signup_request_id', this.staffSignupRequestId);
@@ -4594,8 +4603,11 @@
                             this.showAppNotice(safeMessage ? 'My ARTfive! ' + safeMessage : 'My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
                         } else if (this.loginRole === 'customer' || this.loginRole === 'customer_new') {
                             this.showAppNotice('My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
-                        } else if ((this.loginRole === 'staff' || this.loginRole === 'staff_new') && String(error && error.message || '') === 'Error!') {
-                            this.staffSignupError = 'Error!';
+                        } else if (this.loginRole === 'staff_new') {
+                            const detail = String(error && error.message || '').trim();
+                            this.staffSignupError = detail ? 'My ARTfive! ' + detail : 'My ARTfive! We could not submit your Staff registration. Please check your details and try again.';
+                        } else if (this.loginRole === 'staff' && String(error && error.message || '') === 'Error!') {
+                            alert('My ARTfive! Sign-in failed. Please check your registered phone number and password.');
                         } else {
                             alert(error.message || 'My ARTfive! Sign-in failed. Please check your details.');
                         }
