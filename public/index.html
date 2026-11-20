@@ -3435,9 +3435,22 @@
                         // A previously signed-in customer whose server session has expired
                         // must sign in again; never redirect them to New Customer Sign Up.
                         if (e && e.status === 401 && cachedProfile && cachedProfile.role === 'customer') {
+                            let customerAppSessionActive = false;
+                            try {
+                                customerAppSessionActive = sessionStorage.getItem('artfive_customer_app_session') === 'active';
+                                sessionStorage.removeItem('artfive_customer_app_session');
+                            } catch (sessionError) {}
                             localStorage.removeItem('artfive_last_signed_in_profile');
-                            this.openLoginModal('customer');
-                            this.showAppNotice('My ARTfive! Your customer sign-in session has expired. Please sign in again. You do not need to create a new account.');
+                            // A closed-app session ends quietly on the public first page.
+                            // Only show the expiry prompt if the app session was still active.
+                            if (customerAppSessionActive) {
+                                this.openLoginModal('customer');
+                                this.showAppNotice('My ARTfive! Your customer sign-in session has expired. Please sign in again. You do not need to create a new account.');
+                            } else {
+                                this.currentUser = null;
+                                this.currentDashboard = 'public';
+                                this.activeCustOption = null;
+                            }
                         }
                     }
                 },
