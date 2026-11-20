@@ -1745,7 +1745,7 @@
                 </div>
                 <div x-show="ownerPreviewMode && activeCustOption === null" class="space-y-6">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div @click="selectCustomerOption(1)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                        <div @click="openOwnerCustomerOptionPreview(1)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-ticket"></i></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt1Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt1Desc"></p>
@@ -1760,7 +1760,7 @@
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt3Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt3Desc"></p>
                         </div>
-                        <div @click="selectCustomerOption(4)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                        <div @click="openOwnerCustomerOptionPreview(4)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-folder-open"></i></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt4Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt4Desc"></p>
@@ -3753,8 +3753,8 @@
                 },
 
                 openOwnerCustomerOptionPreview(optNum) {
-                    if (!this.currentUser || this.currentUser.role !== 'owner' || ![2, 3].includes(Number(optNum))) {
-                        this.showAppNotice('My ARTfive! Only the signed-in Owner can preview Customer Dashboard Options 2 and 3.');
+                    if (!this.currentUser || this.currentUser.role !== 'owner' || ![1, 2, 3, 4].includes(Number(optNum))) {
+                        this.showAppNotice('My ARTfive! Only the signed-in Owner can preview Customer Dashboard Options 1–4.');
                         return;
                     }
                     // Open the actual Customer Dashboard payment page in Owner preview mode.
@@ -4648,14 +4648,15 @@
                     } catch (error) {
                         if (this.loginRole === 'customer_verify') {
                             const safeMessage = String(error && error.message || '').trim();
-                            this.showAppNotice(safeMessage ? 'My ARTfive! ' + safeMessage : 'My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
+                            this.showAppNotice(safeMessage === 'Error!' ? 'Error!' : (safeMessage ? 'My ARTfive! ' + safeMessage : 'My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.'));
                         } else if (this.loginRole === 'customer' || this.loginRole === 'customer_new') {
-                            this.showAppNotice('My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
+                            const safeMessage = String(error && error.message || '').trim();
+                            this.showAppNotice(safeMessage === 'Error!' ? 'Error!' : 'My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
                         } else if (this.loginRole === 'staff_new') {
                             const detail = String(error && error.message || '').trim();
                             this.staffSignupError = detail ? 'My ARTfive! ' + detail : 'My ARTfive! We could not submit your Staff registration. Please check your details and try again.';
                         } else if (this.loginRole === 'staff' && String(error && error.message || '') === 'Error!') {
-                            alert('My ARTfive! Sign-in failed. Please check your registered phone number and password.');
+                            this.showAppNotice('Error!');
                         } else {
                             alert(error.message || 'My ARTfive! Sign-in failed. Please check your details.');
                         }
