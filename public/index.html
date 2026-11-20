@@ -2491,8 +2491,15 @@
                         }
                     }, 5000);
 
-                    // Refresh only the open chat conversation; chat history stays in D1.
+                    // Keep open request lists synchronized with D1, including Owner deletions.
+                    // Staff can view requests but never receives a delete control or delete API permission.
                     setInterval(() => {
+                        if (this.currentUser && (
+                            (this.currentUser.role === 'staff' && this.currentDashboard === 'staff' && this.activeStaffOption === 1) ||
+                            (this.currentUser.role === 'owner' && this.ownerPreviewMode && this.currentDashboard === 'staff' && this.activeStaffOption === 1) ||
+                            (this.currentUser.role === 'owner' && this.currentDashboard === 'owner' && this.ownerInspectStaffOpt === 1)
+                        )) this.refreshTicketRequestsOnly();
+                        // Customer Option 1 and Owner Chat 1 share the same D1 enquiry conversation.
                         if (this.currentUser && this.currentUser.role === 'customer' && this.currentDashboard === 'customer' && this.activeCustOption === 1) this.loadCustomerEnquiryChat();
                         if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'custChat' && this.paymentForm.customerId) this.loadCustomerEnquiryChat(this.paymentForm.customerId);
                         if (this.currentUser && this.currentUser.role === 'staff' && this.currentDashboard === 'staff' && this.activeStaffOption === 3) this.loadStaffChat();
@@ -3348,6 +3355,20 @@
                             this.openLoginModal('customer');
                             this.showAppNotice('My ARTfive! Your customer sign-in session has expired. Please sign in again. You do not need to create a new account.');
                         }
+                    }
+                },
+
+                async refreshTicketRequestsOnly() {
+                    if (!this.currentUser) return;
+                    try {
+                        const result = await this.apiRequest('/api/requests');
+                        this.ticketRequests = (result.requests || []).map(row => {
+                            let data = {};
+                            try { data = typeof row.data === 'string' ? JSON.parse(row.data) : (row.data || {}); } catch (e) {}
+                            return { ...data, id: row.id, customerId: row.customer_id, createdAt: row.created_at };
+                        });
+                    } catch (error) {
+                        console.warn('My ARTfive! Ticket request list could not be refreshed:', error.message);
                     }
                 },
 
