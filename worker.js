@@ -697,7 +697,9 @@ export default {
         if (!messageText || messageText.length > 2000) return json({ success: false, message: "Enter a message up to 2,000 characters." }, 400);
         if (user.role === "customer" && !messageText) return json({ success: false, message: "Enter your enquiry." }, 400);
         const senderName = user.role === "customer" ? user.name : "My ARTfive!";
-        const finalMessage = user.role === "customer" ? messageText : (/^My ARTfive!/i.test(messageText) ? messageText : "My ARTfive! " + messageText);
+        // The sender name is displayed separately in the chat UI, so store only
+        // the message body and avoid repeating the My ARTfive! prefix in the text.
+        const finalMessage = user.role === "customer" ? messageText : messageText.replace(/^My ARTfive!\\s*/i, "");
         const id = crypto.randomUUID();
         await env.DB.prepare(
           "INSERT INTO customer_enquiry_messages (id, customer_id, sender_id, sender_role, sender_name, message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
