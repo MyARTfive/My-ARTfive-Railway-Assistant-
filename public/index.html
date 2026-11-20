@@ -466,7 +466,7 @@
                         </div>
                         <p class="text-sm text-slate-300" x-text="appManagementSectionDescription()"></p>
                     <div x-show="activeAppManagementSection === 'services'" class="space-y-4">
-                        <div class="flex flex-col sm:flex-row justify-between gap-3"><div><h4 class="font-bold text-white">Service Catalogue</h4><p class="text-xs text-slate-400">Saved in the current environment's D1 database. Deactivation does not delete existing records.</p></div><button type="button" @click="loadAppServices()" class="bg-slate-700 px-3 py-2 rounded-lg text-xs font-bold">Refresh</button></div>
+                        <div class="flex flex-col sm:flex-row justify-between gap-3"><div><h4 class="font-bold text-white">Service Catalogue</h4><p class="text-xs text-slate-400">Saved in the current environment's D1 database. Deactivation does not delete existing records.</p></div><button type="button" @click.prevent.stop="refreshAppServices()" :disabled="appServicesBusy" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 px-3 py-2 rounded-lg text-xs font-bold" x-text="appServicesBusy ? 'Refreshing...' : 'Refresh'"></button></div>
                         <form @submit.prevent="saveAppService()" class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-900/70 border border-slate-700 rounded-xl p-4">
                             <label class="text-xs text-slate-300">Service name<input x-model="appServiceForm.name" maxlength="80" required class="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white" placeholder="e.g. Railway Ticket Service"></label>
                             <label class="text-xs text-slate-300">Icon class<input x-model="appServiceForm.icon" maxlength="80" class="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white" placeholder="fa-solid fa-train"></label>
@@ -3935,6 +3935,14 @@
                     try { const result = await this.apiRequest('/api/owner/services'); this.appServices = Array.isArray(result.services) ? result.services : []; }
                     catch (error) { this.appServicesError = error.message || 'Could not load services.'; }
                     finally { this.appServicesBusy = false; }
+                },
+                async refreshAppServices() {
+                    this.appServicesMessage = '';
+                    await this.loadAppServices();
+                    if (!this.appServicesError) {
+                        const total = this.appServices.length;
+                        this.appServicesMessage = 'My ARTfive! Service catalogue refreshed successfully. ' + total + ' service' + (total === 1 ? '' : 's') + ' found.';
+                    }
                 },
                 async saveAppService() {
                     this.appServicesBusy = true; this.appServicesMessage = ''; this.appServicesError = '';
