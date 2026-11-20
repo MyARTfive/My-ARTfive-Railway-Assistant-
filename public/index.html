@@ -1985,7 +1985,7 @@
                 <div x-show="activeCustOption === 4" x-effect="if (!ownerPreviewMode && activeCustOption === 4) loadCustomerNotifications()" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-2xl mx-auto">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                         <h3 class="font-bold text-white text-lg" x-text="cms.custOpt4Title"></h3>
-                        <button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
+                        <button @click="activeCustOption = null; currentDashboard = 'customer'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <p class="text-xs text-slate-300" x-text="cms.myTicketsInstruction"></p>
                     <p x-show="ownerPreviewMode" class="rounded-lg border border-amber-500/30 bg-amber-950/30 p-3 text-xs text-amber-100">My ARTfive! Private tickets can only be viewed after the customer's own Option 4 sign-in. This owner preview shows the page layout only.</p>
@@ -4646,7 +4646,9 @@
                     this.ownerPreviewMode = false;
                     this.ticketAccessToken = '';
                     this.assignedTickets = [];
-                    this.currentDashboard = 'public'; 
+                    // A signed-in customer returns to their dashboard instead of being sent
+                    // to the public sign-in screen when tapping the app header.
+                    this.currentDashboard = this.currentUser && this.currentUser.role === 'customer' ? 'customer' : 'public';
                     this.activeMenuOption = null; 
                     this.activeCustOption = null; 
                     this.activeStaffOption = null; 
@@ -4913,7 +4915,7 @@
                         await this.loadTicketRequestsFromStorage();
                         this.showAppNotice('My ARTfive! have received your railway ticket request form successfully! Please visit Customer Dashboard Option 2 to view the details of your ticket booking payment charges.', 3500);
                         this.activeCustOption = null;
-                        if (!this.ownerPreviewMode) this.currentDashboard = 'public';
+                        if (!this.ownerPreviewMode) this.currentDashboard = 'customer';
                         this.ownerInspectCustOpt = null;
                     } catch (error) {
                         console.error('My ARTfive! Ticket request submission failed:', error);
