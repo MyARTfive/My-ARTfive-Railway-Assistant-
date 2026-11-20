@@ -27,6 +27,19 @@
       }
     ]
   },
+  "env": {
+    "preview": {
+      "name": "my-artfive-railway-assistant-preview",
+      "workers_dev": true,
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "my-artfive-railway-db-preview",
+          "database_id": "4b370760-55cf-43cb-87f3-c3ab97fe94f1"
+        }
+      ]
+    }
+  },
   "observability": {
     "enabled": true
   }

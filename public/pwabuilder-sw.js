@@ -1,5 +1,5 @@
-const CACHE_NAME = 'my-artfive-shell-v3';
-const SHELL_ASSETS = ['/', '/index.html', '/manifest.webmanifest'];
+const CACHE_NAME = 'my-artfive-shell-v7';
+const SHELL_ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/vendor/alpine-3.14.9.min.js'];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
@@ -50,15 +50,31 @@ self.addEventListener('fetch', event => {
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
     const cached = await cache.match(request);
+
+    // External CDN libraries must be network-first. In no-cors script requests,
+    // a failed HTTP response can be opaque (status 0); never cache opaque responses,
+    // because a cached CDN error can keep Alpine.js broken across app reloads.
+    if (!isSameOriginAsset) {
+      try {
+        const response = await fetch(request);
+        if (response && response.ok && response.type !== 'opaque') {
+          await cache.put(request, response.clone());
+        }
+        return response;
+      } catch {
+        return cached || Response.error();
+      }
+    }
+
     if (cached) {
       event.waitUntil(fetch(request).then(response => {
-        if (response && (response.ok || response.type === 'opaque')) return cache.put(request, response.clone());
+        if (response && response.ok) return cache.put(request, response.clone());
       }).catch(() => {}));
       return cached;
     }
     try {
       const response = await fetch(request);
-      if (response && (response.ok || response.type === 'opaque')) await cache.put(request, response.clone());
+      if (response && response.ok) await cache.put(request, response.clone());
       return response;
     } catch {
       return cached || Response.error();

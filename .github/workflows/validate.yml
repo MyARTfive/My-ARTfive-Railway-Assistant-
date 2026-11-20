@@ -6,11 +6,13 @@ on:
       - feature/central-d1-ticket-sync
       - feature/24-hour-chat-message-expiry
       - feature/option10-delete-customer-id
+      - feature/full-app-workflow-audit-fixes
   pull_request:
     branches:
       - main
       - feature/central-d1-ticket-sync
       - feature/24-hour-chat-message-expiry
+      - feature/app-management-dashboard-foundation
 
 jobs:
   syntax-check:
@@ -46,4 +48,50 @@ jobs:
             new vm.Script(source, { filename: `public/index.inline-${index + 1}.js` });
           });
           console.log(`Validated ${scripts.length} inline script block(s).`);
+          NODE
+      - name: Validate Cloudflare Preview deployment configuration without deploying
+        run: npx --yes wrangler@4.165.0 deploy --dry-run --env preview
+      - name: Check critical app workflow connections
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const ui = fs.readFileSync('public/index.html', 'utf8');
+          const worker = fs.readFileSync('worker.js', 'utf8');
+          const deployment = fs.readFileSync('.github/workflows/manual-cloudflare-deploy.yml', 'utf8');
+          const checks = [
+            ['Staff inbox UI', ui.includes('/api/staff/notifications') && ui.includes('markStaffNotificationRead')],
+            ['Staff inbox API', worker.includes('path === "/api/staff/notifications"')],
+            ['Staff approval status UI', ui.includes('/api/staff/signup-status') && ui.includes('checkStaffSignupStatus')],
+            ['Staff approval status API', worker.includes('path === "/api/staff/signup-status"')],
+            ['Owner account block UI', ui.includes('/api/owner/control/customer-accounts/status') && ui.includes('setOption10AccountStatus')],
+            ['Owner account block API', worker.includes('path === "/api/owner/control/customer-accounts/status"')],
+            ['Existing customer ticket request', ui.includes("apiRequest('/api/requests'") && worker.includes('path === "/api/requests"')],
+            ['Existing customer payment notifications', ui.includes('/api/customer-payments') && worker.includes('path === "/api/customer-payments"')],
+            ['Existing ticket upload', ui.includes('/api/tickets') && worker.includes('path === "/api/tickets"')],
+            ['Existing manual notification SEND/UNSEND', ui.includes('/api/notifications') && worker.includes('path === "/api/notifications"')],
+            ['Cross-device central D1 account sessions', worker.includes('INSERT INTO sessions (token_hash, user_id, expires_at, created_at)') && worker.includes('if (user.role === "owner")') && worker.includes('SESSION_DAYS = 7')],
+            ['Secure account session cookie', worker.includes('HttpOnly; Secure; SameSite=Lax')],
+            ['No HTTP caching of private API responses', worker.includes('Cache-Control", "no-store, private, max-age=0') && ui.includes("cache: 'no-store'")],
+            ['Customer requests isolated by authenticated customer ID', worker.includes('WHERE customer_id = ? ORDER BY created_at DESC') && worker.includes('.bind(user.id).all()')],
+            ['Customer tickets isolated by authenticated customer ID and fresh ticket verification', worker.includes('WHERE tickets.customer_id = ? ORDER BY tickets.created_at DESC') && worker.includes('customer_id = ? AND expires_at > ?') && worker.includes('X-Ticket-Access')],
+            ['Customer payment instructions isolated by authenticated customer ID', worker.includes('WHERE customer_id = ? AND is_active = 1 ORDER BY updated_at DESC') && worker.includes('.bind(user.id).all()')],
+            ['Customer notifications isolated by authenticated customer ID', worker.includes('WHERE n.customer_id = ? AND (n.expires_at IS NULL OR n.expires_at > ?)') && worker.includes('.bind(user.id, now).all()')],
+            ['Customer enquiry chat isolated by authenticated customer ID', worker.includes('user.role === "customer" ? user.id :') && worker.includes('WHERE customer_id = ? ORDER BY created_at ASC LIMIT 300') && worker.includes('.bind(targetCustomerId).all()')],
+            ['Staff notifications isolated by authenticated Staff ID', worker.includes('WHERE staff_id = ? ORDER BY created_at DESC LIMIT 100') && worker.includes('.bind(staff.id).all()')],
+            ['Staff Chat isolated by authenticated Staff recipient ID', worker.includes('WHERE staff_id = ? ORDER BY created_at ASC LIMIT 300') && worker.includes('.bind(staffId).all()')],
+            ['Manual-only deployment trigger', deployment.includes('workflow_dispatch:') && !/^  push:/m.test(deployment)],
+            ['Production branch and confirmation gate', deployment.includes("github.ref == 'refs/heads/main'") && deployment.includes('I APPROVE PRODUCTION DEPLOY')],
+            ['Isolated Preview Worker', fs.readFileSync('wrangler.jsonc', 'utf8').includes('my-artfive-railway-assistant-preview')],
+            ['Owner customer preview Options 1–4', [1, 2, 3, 4].every(n => ui.includes('openOwnerCustomerOptionPreview(' + n + ')')) && ui.includes('[1, 2, 3, 4].includes(Number(optNum))')],
+            ['Option 8 permanent request deletion', ui.includes('async deleteTicketRequest(reqId)') && worker.includes('path === "/api/requests" && method === "DELETE"') && worker.includes('DELETE FROM requests WHERE id = ? AND customer_id = ?')],
+            ['Option 9 permanent ticket-file deletion', ui.includes('async deleteAssignedTicket(ticketId)') && worker.includes('path === "/api/tickets" && method === "DELETE"') && worker.includes('DELETE FROM tickets WHERE id = ?')],
+            ['Option 10 permanent account deletion', ui.includes('/api/owner/control/customer-accounts/delete') && worker.includes('path === "/api/owner/control/customer-accounts/delete"') && worker.includes('DELETE FROM users WHERE id = ? AND role IN (\'customer\', \'staff\')')],
+            ['Option 10 Staff re-registration cleanup', worker.includes('DELETE FROM staff_signup_requests WHERE phone = ?')],
+            ['Blocked account shows exact Error!', ui.includes("this.showAppNotice('Error!')") && worker.includes('message: "Error!"') && worker.includes('customer_login_blocked') && worker.includes('staff_owner_login_blocked')],
+            ['Customer and Staff password recovery workflow', ui.includes('submitPasswordChangeRequest()') && worker.includes('path === "/api/password-change/request"') && worker.includes('path === "/api/password-change/status"') && worker.includes('path === "/api/owner/control/password-requests/decision"')],
+            ['Manager forgot-password recovery workflow', ui.includes('resetOption10ManagerPassword()') && worker.includes('path === "/api/owner/manager/reset"')]
+          ];
+          const failed = checks.filter(([, ok]) => !ok);
+          for (const [name, ok] of checks) console.log((ok ? 'PASS ' : 'FAIL ') + name);
+          if (failed.length) throw new Error(failed.length + ' critical workflow connection check(s) failed.');
           NODE

@@ -29,8 +29,59 @@
     </script>
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Alpine.js for reactive UI -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Alpine.js is bundled locally so dashboard startup does not depend on third-party CDNs. -->
+    <style>
+        /* The startup panel uses flex; explicitly honor the HTML hidden attribute over utility classes. */
+        [hidden] { display: none !important; }
+        [x-cloak] { display: none !important; }
+        html:not(.alpine-ready) [x-show],
+        html.alpine-load-failed [x-show] { display: none !important; }
+    </style>
+    <script defer src="/vendor/alpine-3.14.9.min.js" data-alpine-runtime></script>
+    <script>
+        window.__artfiveShowStartupError = function (message) {
+            document.documentElement.classList.add('alpine-load-failed');
+            const errorPanel = document.getElementById('alpine-load-error');
+            const diagnostic = document.getElementById('alpine-load-diagnostic');
+            if (diagnostic) diagnostic.textContent = String(message || 'Unknown startup error').slice(0, 600);
+            if (errorPanel) errorPanel.hidden = false;
+        };
+        document.addEventListener('alpine:initialized', () => {
+            document.documentElement.classList.add('alpine-ready');
+        });
+        const alpineRuntime = document.querySelector('script[data-alpine-runtime]');
+        if (alpineRuntime) {
+            alpineRuntime.addEventListener('error', () => {
+                window.__artfiveShowStartupError('Alpine.js runtime file failed to load from this Preview deployment.');
+            }, { once: true });
+        }
+        // Surface JavaScript/Alpine expression failures that occur before the dashboard is ready.
+        // Alpine's initialized event fires before x-init finishes. Keep diagnostics active until initApp completes.
+        window.__artfiveDashboardInitComplete = false;
+        window.addEventListener('error', (event) => {
+            if (window.__artfiveDashboardInitComplete) return;
+            if (event.target && event.target !== window) return;
+            const detail = event.message || (event.error && event.error.message) || 'Unknown JavaScript startup error';
+            const location = event.filename ? ' (' + event.filename + ':' + (event.lineno || 0) + ':' + (event.colno || 0) + ')' : '';
+            const stack = event.error && event.error.stack ? '\\n' + event.error.stack : '';
+            window.__artfiveShowStartupError('JavaScript startup failed: ' + detail + location + stack);
+        }, true);
+        window.addEventListener('unhandledrejection', (event) => {
+            if (window.__artfiveDashboardInitComplete) return;
+            const reason = event.reason;
+            const detail = reason && reason.stack ? reason.stack : (reason && reason.message ? reason.message : String(reason || 'Unknown rejected promise'));
+            window.__artfiveShowStartupError('Startup promise failed: ' + detail);
+        });
+        // If Alpine never emits its initialized event, replace the placeholder with a useful timeout diagnostic.
+        window.addEventListener('load', () => {
+            window.setTimeout(() => {
+                if (!document.documentElement.classList.contains('alpine-ready') &&
+                    !document.documentElement.classList.contains('alpine-load-failed')) {
+                    window.__artfiveShowStartupError('Alpine.js did not finish initializing within 8 seconds. Check that /vendor/alpine-3.14.9.min.js loaded successfully and that no earlier script error stopped startup.');
+                }
+            }, 8000);
+        }, { once: true });
+    </script>
     <style id="artfive-design-theme">
         body { background-color: var(--artfive-design-bg, #0f172a) !important; }
         body .bg-slate-900 { background-color: var(--artfive-design-bg, #0f172a) !important; }
@@ -41,15 +92,30 @@
         body .text-emerald-400, body .text-emerald-300 { color: var(--artfive-design-accent, #34d399) !important; }
         body .border-emerald-500, body [class~="border-emerald-500/30"], body [class~="border-emerald-500/40"] { border-color: var(--artfive-design-accent, #34d399) !important; }
         body .from-railway-600 { --tw-gradient-from: var(--artfive-design-primary, #059669) var(--tw-gradient-from-position) !important; }
+        /* Keep every enabled text field directly tappable and editable on touch devices. */
+        input:not(:disabled), textarea:not(:disabled), select:not(:disabled) {
+            pointer-events: auto !important;
+            touch-action: manipulation;
+            -webkit-user-select: text;
+            user-select: text;
+        }
     </style>
 </head>
 <body class="h-full bg-slate-900 text-slate-100 font-sans antialiased" x-data="railwayApp()" x-init="initApp()">
+    <div id="alpine-load-error" hidden role="alert" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950 p-6">
+        <div class="w-full max-w-md rounded-2xl border border-rose-500/50 bg-slate-900 p-6 text-center space-y-4">
+            <h1 class="text-xl font-extrabold text-white">My ARTfive! App could not start</h1>
+            <p class="text-sm leading-relaxed text-rose-200">The interactive dashboard could not load. Please check your internet connection and reload the app. Your account, payment and ticket records have not been changed.</p>
+            <pre id="alpine-load-diagnostic" class="mt-3 max-h-48 overflow-auto rounded-lg border border-amber-500/40 bg-slate-950 p-3 text-left text-xs leading-relaxed text-amber-200 whitespace-pre-wrap break-words" aria-live="polite">Waiting for startup diagnostic…</pre>
+            <button type="button" onclick="window.location.reload()" class="w-full rounded-xl bg-rose-700 px-4 py-3 font-bold text-white">Reload App</button>
+        </div>
+    </div>
 
     <div x-show="appNotice.open" x-cloak class="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4" @keydown.escape.window="closeAppNotice()">
-        <div class="w-full max-w-sm rounded-2xl border border-emerald-500/40 bg-slate-900 p-6 shadow-2xl space-y-4" role="dialog" aria-modal="true" aria-labelledby="app-notice-title">
-            <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center"><i class="fa-solid fa-check"></i></div><h2 id="app-notice-title" class="text-lg font-extrabold text-white">My ARTfive!</h2></div>
-            <p class="text-sm leading-relaxed text-slate-200" x-text="appNotice.message"></p>
-            <button type="button" @click="closeAppNotice()" class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-3 text-sm font-bold text-white">OK</button>
+        <div class="w-full max-w-sm rounded-2xl border bg-slate-900 p-6 shadow-2xl space-y-4" :class="appNotice.isError ? 'border-rose-500/60' : 'border-emerald-500/40'" role="dialog" aria-modal="true" aria-labelledby="app-notice-title">
+            <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full flex items-center justify-center" :class="appNotice.isError ? 'bg-rose-500/15 text-rose-400' : 'bg-emerald-500/15 text-emerald-400'"><i :class="appNotice.isError ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-check'"></i></div><h2 id="app-notice-title" class="text-lg font-extrabold" :class="appNotice.isError ? 'text-rose-300' : 'text-white'">My ARTfive!</h2></div>
+            <p class="text-sm leading-relaxed" :class="appNotice.isError ? 'text-rose-200' : 'text-slate-200'" :role="appNotice.isError ? 'alert' : 'status'" aria-live="polite" x-text="appNotice.message"></p>
+            <button type="button" @click="closeAppNotice()" class="w-full rounded-xl px-4 py-3 text-sm font-bold text-white" :class="appNotice.isError ? 'bg-rose-700 hover:bg-rose-600' : 'bg-emerald-600 hover:bg-emerald-500'">OK</button>
         </div>
     </div>
 
@@ -174,7 +240,7 @@
         <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
 
             <!-- ================= PUBLIC FIRST SCREEN ================= -->
-            <div x-show="currentDashboard === 'public'" x-init="loadAppUpdates(); loadPublicCms()" class="space-y-8">
+            <div x-show="currentDashboard === 'public' && activeCustOption === null" x-init="loadAppUpdates(); loadPublicCms()" class="space-y-8">
                 <div x-show="appUpdates.length > 0" class="bg-slate-800 border border-emerald-500/30 rounded-2xl p-5 space-y-3">
                     <h3 class="text-sm font-bold text-emerald-300">My ARTfive! Latest App Updates</h3>
                     <template x-for="item in appUpdates.slice(0,4)" :key="'public-update-'+item.id">
@@ -263,7 +329,9 @@
                         <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1" x-text="cms.ownerDashTitle"></h2>
                         <p class="text-slate-300 text-sm" x-text="cms.ownerDashSubtitle"></p>
                     </div>
-                    
+                    <button type="button" @click="logout()" class="shrink-0 bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow flex items-center gap-2">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    </button>
                 </div>
 
                 <div x-show="activeMenuOption === null" class="space-y-6">
@@ -672,12 +740,12 @@
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt1Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt1Desc"></p>
                         </div>
-                        <div @click="ownerInspectCustOpt = 2" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                        <div @click="openOwnerCustomerOptionPreview(2)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-credit-card text-2xl"></i><span class="text-xs font-extrabold">Option 2</span></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt2Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt2Desc"></p>
                         </div>
-                        <div @click="ownerInspectCustOpt = 3" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                        <div @click="openOwnerCustomerOptionPreview(3)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-file-invoice-dollar text-2xl"></i><span class="text-xs font-extrabold">Option 3</span></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt3Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt3Desc"></p>
@@ -1288,6 +1356,10 @@
                         <button @click="activeMenuOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-6 max-w-2xl mx-auto">
+                        <div class="rounded-xl border border-sky-500/30 bg-slate-900 p-4 flex items-center justify-between gap-3">
+                            <div><p class="text-sm font-extrabold text-sky-300">Staff Total Tickets Sent</p><p class="text-xs text-slate-400">Total tickets uploaded by Staff accounts</p></div>
+                            <span class="text-3xl font-extrabold text-white tabular-nums" x-text="assignedTickets.filter(ticket => ticket.uploadedByRole === 'staff').length"></span>
+                        </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-400 mb-1">Find Customer by Name or Phone Number</label>
                             <input type="search" x-model="customerSearch" placeholder="Type to search customers..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
@@ -1531,9 +1603,11 @@
                                             <p class="font-bold text-white" x-text="account.name || 'Name not available'"></p>
                                             <p class="text-xs text-slate-300" x-text="'Staff full Name: ' + (account.name || 'Not provided')"></p>
                                             <p class="text-xs text-slate-300" x-text="'Staff phone number: ' + (account.phone || 'Not provided')"></p>
+                                            <p class="text-xs font-bold" :class="account.active === 1 ? 'text-emerald-300' : 'text-rose-300'" x-text="account.active === 1 ? 'Account status: ACTIVE' : 'Account status: BLOCKED'"></p>
                                             <p class="text-xs text-slate-400">Staff password: •••••••• (Hidden — never displayed)</p>
                                             <p class="text-xs text-slate-500 break-all" x-text="'Staff ID: ' + account.id"></p>
-                                            <div class="flex justify-end">
+                                            <div class="flex flex-wrap justify-end gap-2">
+                                                <button @click="setOption10AccountStatus(account, account.active === 1)" class="bg-amber-700 hover:bg-amber-600 text-white text-xs font-bold px-3 py-2 rounded-lg" x-text="account.active === 1 ? 'Block Sign-in' : 'Unblock Sign-in'"></button>
                                                 <button @click="deleteOption10CustomerAccount(account)" class="bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2 rounded-lg">
                                                     <i class="fa-solid fa-trash mr-1"></i> Delete — Permanently from D1
                                                 </button>
@@ -1554,9 +1628,11 @@
                                             <p class="font-bold text-white" x-text="account.name || 'Name not available'"></p>
                                             <p class="text-xs text-slate-300" x-text="'Customer full Name: ' + (account.name || 'Not provided')"></p>
                                             <p class="text-xs text-slate-300" x-text="'Customer phone number: ' + (account.phone || 'Not provided')"></p>
+                                            <p class="text-xs font-bold" :class="account.active === 1 ? 'text-emerald-300' : 'text-rose-300'" x-text="account.active === 1 ? 'Account status: ACTIVE' : 'Account status: BLOCKED'"></p>
                                             <p class="text-xs text-slate-400">Customer password: •••••••• (Hidden — never displayed)</p>
                                             <p class="text-xs text-slate-500 break-all" x-text="'Customer ID: ' + account.id"></p>
-                                            <div class="flex justify-end">
+                                            <div class="flex flex-wrap justify-end gap-2">
+                                                <button @click="setOption10AccountStatus(account, account.active === 1)" class="bg-amber-700 hover:bg-amber-600 text-white text-xs font-bold px-3 py-2 rounded-lg" x-text="account.active === 1 ? 'Block Sign-in' : 'Unblock Sign-in'"></button>
                                                 <button @click="deleteOption10CustomerAccount(account)" class="bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2 rounded-lg">
                                                     <i class="fa-solid fa-trash mr-1"></i> Delete — Permanently from D1
                                                 </button>
@@ -1634,18 +1710,23 @@
                                     <i class="fa-solid fa-floppy-disk"></i> Save Protected Code Draft
                                 </button>
                             </div>
+                            <div class="rounded-xl border border-sky-500/30 bg-slate-900 p-4 space-y-2">
+                                <h4 class="font-bold text-white"><i class="fa-solid fa-cloud-arrow-up text-sky-300 mr-2"></i>My ARTfive! Cloudflare Deployment</h4>
+                                <p class="text-xs text-slate-300">Real deployment is run through the protected GitHub Actions workflow, not by saving this code draft. After the workflow is available on the repository default branch and Cloudflare secrets are configured, choose Preview to publish an isolated test Worker. Production is restricted to the main branch and requires the exact approval phrase.</p>
+                                <a href="https://github.com/MyARTfive/My-ARTfive-Railway-Assistant-/actions/workflows/manual-cloudflare-deploy.yml" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-lg bg-sky-700 hover:bg-sky-600 px-4 py-2.5 text-xs font-bold text-white"><i class="fa-brands fa-github"></i> Open Deployment Workflow</a>
+                            </div>
                         </div>
                     </template>
                 </div>
             </div>
 
             <!-- ================= 2. CUSTOMER DASHBOARD ================= -->
-            <div x-show="currentDashboard === 'customer'" class="space-y-6">
+            <div x-show="(currentDashboard === 'public' && activeCustOption !== null && !ownerPreviewMode) || (currentDashboard === 'customer' && ownerPreviewMode)" class="space-y-6">
                 <div x-show="ownerPreviewMode" class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-950/30 p-4">
                     <p class="text-xs text-amber-100">My ARTfive! You are viewing the live Customer Dashboard layout in read-only preview mode. Customer sign-in and private account data remain protected.</p>
                     <button type="button" @click="closeOwnerDashboardPreview()" class="rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold text-white">Back to My Dashboard</button>
                 </div>
-                <div class="bg-gradient-to-r from-slate-800 to-railway-900 border border-slate-700 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div x-show="ownerPreviewMode" class="bg-gradient-to-r from-slate-800 to-railway-900 border border-slate-700 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <span class="bg-railway-500/20 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full uppercase" x-text="cms.custBadgeText"></span>
                         <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1" x-text="ownerPreviewMode ? 'Customer Dashboard Preview' : 'Welcome, ' + (currentUser ? currentUser.name : 'Customer')"></h2>
@@ -1664,25 +1745,46 @@
                 </div>
                 <div x-show="ownerPreviewMode && activeCustOption === null" class="space-y-6">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div @click="selectCustomerOption(1)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                        <div @click="openOwnerCustomerOptionPreview(1)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-ticket"></i></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt1Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt1Desc"></p>
                         </div>
-                        <div @click="selectCustomerOption(2)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                        <div @click="openOwnerCustomerOptionPreview(2)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-credit-card"></i></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt2Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt2Desc"></p>
                         </div>
-                        <div @click="selectCustomerOption(3)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                        <div @click="openOwnerCustomerOptionPreview(3)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-file-invoice-dollar"></i></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt3Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt3Desc"></p>
                         </div>
-                        <div @click="selectCustomerOption(4)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                        <div @click="openOwnerCustomerOptionPreview(4)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-folder-open"></i></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt4Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt4Desc"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div x-show="!ownerPreviewMode && currentUser && currentUser.role === 'customer' && activeCustOption === null" class="space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div @click="selectCustomerOption(1)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                            <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-ticket"></i></div>
+                            <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt1Title"></h3><p class="text-xs text-slate-400" x-text="cms.custOpt1Desc"></p>
+                        </div>
+                        <div @click="selectCustomerOption(2)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                            <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-credit-card"></i></div>
+                            <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt2Title"></h3><p class="text-xs text-slate-400" x-text="cms.custOpt2Desc"></p>
+                        </div>
+                        <div @click="selectCustomerOption(3)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                            <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                            <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt3Title"></h3><p class="text-xs text-slate-400" x-text="cms.custOpt3Desc"></p>
+                        </div>
+                        <div @click="selectCustomerOption(4)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                            <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-folder-open"></i></div>
+                            <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt4Title"></h3><p class="text-xs text-slate-400" x-text="cms.custOpt4Desc"></p>
                         </div>
                     </div>
                 </div>
@@ -1825,7 +1927,7 @@
                 </div>
 
                 <!-- Customer Option 3: Ticket Collection Charges -->
-                <div x-show="activeCustOption === 3" x-effect="if (!ownerPreviewMode && activeCustOption === 3) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
+                <div x-show="activeCustOption === 3" x-effect="if (!ownerPreviewMode && activeCustOption === 3) { loadCustomerNotifications(); loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Both Option 3 message types appear together -->
@@ -1833,6 +1935,7 @@
                         <p class="text-sm font-extrabold text-sky-300">My ARTfive! Message Notification</p>
                         <div x-show="!ownerPreviewMode"><template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 3)" :key="'ticket-option3-note-'+note.id">
                             <div class="w-full min-w-0 rounded-lg border border-sky-500/40 bg-slate-950 p-3">
+                                <p class="text-xs font-extrabold text-sky-300 mb-1" x-text="note.senderName || 'My ARTfive!'"></p>
                                 <p class="text-sm leading-relaxed text-sky-100 whitespace-pre-wrap break-words" style="overflow-wrap:anywhere" role="status" aria-live="polite" x-text="note.message"></p>
                             </div>
                         </template></div>
@@ -1926,7 +2029,18 @@
                         <i class="fa-solid fa-right-from-bracket"></i> <span x-text="ownerPreviewMode ? 'Back to My Dashboard' : cms.logoutBtnText"></span>
                     </button>
                 </div>
-
+                <div x-show="!ownerPreviewMode && currentUser && currentUser.role === 'staff'" class="rounded-xl border border-sky-500/30 bg-slate-800 p-4 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-bold text-white"><i class="fa-solid fa-bell text-amber-300 mr-2"></i>My ARTfive! Staff Notifications</h3><p class="text-xs text-slate-400">Private notifications for your signed-in Staff account only.</p></div>
+                        <button type="button" @click="staffNotificationsOpen = !staffNotificationsOpen; if (staffNotificationsOpen) loadStaffNotifications()" class="rounded-lg bg-sky-700 hover:bg-sky-600 px-3 py-2 text-xs font-bold text-white"><span x-text="staffNotifications.filter(item => !item.readAt).length + ' unread — ' + (staffNotificationsOpen ? 'Hide' : 'View')"></span></button>
+                    </div>
+                    <div x-show="staffNotificationsOpen" class="space-y-2"><div class="flex justify-end"><button type="button" @click="loadStaffNotifications()" class="text-xs text-sky-300 hover:underline">Refresh notifications</button></div>
+                        <template x-if="staffNotifications.length === 0"><p class="text-sm text-slate-400">My ARTfive! No Staff notifications yet.</p></template>
+                        <template x-for="item in staffNotifications" :key="'staff-notification-'+item.id"><div class="rounded-lg border border-slate-700 bg-slate-900 p-3 space-y-1">
+                            <div class="flex items-center justify-between gap-2"><strong class="text-sm text-white" x-text="item.title"></strong><span class="text-[10px] text-slate-400" x-text="new Date(Number(item.createdAt)).toLocaleString()"></span></div>
+                            <p class="text-xs text-slate-200" x-text="item.message"></p><div class="flex justify-end"><button x-show="!item.readAt" type="button" @click="markStaffNotificationRead(item)" class="text-xs font-bold text-sky-300 hover:underline">Mark as read</button><span x-show="item.readAt" class="text-[10px] text-emerald-300">Read</span></div>
+                        </div></template>
+                    </div>
+                </div>
                 <div x-show="activeStaffOption === null" class="grid grid-cols-1 sm:grid-cols-3 gap-5">
                     <div @click="activeStaffOption = 1; if (!ownerPreviewMode) loadTicketRequestsFromStorage()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-sky-500/50 p-6 rounded-2xl cursor-pointer transition shadow">
                         <div class="text-sky-400 text-2xl mb-3"><i class="fa-solid fa-file-lines"></i></div>
@@ -2205,7 +2319,7 @@
                 <template x-if="loginRole === 'staff'">
                     <div class="space-y-4">
                         <p x-show="staffSignupError" x-text="staffSignupError" class="text-center text-sm font-extrabold text-red-500"></p>
-                        <div><label class="block text-xs font-bold text-slate-300 mb-1">Staff Full Name</label><input type="text" x-model="loginStaffName" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter staff full name"></div>
+                        
                         <div><label class="block text-xs font-bold text-slate-300 mb-1">Phone Number</label><input type="text" x-model="loginPhone" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter phone number"></div>
                         <div class="relative">
                             <label class="block text-xs font-bold text-slate-300 mb-1">Password</label>
@@ -2218,7 +2332,12 @@
                         </div>
                         <div class="flex justify-between items-center text-xs">
                             <a href="#" @click.prevent="forgotPassword('Staff')" class="text-emerald-400 hover:underline">Forgot password?</a>
-                            <a href="#" @click.prevent="staffSignupError = ''; loginRole = 'staff_new'" class="text-sky-400 hover:underline">New Sign In? Register Here</a>
+                            <a href="#" @click.prevent="staffSignupError = ''; staffSignupStatusMessage = ''; loginRole = 'staff_new'" class="text-sky-400 hover:underline">New Sign In? Register Here</a>
+                        </div>
+                        <div x-show="staffSignupRequestId" class="rounded-lg border border-sky-500/30 bg-slate-900 p-3 space-y-2">
+                            <p class="text-xs text-slate-300">Check the Owner's decision for your Staff registration.</p>
+                            <button type="button" @click="checkStaffSignupStatus()" class="w-full rounded-lg bg-sky-700 hover:bg-sky-600 px-3 py-2 text-xs font-bold text-white">Check Staff Approval Status</button>
+                            <p x-show="staffSignupStatusMessage" class="text-xs font-bold" :class="staffSignupStatus === 'rejected' ? 'text-rose-400' : staffSignupStatus === 'approved' ? 'text-emerald-300' : 'text-amber-300'" x-text="staffSignupStatusMessage"></p>
                         </div>
                     </div>
                 </template>
@@ -2316,6 +2435,7 @@
 
                 showAppNotice(message, durationMs = null) {
                     this.appNotice.message = String(message || '');
+                    this.appNotice.isError = /\b(?:error|failed|failure|could not|unable|denied|blocked|expired|invalid|unavailable|not found|too many|did not|does not|cannot|rejected|not received|not connected)\b/i.test(this.appNotice.message);
                     this.appNotice.open = true;
                     if (this.appNoticeTimer) clearTimeout(this.appNoticeTimer);
                     const words = this.appNotice.message.trim().split(/\s+/).filter(Boolean).length;
@@ -2336,6 +2456,7 @@
                 },
 
                 initApp() {
+                    try {
                     const savedCms = localStorage.getItem('artfive_master_cms');
                     if (savedCms) {
                         try {
@@ -2390,7 +2511,7 @@
                     // Keep ticket notifications in open customer Options 3 and 4 current.
                     setInterval(() => {
                         if (this.currentUser && this.currentUser.role === 'customer' &&
-                            this.currentDashboard === 'customer' &&
+                            (this.currentDashboard === 'customer' || this.currentDashboard === 'public') &&
                             (this.activeCustOption === 3 || this.activeCustOption === 4)) {
                             this.loadCustomerNotifications();
                         }
@@ -2399,15 +2520,22 @@
                     // Keep personal payment messages and amounts fresh in open customer Options 2 and 3.
                     setInterval(() => {
                         if (this.currentUser && this.currentUser.role === 'customer' &&
-                            this.currentDashboard === 'customer' &&
+                            (this.currentDashboard === 'customer' || this.currentDashboard === 'public') &&
                             (this.activeCustOption === 2 || this.activeCustOption === 3)) {
                             this.loadCustomerPaymentInstructions();
                         }
                     }, 5000);
 
-                    // Refresh only the open chat conversation; chat history stays in D1.
+                    // Keep open request lists synchronized with D1, including Owner deletions.
+                    // Staff can view requests but never receives a delete control or delete API permission.
                     setInterval(() => {
-                        if (this.currentUser && this.currentUser.role === 'customer' && this.currentDashboard === 'customer' && this.activeCustOption === 1) this.loadCustomerEnquiryChat();
+                        if (this.currentUser && (
+                            (this.currentUser.role === 'staff' && this.currentDashboard === 'staff' && this.activeStaffOption === 1) ||
+                            (this.currentUser.role === 'owner' && this.ownerPreviewMode && this.currentDashboard === 'staff' && this.activeStaffOption === 1) ||
+                            (this.currentUser.role === 'owner' && this.currentDashboard === 'owner' && this.ownerInspectStaffOpt === 1)
+                        )) this.refreshTicketRequestsOnly();
+                        // Customer Option 1 and Owner Chat 1 share the same D1 enquiry conversation.
+                        if (this.currentUser && this.currentUser.role === 'customer' && (this.currentDashboard === 'customer' || this.currentDashboard === 'public') && this.activeCustOption === 1) this.loadCustomerEnquiryChat();
                         if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'custChat' && this.paymentForm.customerId) this.loadCustomerEnquiryChat(this.paymentForm.customerId);
                         if (this.currentUser && this.currentUser.role === 'staff' && this.currentDashboard === 'staff' && this.activeStaffOption === 3) this.loadStaffChat();
                         if (this.currentUser && this.currentUser.role === 'owner' && this.activeMenuOption === 'staffChat' && this.staffChatSelectedId) this.loadStaffChat(this.staffChatSelectedId);
@@ -2440,6 +2568,16 @@
                     this.checkOwnerSetup();
 
                     // Keep customer selection empty until the Owner chooses by search or filter.
+                    window.__artfiveDashboardInitComplete = true;
+                    } catch (error) {
+                        console.error('My ARTfive! Dashboard initialization failed:', error);
+                        const detail = error && error.message ? error.message : String(error);
+                        if (typeof window.__artfiveShowStartupError === 'function') {
+                            window.__artfiveShowStartupError('Dashboard initialization failed: ' + detail);
+                        } else {
+                            throw error;
+                        }
+                    }
                 },
 
                 hasOwnerAccount() {
@@ -2638,7 +2776,7 @@
                 offlineMode: false,
                 ticketAccessToken: '',
                 offlineTicketDraft: !!localStorage.getItem('artfive_ticket_request_draft'),
-                appNotice: { open: false, message: '' },
+                appNotice: { open: false, message: '', isError: false },
                 appNoticeTimer: null,
 
                 option10Authenticated: false,
@@ -2753,6 +2891,11 @@
                 staffChatSelectedId: '',
                 staffSignupRequests: [],
                 staffSignupError: '',
+                staffSignupRequestId: localStorage.getItem('artfive_staff_signup_request_id') || '',
+                staffSignupStatus: '',
+                staffSignupStatusMessage: '',
+                staffNotifications: [],
+                staffNotificationsOpen: false,
                 staffTicketAssignmentEnabled: false,
                 staffPaymentTickEnabled: false,
                 customerNotifications: [],
@@ -2789,7 +2932,7 @@
                     if (!targetId) { this.customerEnquiryMessages = []; return; }
                     try {
                         const result = await this.apiRequest('/api/customer-enquiry?customerId=' + encodeURIComponent(targetId));
-                        this.customerEnquiryMessages = (result.messages || []).map(msg => ({ ...msg, time: new Date(Number(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
+                        this.customerEnquiryMessages = (result.messages || []).map(msg => ({ ...msg, text: msg.senderRole === 'owner' || msg.sender === 'My ARTfive!' ? String(msg.text || '').replace(/^My ARTfive!\s*/i, '') : msg.text, time: new Date(Number(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not load the enquiry conversation.'); }
                 },
 
@@ -2858,6 +3001,24 @@
                     }
                 },
 
+                async loadStaffNotifications() {
+                    if (!this.currentUser || this.currentUser.role !== 'staff') return;
+                    try { const result = await this.apiRequest('/api/staff/notifications'); this.staffNotifications = result.notifications || []; }
+                    catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not load Staff notifications.'); }
+                },
+                async markStaffNotificationRead(item) {
+                    if (!this.currentUser || this.currentUser.role !== 'staff' || !item) return;
+                    try { await this.apiRequest('/api/staff/notifications', { method: 'POST', body: { notificationId: item.id } }); item.readAt = Date.now(); }
+                    catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not update this Staff notification.'); }
+                },
+                async checkStaffSignupStatus() {
+                    if (!this.staffSignupRequestId) return;
+                    try {
+                        const result = await this.apiRequest('/api/staff/signup-status?requestId=' + encodeURIComponent(this.staffSignupRequestId));
+                        this.staffSignupStatus = result.status || 'pending';
+                        this.staffSignupStatusMessage = result.message || 'My ARTfive! Staff signup status updated.';
+                    } catch (error) { this.staffSignupStatusMessage = error.message || 'My ARTfive! Could not check Staff signup status.'; }
+                },
                 async loadStaffSignupRequests() {
                     if (!this.currentUser || this.currentUser.role !== 'owner') return;
                     try {
@@ -3125,17 +3286,36 @@
                 async apiRequest(path, options = {}) {
                     const requestHeaders = { 'Content-Type': 'application/json', ...(options.headers || {}) };
                     if (path === '/api/tickets' && this.currentUser && this.currentUser.role === 'customer' && this.ticketAccessToken) requestHeaders['X-Ticket-Access'] = this.ticketAccessToken;
-                    const response = await fetch(path, {
-                        method: options.method || 'GET',
-                        credentials: 'same-origin',
-                        cache: 'no-store',
-                        headers: requestHeaders,
-                        body: options.body ? JSON.stringify(options.body) : undefined
-                    });
+                    const method = options.method || 'GET';
+                    let response;
+                    let lastNetworkError = null;
+                    // Retry only safe GET requests after a transient network/server failure.
+                    // Never retry POST requests, so chat messages and payments cannot be duplicated.
+                    for (let attempt = 0; attempt < (method === 'GET' ? 2 : 1); attempt++) {
+                        try {
+                            response = await fetch(path, {
+                                method,
+                                credentials: 'same-origin',
+                                cache: 'no-store',
+                                headers: requestHeaders,
+                                body: options.body ? JSON.stringify(options.body) : undefined
+                            });
+                            if (!(method === 'GET' && attempt === 0 && [502, 503, 504].includes(response.status))) break;
+                        } catch (error) {
+                            lastNetworkError = error;
+                            if (method !== 'GET' || attempt > 0) break;
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 400));
+                    }
+                    if (!response) {
+                        const error = new Error('My ARTfive! Connection temporarily unavailable. Please check your internet connection and try again.');
+                        error.cause = lastNetworkError;
+                        throw error;
+                    }
                     let result = {};
                     try { result = await response.json(); } catch (e) {}
                     if (!response.ok || result.success === false) {
-                        const error = new Error(result.message || 'My ARTfive! Server request failed.');
+                        const error = new Error(result.message || 'My ARTfive! Server request failed. Please try again.');
                         error.status = response.status;
                         throw error;
                     }
@@ -3190,9 +3370,37 @@
                     } catch (profileError) {}
                     try {
                         const result = await this.apiRequest('/api/me');
+                        // Customer sign-in lasts for one open-app session only.
+                        // sessionStorage survives in-app navigation and reloads, but is cleared
+                        // when the app/browser tab is fully closed. On a new app session, end
+                        // any server cookie session so Options 1–3 require sign-in again.
+                        if (result.user && result.user.role === 'customer') {
+                            let customerAppSessionActive = false;
+                            try {
+                                customerAppSessionActive = sessionStorage.getItem('artfive_customer_app_session') === 'active';
+                            } catch (sessionError) {}
+                            if (!customerAppSessionActive) {
+                                try { await this.apiRequest('/api/logout', { method: 'POST' }); } catch (logoutError) {}
+                                this.currentUser = null;
+                                this.currentDashboard = 'public';
+                                this.activeCustOption = null;
+                                this.ticketAccessToken = '';
+                                localStorage.removeItem('artfive_last_signed_in_profile');
+                                return;
+                            }
+                        }
                         this.currentUser = result.user;
+                        if (result.user && result.user.role === 'staff') {
+                            await this.loadStaffNotifications();
+                            localStorage.removeItem('artfive_staff_signup_request_id');
+                            this.staffSignupRequestId = '';
+                            this.staffSignupStatus = '';
+                            this.staffSignupStatusMessage = '';
+                        }
                         this.ownerPreviewMode = false;
                         if (result.user.role === 'customer') {
+                            // A returning customer lands on the complete public first page.
+                            // The authenticated session remains available to Options 1–3.
                             this.currentDashboard = 'public';
                             this.activeCustOption = null;
                             this.ticketAccessToken = '';
@@ -3206,8 +3414,17 @@
                         this.customers = [];
                         if (!navigator.onLine) {
                             if (cachedProfile && ['owner', 'staff', 'customer'].includes(cachedProfile.role)) {
+                                if (cachedProfile.role === 'customer') {
+                                    // Do not treat a device-cached profile as a live customer login.
+                                    this.currentUser = null;
+                                    this.currentDashboard = 'public';
+                                    try { sessionStorage.removeItem('artfive_customer_app_session'); } catch (sessionError) {}
+                                    localStorage.removeItem('artfive_last_signed_in_profile');
+                                    this.offlineMode = true;
+                                    return;
+                                }
                                 this.currentUser = cachedProfile;
-                                this.currentDashboard = cachedProfile.role === 'customer' ? 'public' : cachedProfile.role;
+                                this.currentDashboard = cachedProfile.role;
                                 this.offlineMode = true;
                                 this.showAppNotice('My ARTfive! You are offline. Dashboard options are available, but requests, messages, payments and ticket downloads cannot be sent or verified until you reconnect.');
                                 return;
@@ -3218,10 +3435,37 @@
                         // A previously signed-in customer whose server session has expired
                         // must sign in again; never redirect them to New Customer Sign Up.
                         if (e && e.status === 401 && cachedProfile && cachedProfile.role === 'customer') {
+                            let customerAppSessionActive = false;
+                            try {
+                                customerAppSessionActive = sessionStorage.getItem('artfive_customer_app_session') === 'active';
+                                sessionStorage.removeItem('artfive_customer_app_session');
+                            } catch (sessionError) {}
                             localStorage.removeItem('artfive_last_signed_in_profile');
-                            this.openLoginModal('customer');
-                            this.showAppNotice('My ARTfive! Your customer sign-in session has expired. Please sign in again. You do not need to create a new account.');
+                            // A closed-app session ends quietly on the public first page.
+                            // Only show the expiry prompt if the app session was still active.
+                            if (customerAppSessionActive) {
+                                this.openLoginModal('customer');
+                                this.showAppNotice('My ARTfive! Your customer sign-in session has expired. Please sign in again. You do not need to create a new account.');
+                            } else {
+                                this.currentUser = null;
+                                this.currentDashboard = 'public';
+                                this.activeCustOption = null;
+                            }
                         }
+                    }
+                },
+
+                async refreshTicketRequestsOnly() {
+                    if (!this.currentUser) return;
+                    try {
+                        const result = await this.apiRequest('/api/requests');
+                        this.ticketRequests = (result.requests || []).map(row => {
+                            let data = {};
+                            try { data = typeof row.data === 'string' ? JSON.parse(row.data) : (row.data || {}); } catch (e) {}
+                            return { ...data, id: row.id, customerId: row.customer_id, createdAt: row.created_at };
+                        });
+                    } catch (error) {
+                        console.warn('My ARTfive! Ticket request list could not be refreshed:', error.message);
                     }
                 },
 
@@ -3508,6 +3752,22 @@
                     this.stopCustomerPaymentInstructionPolling();
                 },
 
+                openOwnerCustomerOptionPreview(optNum) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner' || ![1, 2, 3, 4].includes(Number(optNum))) {
+                        this.showAppNotice('My ARTfive! Only the signed-in Owner can preview Customer Dashboard Options 1–4.');
+                        return;
+                    }
+                    // Open the actual Customer Dashboard payment page in Owner preview mode.
+                    // Customer sign-in, private payment records and payment submission remain protected.
+                    this.ownerPreviewMode = true;
+                    this.currentDashboard = 'customer';
+                    this.activeMenuOption = null;
+                    this.ownerInspectCustOpt = null;
+                    this.activeCustOption = Number(optNum);
+                    this.ticketAccessToken = '';
+                    this.assignedTickets = [];
+                },
+
                 ownerSelectOption(optNum) {
                     if (optNum === 1 || optNum === 2) {
                         if (!this.currentUser || this.currentUser.role !== 'owner') {
@@ -3661,6 +3921,19 @@
                     }
                 },
 
+                async setOption10AccountStatus(account, blocked) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated || !account) return;
+                    const action = blocked ? 'block' : 'unblock';
+                    if (!confirm('My ARTfive! ' + (blocked ? 'BLOCK SIGN-IN' : 'RESTORE SIGN-IN') + ' for ' + (account.role === 'staff' ? 'Staff' : 'Customer') + ' ' + (account.name || account.phone) + '? ' + (blocked ? 'All active sessions will be revoked. Account data will remain saved.' : 'The account can sign in again.'))) return;
+                    try {
+                        const result = await this.apiRequest('/api/owner/control/customer-accounts/status', { method: 'POST', body: { accountId: account.id, action, reason: 'Owner action from Option 10 Control' } });
+                        account.active = Number(result.active);
+                        if (blocked && String(this.paymentForm.customerId) === String(account.id)) this.paymentForm = { customerId: '', requestId: '', optionNo: '2', amount: '', message: '' };
+                        if (blocked && String(this.uploadForm.customerId) === String(account.id)) { this.uploadForm.customerId = ''; this.uploadForm.requestId = ''; this.uploadCustomerFilter = ''; }
+                        await this.refreshCentralData();
+                        this.showAppNotice(result.message || 'My ARTfive! Account access updated.');
+                    } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not update account access.'); }
+                },
                 async deleteOption10CustomerAccount(customer) {
                     if (!this.currentUser || this.currentUser.role !== 'owner' || !this.option10Authenticated || !customer) return;
                     const customerName = String(customer.name || 'this account');
@@ -4272,20 +4545,23 @@
                         if (this.loginRole === 'owner' || this.loginRole === 'staff' || this.loginRole === 'staff_new') {
                             const identifier = this.loginRole === 'owner' ? this.loginEmail.trim() : this.loginPhone.trim();
                             if (!identifier || !password) {
-                                alert('My ARTfive! Enter your registered login ID and password.');
+                                alert(this.loginRole === 'staff' ? 'My ARTfive! Enter your registered phone number and password.' : 'My ARTfive! Enter your registered login ID and password.');
                                 return;
                             }
                             if (this.loginRole === 'staff_new') {
                                 this.staffSignupError = '';
-                                await this.apiRequest('/api/staff/signup', {
-                                    method: 'POST',
-                                    body: { name: this.loginStaffName.trim(), phone: identifier, password }
-                                });
+                                if (!this.loginStaffName.trim()) { this.staffSignupError = 'My ARTfive! Please enter your full name.'; return; }
+                                if (password.length < 8) { this.staffSignupError = 'My ARTfive! Please create a password with at least 8 characters.'; return; }
+                                const signupResult = await this.apiRequest('/api/staff/signup', { method: 'POST', body: { name: this.loginStaffName.trim(), phone: identifier, password } });
+                                this.staffSignupRequestId = String(signupResult.requestId || '');
+                                if (this.staffSignupRequestId) localStorage.setItem('artfive_staff_signup_request_id', this.staffSignupRequestId);
+                                this.staffSignupStatus = 'pending';
+                                this.staffSignupStatusMessage = 'My ARTfive! Your Staff registration is waiting for Owner approval. Keep this screen to check the decision.';
                                 this.loginPassword = '';
                                 this.loginStaffName = '';
                                 this.loginPhone = '';
-                                this.showLoginModal = false;
-                                this.showAppNotice('My ARTfive! Your Staff signup request has been sent to the Owner for approval.');
+                                this.loginRole = 'staff';
+                                this.showLoginModal = true;
                                 return;
                             }
                             if (this.loginRole === 'owner' && this.ownerExists === false) {
@@ -4325,12 +4601,25 @@
                         }
                         this.ticketAccessToken = this.loginRole === 'customer_verify' ? String(result.ticketAccessToken || '') : '';
                         this.currentUser = result.user;
+                        if (result.user && result.user.role === 'staff') {
+                            await this.loadStaffNotifications();
+                            localStorage.removeItem('artfive_staff_signup_request_id');
+                            this.staffSignupRequestId = '';
+                            this.staffSignupStatus = '';
+                            this.staffSignupStatusMessage = '';
+                        }
                         this.ownerPreviewMode = false;
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
+                        if (result.user && result.user.role === 'customer') {
+                            // Keep Options 1–3 signed in while this app session remains open.
+                            try { sessionStorage.setItem('artfive_customer_app_session', 'active'); } catch (sessionError) {}
+                        }
                         this.offlineMode = false;
                         this.currentDashboard = this.currentUser.role === 'owner' ? 'owner' :
-                            (this.currentUser.role === 'staff' ? 'staff' : (this.loginRole === 'customer_verify' ? 'customer' : 'public'));
+                            (this.currentUser.role === 'staff' ? 'staff' :
+                                'public');
                         if (this.loginRole === 'customer_verify') this.activeCustOption = 4;
+                        else if (this.currentUser.role === 'customer') this.activeCustOption = null;
                         this.activeMenuOption = null;
                         this.activeStaffOption = null;
                         this.ownerInspectStaffOpt = null;
@@ -4359,11 +4648,15 @@
                     } catch (error) {
                         if (this.loginRole === 'customer_verify') {
                             const safeMessage = String(error && error.message || '').trim();
-                            this.showAppNotice(safeMessage ? 'My ARTfive! ' + safeMessage : 'My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
+                            this.showAppNotice(safeMessage === 'Error!' ? 'Error!' : (safeMessage ? 'My ARTfive! ' + safeMessage : 'My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.'));
                         } else if (this.loginRole === 'customer' || this.loginRole === 'customer_new') {
-                            this.showAppNotice('My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
-                        } else if ((this.loginRole === 'staff' || this.loginRole === 'staff_new') && String(error && error.message || '') === 'Error!') {
-                            this.staffSignupError = 'Error!';
+                            const safeMessage = String(error && error.message || '').trim();
+                            this.showAppNotice(safeMessage === 'Error!' ? 'Error!' : 'My ARTfive! have not been able to verify your phone number and password. Please check your details and try again. Our team is here to help.');
+                        } else if (this.loginRole === 'staff_new') {
+                            const detail = String(error && error.message || '').trim();
+                            this.staffSignupError = detail ? 'My ARTfive! ' + detail : 'My ARTfive! We could not submit your Staff registration. Please check your details and try again.';
+                        } else if (this.loginRole === 'staff' && String(error && error.message || '') === 'Error!') {
+                            this.showAppNotice('Error!');
                         } else {
                             alert(error.message || 'My ARTfive! Sign-in failed. Please check your details.');
                         }
@@ -4380,6 +4673,7 @@
                     this.ownerPreviewMode = false;
                     this.ticketAccessToken = '';
                     localStorage.removeItem('artfive_last_signed_in_profile');
+                    try { sessionStorage.removeItem('artfive_customer_app_session'); } catch (sessionError) {}
                     this.offlineMode = false;
                     this.ticketRequests = [];
                     this.assignedTickets = [];
@@ -4402,7 +4696,10 @@
                     this.ownerPreviewMode = false;
                     this.ticketAccessToken = '';
                     this.assignedTickets = [];
-                    this.currentDashboard = 'public'; 
+                    // The app header returns to the complete public home screen.
+                    // Keep the customer's authenticated session so Options 1–3 still open
+                    // without asking them to sign in again.
+                    this.currentDashboard = 'public';
                     this.activeMenuOption = null; 
                     this.activeCustOption = null; 
                     this.activeStaffOption = null; 
@@ -4429,7 +4726,8 @@
                         this.openLoginModal('customer');
                         return;
                     }
-                    this.currentDashboard = 'customer';
+                    this.currentDashboard = 'public';
+                    // Render the selected option in place of the public home content.
                     // Activate the selected option before fetching its notifications so the
                     // Option 3 ticket-upload message is loaded for the visible customer page.
                     this.activeCustOption = optNum;

@@ -6,8 +6,13 @@ const MAX_BODY_BYTES = 3 * 1024 * 1024;
 const SESSION_COOKIE = "artfive_session";
 const MANAGER_SESSION_COOKIE = "artfive_manager_session";
 
-const json = (data, status = 200, headers = {}) =>
-  Response.json(data, { status, headers });
+const json = (data, status = 200, headers = {}) => {
+  const responseHeaders = new Headers(headers);
+  // Authenticated account data must never be stored in browser or intermediary HTTP caches.
+  responseHeaders.set("Cache-Control", "no-store, private, max-age=0");
+  responseHeaders.set("Pragma", "no-cache");
+  return Response.json(data, { status, headers: responseHeaders });
+};
 
 function safeEqual(a, b) {
   if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
@@ -169,6 +174,31 @@ async function ensureTicketNotificationColumns(env) {
   if (!columns.has("ticket_id")) await env.DB.prepare("ALTER TABLE customer_notifications ADD COLUMN ticket_id TEXT").run();
   if (!columns.has("target_option")) await env.DB.prepare("ALTER TABLE customer_notifications ADD COLUMN target_option INTEGER").run();
   if (!columns.has("expires_at")) await env.DB.prepare("ALTER TABLE customer_notifications ADD COLUMN expires_at INTEGER").run();
+  // Existing ticket-upload notices receive the same 15-minute lifetime as new notices.
+  await env.DB.prepare("UPDATE customer_notifications SET expires_at = created_at + 900000 WHERE ticket_id IS NOT NULL AND target_option IN (3, 4) AND expires_at IS NULL").run();
+}
+
+async function ensureStaffNotificationSchema(env) {
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS staff_notifications (
+      id TEXT PRIMARY KEY,
+      staff_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'general',
+      created_at INTEGER NOT NULL,
+      read_at INTEGER
+    )
+  `).run();
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_staff_notifications_staff_created ON staff_notifications(staff_id, created_at DESC)").run();
+}
+
+async function addStaffNotification(env, staffId, title, message, category, now) {
+  await ensureStaffNotificationSchema(env);
+  const safeMessage = /^My ARTfive!/i.test(message) ? message : "My ARTfive! " + message;
+  await env.DB.prepare(
+    "INSERT INTO staff_notifications (id, staff_id, title, message, category, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+  ).bind(crypto.randomUUID(), staffId, String(title || "My ARTfive! Notification").slice(0, 120), safeMessage.slice(0, 2000), String(category || "general").slice(0, 40), now).run();
 }
 
 async function logSecurity(env, ip, event, details, now) {
@@ -259,6 +289,9 @@ async function ensureStaffChatSchema(env) {
   // Legacy Staff messages belong to their sender. Old Owner messages had no recipient,
   // so they are intentionally not exposed in any private Staff conversation.
   await env.DB.prepare("UPDATE staff_chat_messages SET staff_id = sender_id WHERE sender_role = 'staff' AND staff_id IS NULL").run();
+  // Normalize historical sender labels as well as labels on newly sent messages.
+  await env.DB.prepare("UPDATE staff_chat_messages SET sender_name = 'My ARTfive!' WHERE sender_role = 'owner' AND sender_name <> 'My ARTfive!'").run();
+  await env.DB.prepare("UPDATE staff_chat_messages SET sender_name = COALESCE((SELECT name FROM users WHERE users.id = staff_chat_messages.sender_id), 'Staff') WHERE sender_role = 'staff'").run();
   await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_staff_chat_messages_staff_created ON staff_chat_messages(staff_id, created_at)").run();
 }
 
@@ -267,6 +300,7 @@ async function purgeExpiredChatMessages(env, now = Date.now()) {
   await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS customer_enquiry_messages (
       id TEXT PRIMARY KEY,
+      request_id TEXT,
       customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       sender_id TEXT NOT NULL REFERENCES users(id),
       sender_role TEXT NOT NULL CHECK (sender_role IN ('owner','staff','customer')),
@@ -275,6 +309,13 @@ async function purgeExpiredChatMessages(env, now = Date.now()) {
       created_at INTEGER NOT NULL
     )
   `).run();
+  // Link an optional enquiry submitted with a ticket request to that exact request.
+  // Existing chat history is preserved when this column is added.
+  const enquiryColumns = await env.DB.prepare("PRAGMA table_info(customer_enquiry_messages)").all();
+  if (!(enquiryColumns.results || []).some(column => column.name === "request_id")) {
+    await env.DB.prepare("ALTER TABLE customer_enquiry_messages ADD COLUMN request_id TEXT").run();
+  }
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_customer_enquiry_request ON customer_enquiry_messages(request_id)").run();
   await ensureStaffChatSchema(env);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM staff_chat_messages WHERE created_at <= ?").bind(cutoff),
@@ -467,6 +508,45 @@ export default {
         return json({ success: true, customers: result.results || [] });
       }
 
+      if (path === "/api/owner/control/customer-accounts/status" && method === "POST") {
+        const owner = await getManagerVerifiedOwner(request, env, now);
+        if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required to change account access." }, 403);
+        const body = await readJson(request);
+        const accountId = String(body.accountId || "").trim();
+        const action = String(body.action || "").trim().toLowerCase();
+        const reason = String(body.reason || "").trim().slice(0, 250);
+        if (!accountId || !["block", "unblock"].includes(action)) return json({ success: false, message: "Select a registered account and choose Block or Unblock." }, 400);
+        const account = await env.DB.prepare("SELECT id, name, phone, role, active FROM users WHERE id = ? AND role IN ('customer','staff') LIMIT 1").bind(accountId).first();
+        if (!account) return json({ success: false, message: "Only registered Customer or Staff accounts can be blocked or unblocked." }, 404);
+        const active = action === "unblock" ? 1 : 0;
+        if (Number(account.active) === active) return json({ success: true, active, message: action === "block" ? "My ARTfive! This account is already blocked." : "My ARTfive! This account is already active." });
+        await env.DB.prepare("UPDATE users SET active = ? WHERE id = ? AND role IN ('customer','staff')").bind(active, accountId).run();
+        if (action === "block") {
+          await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(accountId).run();
+          try { await env.DB.prepare("DELETE FROM customer_ticket_access WHERE customer_id = ?").bind(accountId).run(); } catch {}
+        }
+        const notificationMessage = action === "block"
+          ? "My ARTfive! Sign-in to your account has been temporarily blocked by the Owner. Contact My ARTfive! if you believe this is a mistake."
+          : "My ARTfive! Your account access has been restored by the Owner. You can sign in again.";
+        if (account.role === "staff") {
+          await addStaffNotification(env, accountId, action === "block" ? "My ARTfive! Account access blocked" : "My ARTfive! Account access restored", notificationMessage, "security", now);
+        } else {
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS customer_notifications (
+              id TEXT PRIMARY KEY,
+              customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              sender_id TEXT NOT NULL REFERENCES users(id),
+              message TEXT NOT NULL,
+              created_at INTEGER NOT NULL,
+              read_at INTEGER
+            )
+          `).run();
+          await env.DB.prepare("INSERT INTO customer_notifications (id, customer_id, sender_id, message, created_at) VALUES (?, ?, ?, ?, ?)").bind(crypto.randomUUID(), accountId, owner.id, notificationMessage, now).run();
+        }
+        await logSecurity(env, ip, "account_" + action + "ed", "Owner " + action + "ed " + account.role + " account " + accountId + (reason ? "; reason: " + reason : ""), now);
+        return json({ success: true, active, message: action === "block" ? "My ARTfive! Account sign-in blocked. Existing sessions were revoked." : "My ARTfive! Account sign-in restored. The account can sign in again." });
+      }
+
       if (path === "/api/owner/control/customer-accounts/delete" && method === "POST") {
         const owner = await getManagerVerifiedOwner(request, env, now);
         if (!owner) return json({ success: false, message: "Owner sign-in and Manager verification are required to delete registered accounts." }, 403);
@@ -504,6 +584,9 @@ export default {
         const statements = cleanup
           .filter(([table]) => tables.has(table))
           .map(([table, where, values]) => env.DB.prepare("DELETE FROM " + table + " WHERE " + where).bind(...values));
+        if (customer.role === "staff" && tables.has("staff_signup_requests")) {
+          statements.push(env.DB.prepare("DELETE FROM staff_signup_requests WHERE phone = ?").bind(customer.phone));
+        }
 
         // Preserve customer-facing records when a staff account is deleted by transferring
         // uploader/sender/creator references to the verified Owner before removing the account.
@@ -626,7 +709,9 @@ export default {
         if (!messageText || messageText.length > 2000) return json({ success: false, message: "Enter a message up to 2,000 characters." }, 400);
         if (user.role === "customer" && !messageText) return json({ success: false, message: "Enter your enquiry." }, 400);
         const senderName = user.role === "customer" ? user.name : "My ARTfive!";
-        const finalMessage = user.role === "customer" ? messageText : (/^My ARTfive!/i.test(messageText) ? messageText : "My ARTfive! " + messageText);
+        // The sender name is displayed separately in the chat UI, so store only
+        // the message body and avoid repeating the My ARTfive! prefix in the text.
+        const finalMessage = user.role === "customer" ? messageText : messageText.replace(/^My ARTfive!\s*/i, "");
         const id = crypto.randomUUID();
         await env.DB.prepare(
           "INSERT INTO customer_enquiry_messages (id, customer_id, sender_id, sender_role, sender_name, message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -708,7 +793,7 @@ export default {
           if (!target) return json({ success: false, message: "The selected Staff account was not found." }, 404);
         }
         const senderName = user.role === "owner" ? "My ARTfive!" : String(user.name || "Staff");
-        const finalMessage = user.role === "owner" && !/^My ARTfive!/i.test(messageText) ? "My ARTfive! " + messageText : messageText;
+        const finalMessage = messageText;
         const id = crypto.randomUUID();
         await env.DB.prepare(
           "INSERT INTO staff_chat_messages (id, staff_id, sender_id, sender_role, sender_name, message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -788,7 +873,7 @@ export default {
           await env.DB.prepare("DELETE FROM customer_notifications WHERE expires_at IS NOT NULL AND expires_at <= ?").bind(now).run();
           if (user.role === "customer") {
             const rows = await env.DB.prepare(
-              "SELECT id, message, created_at AS createdAt, read_at AS readAt, target_option AS targetOption, ticket_id AS ticketId, expires_at AS expiresAt FROM customer_notifications WHERE customer_id = ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC LIMIT 100"
+              "SELECT n.id, n.message, n.created_at AS createdAt, n.read_at AS readAt, n.target_option AS targetOption, n.ticket_id AS ticketId, n.expires_at AS expiresAt, CASE WHEN sender.role = 'owner' THEN 'My ARTfive!' ELSE COALESCE(sender.name, 'Staff') END AS senderName FROM customer_notifications n LEFT JOIN users sender ON sender.id = n.sender_id WHERE n.customer_id = ? AND (n.expires_at IS NULL OR n.expires_at > ?) ORDER BY n.created_at DESC LIMIT 100"
             ).bind(user.id, now).all();
             return json({ success: true, notifications: rows.results || [] });
           }
@@ -1167,6 +1252,47 @@ export default {
         return json({ success: true, message: "My ARTfive! Visitor access unblocked." });
       }
 
+      if (path === "/api/staff/notifications" && (method === "GET" || method === "POST")) {
+        const staff = await getSessionUser(request, env, now);
+        if (!staff || staff.role !== "staff") return json({ success: false, message: "Staff sign-in is required to view Staff notifications." }, 403);
+        await ensureStaffNotificationSchema(env);
+        if (method === "GET") {
+          const rows = await env.DB.prepare(
+            "SELECT id, title, message, category, created_at AS createdAt, read_at AS readAt FROM staff_notifications WHERE staff_id = ? ORDER BY created_at DESC LIMIT 100"
+          ).bind(staff.id).all();
+          return json({ success: true, notifications: rows.results || [] });
+        }
+        const body = await readJson(request);
+        const notificationId = String(body.notificationId || "").trim();
+        if (!notificationId) return json({ success: false, message: "Select a Staff notification to mark as read." }, 400);
+        const result = await env.DB.prepare(
+          "UPDATE staff_notifications SET read_at = COALESCE(read_at, ?) WHERE id = ? AND staff_id = ?"
+        ).bind(now, notificationId, staff.id).run();
+        if (!Number(result.meta?.changes || 0)) return json({ success: false, message: "This Staff notification was not found." }, 404);
+        return json({ success: true, message: "My ARTfive! Staff notification marked as read." });
+      }
+
+      if (path === "/api/staff/signup-status" && method === "GET") {
+        const requestId = String(url.searchParams.get("requestId") || "").trim();
+        if (!/^[0-9a-f-]{36}$/i.test(requestId)) return json({ success: false, message: "A valid Staff signup request reference is required." }, 400);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS staff_signup_requests (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL, password_hash TEXT,
+            status TEXT NOT NULL CHECK (status IN ('pending','approved','rejected')),
+            created_at INTEGER NOT NULL, reviewed_at INTEGER
+          )
+        `).run();
+        const signup = await env.DB.prepare("SELECT status FROM staff_signup_requests WHERE id = ? LIMIT 1").bind(requestId).first();
+        if (!signup) return json({ success: false, message: "Staff signup request was not found." }, 404);
+        const status = String(signup.status || "pending");
+        const message = status === "approved"
+          ? "My ARTfive! Your Staff account has been approved. You can now sign in."
+          : status === "rejected"
+            ? "My ARTfive! Your Staff signup request was rejected. Please contact My ARTfive! for assistance."
+            : "My ARTfive! Your Staff signup request is waiting for Owner approval.";
+        return json({ success: true, status, message });
+      }
+
       if (path === "/api/staff/signup" && method === "POST") {
         await env.DB.prepare(`
           CREATE TABLE IF NOT EXISTS staff_signup_requests (
@@ -1179,20 +1305,20 @@ export default {
             reviewed_at INTEGER
           )
         `).run();
-        if (await loginRateLimited(env, ip, "staff_signup_attempt", now)) return json({ success: false, message: "Error!" }, 429);
+        if (await loginRateLimited(env, ip, "staff_signup_attempt", now)) return json({ success: false, message: "Too many Staff registration attempts from this connection. Please wait 15 minutes and try again." }, 429);
         await logSecurity(env, ip, "staff_signup_attempt", "Staff signup request submitted", now);
         const body = await readJson(request);
         const name = String(body.name || "").trim();
         const phone = String(body.phone || "").trim();
         const password = String(body.password || "");
-        if (!name || !phone || password.length < 8 || name.length > 100 || phone.length > 30) return json({ success: false, message: "Error!" }, 400);
+        if (!name || !phone || password.length < 8 || name.length > 100 || phone.length > 30) return json({ success: false, message: "Please enter your full name and phone number, and create a password with at least 8 characters." }, 400);
         const existingUser = await env.DB.prepare("SELECT id FROM users WHERE phone = ? LIMIT 1").bind(phone).first();
         const pending = await env.DB.prepare("SELECT id FROM staff_signup_requests WHERE phone = ? AND status = 'pending' LIMIT 1").bind(phone).first();
-        if (existingUser || pending) return json({ success: false, message: "Error!" }, 409);
+        if (existingUser || pending) return json({ success: false, message: "This phone number is already registered or has a Staff request waiting for approval. Please sign in or contact My ARTfive!." }, 409);
         const passwordHash = await hashPassword(password);
         const id = crypto.randomUUID();
         await env.DB.prepare("INSERT INTO staff_signup_requests (id, name, phone, password_hash, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)").bind(id, name, phone, passwordHash, now).run();
-        return json({ success: true, message: "My ARTfive! Staff registration request submitted for Owner approval." }, 201);
+        return json({ success: true, requestId: id, status: "pending", message: "My ARTfive! Staff registration request submitted for Owner approval." }, 201);
       }
 
       if (path === "/api/owner/staff-signup-requests" && (method === "GET" || method === "POST")) {
@@ -1223,12 +1349,23 @@ export default {
           const existingUser = await env.DB.prepare("SELECT id FROM users WHERE phone = ? LIMIT 1").bind(signup.phone).first();
           if (existingUser) return json({ success: false, message: "This phone number is already registered." }, 409);
           const staffId = crypto.randomUUID();
-          await env.DB.prepare("INSERT INTO users (id, name, email, phone, role, password_hash, active, created_at) VALUES (?, ?, NULL, ?, 'staff', ?, 1, ?)").bind(staffId, signup.name, signup.phone, signup.password_hash, now).run();
-          await env.DB.prepare("UPDATE staff_signup_requests SET status = 'approved', password_hash = NULL, reviewed_at = ? WHERE id = ? AND status = 'pending'").bind(now, requestId).run();
+          await ensureStaffNotificationSchema(env);
+          const notificationId = crypto.randomUUID();
+          await env.DB.batch([
+            env.DB.prepare("INSERT INTO users (id, name, email, phone, role, password_hash, active, created_at) VALUES (?, ?, NULL, ?, 'staff', ?, 1, ?)").bind(staffId, signup.name, signup.phone, signup.password_hash, now),
+            env.DB.prepare("UPDATE staff_signup_requests SET status = 'approved', password_hash = NULL, reviewed_at = ? WHERE id = ? AND status = 'pending'").bind(now, requestId),
+            env.DB.prepare("INSERT INTO staff_notifications (id, staff_id, title, message, category, created_at) VALUES (?, ?, ?, ?, 'account', ?)").bind(
+              notificationId,
+              staffId,
+              "My ARTfive! Staff account approved",
+              "My ARTfive! Your Staff account has been approved. You can now sign in to your Staff Dashboard.",
+              now
+            )
+          ]);
         } else {
           await env.DB.prepare("UPDATE staff_signup_requests SET status = 'rejected', password_hash = NULL, reviewed_at = ? WHERE id = ? AND status = 'pending'").bind(now, requestId).run();
         }
-        return json({ success: true, message: decision === "approve" ? "My ARTfive! Staff account approved successfully." : "Staff request rejected." });
+        return json({ success: true, message: decision === "approve" ? "My ARTfive! Staff account approved successfully. A notification is waiting in the Staff Dashboard." : "My ARTfive! Staff signup request rejected. The applicant can check the decision using their signup reference." });
       }
 
       if (path === "/api/owner/login" && method === "POST") {
@@ -1248,7 +1385,11 @@ export default {
           const rejected = await env.DB.prepare("SELECT id FROM staff_signup_requests WHERE phone = ? AND status = 'rejected' ORDER BY reviewed_at DESC LIMIT 1").bind(identifier).first();
           if (rejected) return json({ success: false, message: "Error!" }, 401);
         }
-        if (!user || user.active !== 1 || !(await verifyPassword(password, user.password_hash))) {
+        if (user && user.active !== 1) {
+          await logSecurity(env, ip, "staff_owner_login_blocked", "Blocked Staff sign-in attempt", now);
+          return json({ success: false, message: "Error!" }, 401);
+        }
+        if (!user || !(await verifyPassword(password, user.password_hash))) {
           await logSecurity(env, ip, "staff_owner_login_failed", "Invalid Owner/Staff sign-in", now);
           return json({ success: false, message: "Email or password was not accepted." }, 401);
         }
@@ -1294,7 +1435,11 @@ export default {
         const user = await env.DB.prepare(
           `SELECT id, name, email, phone, role, password_hash, active FROM users WHERE phone = ? AND role = 'customer' LIMIT 1`
         ).bind(phone).first();
-        if (!user || user.active !== 1 || !(await verifyPassword(password, user.password_hash))) {
+        if (user && user.active !== 1) {
+          await logSecurity(env, ip, "customer_login_blocked", "Blocked customer sign-in attempt", now);
+          return json({ success: false, message: "Error!" }, 401);
+        }
+        if (!user || !(await verifyPassword(password, user.password_hash))) {
           await logSecurity(env, ip, "customer_login_failed", "Invalid customer sign-in", now);
           return json({ success: false, message: "Phone number or password was not accepted." }, 401);
         }
@@ -1391,9 +1536,23 @@ export default {
         const id = crypto.randomUUID();
         const createdAt = now;
         const fileData = typeof body.file_data === "string" ? body.file_data : null;
-        await env.DB.prepare(
-          `INSERT INTO requests (id, data, file_data, created_at, customer_id) VALUES (?, ?, ?, ?, ?)`
-        ).bind(id, JSON.stringify(data), fileData, createdAt, user.id).run();
+        const enquiryText = String(data.enquiry || "").trim().slice(0, 2000);
+        if (enquiryText) await purgeExpiredChatMessages(env, now);
+        const statements = [
+          env.DB.prepare(
+            `INSERT INTO requests (id, data, file_data, created_at, customer_id) VALUES (?, ?, ?, ?, ?)`
+          ).bind(id, JSON.stringify(data), fileData, createdAt, user.id)
+        ];
+        // The optional Customer Option 1 enquiry is also placed in the same
+        // customer conversation shown in the customer form and Owner Chat 1.
+        // Keep it linked so deleting this request removes only this request's
+        // enquiry message, without touching other conversation messages.
+        if (enquiryText) {
+          statements.push(env.DB.prepare(
+            "INSERT INTO customer_enquiry_messages (id, request_id, customer_id, sender_id, sender_role, sender_name, message, created_at) VALUES (?, ?, ?, ?, 'customer', ?, ?, ?)"
+          ).bind(crypto.randomUUID(), id, user.id, user.id, user.name, enquiryText, createdAt));
+        }
+        await env.DB.batch(statements);
         return json({ success: true, id, created_at: createdAt, customer_id: user.id }, 201);
       }
 
@@ -1403,11 +1562,20 @@ export default {
         const body = await readJson(request);
         const id = String(body.id || "").trim();
         if (!id) return json({ success: false, message: "Request ID is required." }, 400);
-        // Option 8 deletes only the selected request form row from D1.
-        // It must not delete payment instructions, uploaded tickets, or ticket file data.
-        const result = await env.DB.prepare("DELETE FROM requests WHERE id = ?").bind(id).run();
-        if (!result.meta || result.meta.changes === 0) return json({ success: false, message: "Ticket request was not found." }, 404);
-        return json({ success: true, message: "Ticket request deleted." });
+        // Option 8 permanently deletes the selected request from D1. Its linked
+        // optional enquiry is removed from the Customer Option 1 / Owner Chat 1
+        // conversation too. Other chat messages, payment instructions and tickets
+        // are deliberately preserved.
+        await purgeExpiredChatMessages(env, now);
+        const requestRow = await env.DB.prepare("SELECT id, customer_id FROM requests WHERE id = ? LIMIT 1").bind(id).first();
+        if (!requestRow) return json({ success: false, message: "Ticket request was not found." }, 404);
+        const deleted = await env.DB.batch([
+          env.DB.prepare("DELETE FROM customer_enquiry_messages WHERE request_id = ? AND customer_id = ?").bind(id, requestRow.customer_id),
+          env.DB.prepare("DELETE FROM requests WHERE id = ? AND customer_id = ?").bind(id, requestRow.customer_id)
+        ]);
+        const deletedRequestCount = deleted[1]?.meta ? Number(deleted[1].meta.changes || 0) : 0;
+        if (deletedRequestCount === 0) return json({ success: false, message: "Ticket request was not found." }, 404);
+        return json({ success: true, message: "Ticket request and its linked enquiry were permanently deleted from D1. Other messages, payment instructions and uploaded tickets remain unchanged." });
       }
 
 
@@ -1604,7 +1772,7 @@ export default {
         let result;
         if (user.role === "owner" || user.role === "staff") {
           result = await env.DB.prepare(
-            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, uploaded_by AS uploadedBy, created_at AS createdAt FROM tickets ORDER BY created_at DESC"
+            "SELECT tickets.id, tickets.request_id AS requestId, tickets.customer_id AS customerId, tickets.customer_name AS customerName, tickets.customer_phone AS customerPhone, tickets.ticket_title AS ticketTitle, tickets.mime_type AS mimeType, tickets.file_data AS fileData, tickets.payment_confirmed AS paymentConfirmed, tickets.uploaded_by AS uploadedBy, uploader.role AS uploadedByRole, uploader.name AS uploadedByName, tickets.created_at AS createdAt FROM tickets LEFT JOIN users uploader ON uploader.id = tickets.uploaded_by ORDER BY tickets.created_at DESC"
           ).all();
         } else if (user.role === "customer") {
           const ticketAccessToken = request.headers.get("X-Ticket-Access") || "";
@@ -1615,7 +1783,7 @@ export default {
           ).bind(ticketAccessHash, user.id, now).first();
           if (!ticketAccess) return json({ success: false, message: "Your ticket access verification has expired. Please sign in again." }, 403);
           result = await env.DB.prepare(
-            "SELECT id, request_id AS requestId, customer_id AS customerId, customer_name AS customerName, customer_phone AS customerPhone, ticket_title AS ticketTitle, mime_type AS mimeType, file_data AS fileData, payment_confirmed AS paymentConfirmed, uploaded_by AS uploadedBy, created_at AS createdAt FROM tickets WHERE customer_id = ? ORDER BY created_at DESC"
+            "SELECT tickets.id, tickets.request_id AS requestId, tickets.customer_id AS customerId, tickets.customer_name AS customerName, tickets.customer_phone AS customerPhone, tickets.ticket_title AS ticketTitle, tickets.mime_type AS mimeType, tickets.file_data AS fileData, tickets.payment_confirmed AS paymentConfirmed, tickets.uploaded_by AS uploadedBy, uploader.role AS uploadedByRole, uploader.name AS uploadedByName, tickets.created_at AS createdAt FROM tickets LEFT JOIN users uploader ON uploader.id = tickets.uploaded_by WHERE tickets.customer_id = ? ORDER BY tickets.created_at DESC"
           ).bind(user.id).all();
         } else {
           return json({ success: false, message: "Access denied." }, 403);
@@ -1694,6 +1862,7 @@ export default {
             message: "My ARTfive! Thank you for choosing us! Your confirmed railway ticket is ready. You can now view and download your ticket. You're always most welcome to visit us again. Have a safe and happy journey! ❤️"
           }
         ];
+        // Both automatic ticket-upload notifications expire 15 minutes after the ticket is sent.
         const notificationExpiry = now + 15 * 60 * 1000;
         // Keep the saved Owner payment confirmation. A successful send resets only
         // the two dashboard switches; it never deletes ticket_payment_verifications.
