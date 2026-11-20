@@ -166,14 +166,16 @@
                             <p class="text-slate-300 text-base sm:text-lg mt-2" x-text="cms.heroSubtitle"></p>
                         </div>
 
-                        <div class="flex flex-wrap items-center gap-3 pt-2">
-                            <button @click="openLoginModal('customer_new')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl text-sm transition shadow flex items-center gap-2">
-                                <i class="fa-solid fa-user-plus"></i> <span x-text="cms.signUpBtnText"></span>
-                            </button>
-                            <button @click="openLoginModal('customer')" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-6 py-3 rounded-xl text-sm transition shadow flex items-center gap-2 border border-slate-600">
-                                <i class="fa-solid fa-right-to-bracket"></i> <span x-text="cms.signInBtnText"></span>
-                            </button>
-                            <button @click="shareApp()" aria-label="Share My ARTfive! app" class="ml-auto bg-sky-700/80 hover:bg-sky-600 text-white font-semibold px-3 py-2 rounded-lg text-xs transition shadow flex items-center gap-2 border border-sky-500/40">
+                        <div class="flex items-center gap-3 pt-2">
+                            <div class="flex flex-col gap-3">
+                                <button @click="openLoginModal('customer_new')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl text-sm transition shadow flex items-center gap-2">
+                                    <i class="fa-solid fa-user-plus"></i> <span x-text="cms.signUpBtnText"></span>
+                                </button>
+                                <button @click="openLoginModal('customer')" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-6 py-3 rounded-xl text-sm transition shadow flex items-center gap-2 border border-slate-600">
+                                    <i class="fa-solid fa-right-to-bracket"></i> <span x-text="cms.signInBtnText"></span>
+                                </button>
+                            </div>
+                            <button @click="shareApp()" aria-label="Share My ARTfive! app" class="shrink-0 bg-sky-700/80 hover:bg-sky-600 text-white font-semibold px-3 py-2 rounded-lg text-xs transition shadow flex items-center gap-2 border border-sky-500/40">
                                 <i class="fa-solid fa-share-nodes"></i> Share App!
                             </button>
                         </div>
@@ -998,7 +1000,6 @@
                         <button @click="saveAllCmsChanges(); activeMenuOption = null" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl text-sm transition shadow">Save & Apply All Master Changes</button>
                     </div>
                 </div>
-
                 <!-- Owner Option 6: New Update -->
                 <div x-show="activeMenuOption === 6" class="space-y-6">
                     <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
@@ -1997,8 +1998,7 @@
 
                 notifForm: { category: 'All', customerId: '', message: '' },
                 selectedNotificationTemplate: '',
-                notificationTemplates: [
-                    'Your Railway Ticket Request has been received and is under processing.',
+                notificationTemplates: [                    'Your Railway Ticket Request has been received and is under processing.',
                     'Payment confirmed! Your confirmed e-ticket PDF is now available in My Tickets (Option 4).',
                     'Reminder: Please complete your ticket collection charges payment to unlock ticket download.',
                     'Tatkal booking window opens soon. Please verify passenger details.'
