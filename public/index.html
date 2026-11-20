@@ -322,7 +322,9 @@
                         <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1" x-text="cms.ownerDashTitle"></h2>
                         <p class="text-slate-300 text-sm" x-text="cms.ownerDashSubtitle"></p>
                     </div>
-                    
+                    <button type="button" @click="logout()" class="shrink-0 bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow flex items-center gap-2">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    </button>
                 </div>
 
                 <div x-show="activeMenuOption === null" class="space-y-6">
@@ -1347,6 +1349,10 @@
                         <button @click="activeMenuOption = null" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button>
                     </div>
                     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-6 max-w-2xl mx-auto">
+                        <div class="rounded-xl border border-sky-500/30 bg-slate-900 p-4 flex items-center justify-between gap-3">
+                            <div><p class="text-sm font-extrabold text-sky-300">Staff Total Tickets Sent</p><p class="text-xs text-slate-400">Total tickets uploaded by Staff accounts</p></div>
+                            <span class="text-3xl font-extrabold text-white tabular-nums" x-text="assignedTickets.filter(ticket => ticket.uploadedByRole === 'staff').length"></span>
+                        </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-400 mb-1">Find Customer by Name or Phone Number</label>
                             <input type="search" x-model="customerSearch" placeholder="Type to search customers..." class="w-full mb-2 bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white">
@@ -1755,6 +1761,27 @@
                     </div>
                 </div>
 
+                <div x-show="!ownerPreviewMode && currentUser && currentUser.role === 'customer' && activeCustOption === null" class="space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div @click="selectCustomerOption(1)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                            <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-ticket"></i></div>
+                            <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt1Title"></h3><p class="text-xs text-slate-400" x-text="cms.custOpt1Desc"></p>
+                        </div>
+                        <div @click="selectCustomerOption(2)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                            <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-credit-card"></i></div>
+                            <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt2Title"></h3><p class="text-xs text-slate-400" x-text="cms.custOpt2Desc"></p>
+                        </div>
+                        <div @click="selectCustomerOption(3)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                            <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                            <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt3Title"></h3><p class="text-xs text-slate-400" x-text="cms.custOpt3Desc"></p>
+                        </div>
+                        <div @click="selectCustomerOption(4)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                            <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-folder-open"></i></div>
+                            <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt4Title"></h3><p class="text-xs text-slate-400" x-text="cms.custOpt4Desc"></p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Customer Option 1: Full Form with 1-Click Saved Passenger Autofill, CMS Station Filter & Synced Enquiry Box -->
                 <div x-show="activeCustOption === 1" class="bg-slate-800 border border-slate-700 p-6 sm:p-8 rounded-2xl space-y-6 max-w-3xl mx-auto">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-4">
@@ -1845,7 +1872,7 @@
 
                 <!-- Customer Option 2: Booking Request Payment -->
                 <div x-show="activeCustOption === 2" x-effect="if (!ownerPreviewMode && activeCustOption === 2) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
-                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
+                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt2Title"></h3><button @click="activeCustOption = null; currentDashboard = 'customer'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Personal message notification -->
                     <section class="w-full min-w-0 rounded-xl border-2 border-emerald-500/50 bg-slate-900 p-4 space-y-3" aria-label="Option 2 message notification">
@@ -1894,13 +1921,14 @@
 
                 <!-- Customer Option 3: Ticket Collection Charges -->
                 <div x-show="activeCustOption === 3" x-effect="if (!ownerPreviewMode && activeCustOption === 3) { loadCustomerPaymentInstructions(); startCustomerPaymentInstructionPolling(); }" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 max-w-xl mx-auto">
-                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null; currentDashboard = 'public'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
+                    <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg" x-text="cms.custOpt3Title"></h3><button @click="activeCustOption = null; currentDashboard = 'customer'; ticketAccessToken = ''; assignedTickets = []" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg">Back</button></div>
 
                     <!-- Box 1: Both Option 3 message types appear together -->
                     <section class="w-full min-w-0 rounded-xl border-2 border-sky-500/50 bg-slate-900 p-4 space-y-3" aria-label="Option 3 message notifications">
                         <p class="text-sm font-extrabold text-sky-300">My ARTfive! Message Notification</p>
                         <div x-show="!ownerPreviewMode"><template x-for="note in customerNotifications.filter(n => Number(n.targetOption) === 3)" :key="'ticket-option3-note-'+note.id">
                             <div class="w-full min-w-0 rounded-lg border border-sky-500/40 bg-slate-950 p-3">
+                                <p class="text-xs font-extrabold text-sky-300 mb-1" x-text="note.senderName || 'My ARTfive!'"></p>
                                 <p class="text-sm leading-relaxed text-sky-100 whitespace-pre-wrap break-words" style="overflow-wrap:anywhere" role="status" aria-live="polite" x-text="note.message"></p>
                             </div>
                         </template></div>
@@ -4532,7 +4560,7 @@
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
                         this.offlineMode = false;
                         this.currentDashboard = this.currentUser.role === 'owner' ? 'owner' :
-                            (this.currentUser.role === 'staff' ? 'staff' : (this.loginRole === 'customer_verify' ? 'customer' : 'public'));
+                            (this.currentUser.role === 'staff' ? 'staff' : 'customer');
                         if (this.loginRole === 'customer_verify') this.activeCustOption = 4;
                         this.activeMenuOption = null;
                         this.activeStaffOption = null;
