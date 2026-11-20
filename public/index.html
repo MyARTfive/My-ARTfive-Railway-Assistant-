@@ -4646,9 +4646,10 @@
                     this.ownerPreviewMode = false;
                     this.ticketAccessToken = '';
                     this.assignedTickets = [];
-                    // A signed-in customer returns to their dashboard instead of being sent
-                    // to the public sign-in screen when tapping the app header.
-                    this.currentDashboard = this.currentUser && this.currentUser.role === 'customer' ? 'customer' : 'public';
+                    // The app header returns to the complete public home screen.
+                    // Keep the customer's authenticated session so Options 1–3 still open
+                    // without asking them to sign in again.
+                    this.currentDashboard = 'public';
                     this.activeMenuOption = null; 
                     this.activeCustOption = null; 
                     this.activeStaffOption = null; 
