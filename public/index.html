@@ -275,12 +275,12 @@
                             <h4 class="font-bold text-white text-base mb-1" x-text="cms.custOpt1Title"></h4>
                             <p class="text-xs text-slate-300" x-text="cms.custOpt1Desc"></p>
                         </div>
-                        <div @click="selectCustomerOption(2)" class="bg-slate-700/50 hover:bg-slate-700 border border-slate-600/80 hover:border-emerald-500/50 p-5 rounded-xl cursor-pointer transition group shadow">
+                        <div @click="openOwnerCustomerOptionPreview(2)" class="bg-slate-700/50 hover:bg-slate-700 border border-slate-600/80 hover:border-emerald-500/50 p-5 rounded-xl cursor-pointer transition group shadow">
                             <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-credit-card text-2xl"></i><span class="text-xs font-extrabold">Option 2</span></div>
                             <h4 class="font-bold text-white text-base mb-1" x-text="cms.custOpt2Title"></h4>
                             <p class="text-xs text-slate-300" x-text="cms.custOpt2Desc"></p>
                         </div>
-                        <div @click="selectCustomerOption(3)" class="bg-slate-700/50 hover:bg-slate-700 border border-slate-600/80 hover:border-emerald-500/50 p-5 rounded-xl cursor-pointer transition group shadow">
+                        <div @click="openOwnerCustomerOptionPreview(3)" class="bg-slate-700/50 hover:bg-slate-700 border border-slate-600/80 hover:border-emerald-500/50 p-5 rounded-xl cursor-pointer transition group shadow">
                             <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-file-invoice-dollar text-2xl"></i><span class="text-xs font-extrabold">Option 3</span></div>
                             <h4 class="font-bold text-white text-base mb-1" x-text="cms.custOpt3Title"></h4>
                             <p class="text-xs text-slate-300" x-text="cms.custOpt3Desc"></p>
@@ -731,12 +731,12 @@
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt1Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt1Desc"></p>
                         </div>
-                        <div @click="ownerInspectCustOpt = 2" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                        <div @click="openOwnerCustomerOptionPreview(2)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-credit-card text-2xl"></i><span class="text-xs font-extrabold">Option 2</span></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt2Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt2Desc"></p>
                         </div>
-                        <div @click="ownerInspectCustOpt = 3" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                        <div @click="openOwnerCustomerOptionPreview(3)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="flex items-center gap-2 text-emerald-400 mb-3"><i class="fa-solid fa-file-invoice-dollar text-2xl"></i><span class="text-xs font-extrabold">Option 3</span></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt3Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt3Desc"></p>
@@ -1737,12 +1737,12 @@
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt1Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt1Desc"></p>
                         </div>
-                        <div @click="selectCustomerOption(2)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                        <div @click="openOwnerCustomerOptionPreview(2)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-credit-card"></i></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt2Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt2Desc"></p>
                         </div>
-                        <div @click="selectCustomerOption(3)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
+                        <div @click="openOwnerCustomerOptionPreview(3)" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 p-5 rounded-2xl cursor-pointer transition shadow group">
                             <div class="text-emerald-400 text-2xl mb-3"><i class="fa-solid fa-file-invoice-dollar"></i></div>
                             <h3 class="font-bold text-white text-sm mb-1" x-text="cms.custOpt3Title"></h3>
                             <p class="text-xs text-slate-400" x-text="cms.custOpt3Desc"></p>
@@ -3672,6 +3672,22 @@
                     this.ticketAccessToken = '';
                     this.assignedTickets = [];
                     this.stopCustomerPaymentInstructionPolling();
+                },
+
+                openOwnerCustomerOptionPreview(optNum) {
+                    if (!this.currentUser || this.currentUser.role !== 'owner' || ![2, 3].includes(Number(optNum))) {
+                        this.showAppNotice('My ARTfive! Only the signed-in Owner can preview Customer Dashboard Options 2 and 3.');
+                        return;
+                    }
+                    // Open the actual Customer Dashboard payment page in Owner preview mode.
+                    // Customer sign-in, private payment records and payment submission remain protected.
+                    this.ownerPreviewMode = true;
+                    this.currentDashboard = 'customer';
+                    this.activeMenuOption = null;
+                    this.ownerInspectCustOpt = null;
+                    this.activeCustOption = Number(optNum);
+                    this.ticketAccessToken = '';
+                    this.assignedTickets = [];
                 },
 
                 ownerSelectOption(optNum) {
