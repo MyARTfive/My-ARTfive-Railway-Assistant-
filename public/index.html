@@ -31,6 +31,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Alpine.js is bundled locally so dashboard startup does not depend on third-party CDNs. -->
     <style>
+        /* The startup panel uses flex; explicitly honor the HTML hidden attribute over utility classes. */
+        [hidden] { display: none !important; }
         [x-cloak] { display: none !important; }
         html:not(.alpine-ready) [x-show],
         html.alpine-load-failed [x-show] { display: none !important; }
@@ -70,6 +72,15 @@
             const detail = reason && reason.stack ? reason.stack : (reason && reason.message ? reason.message : String(reason || 'Unknown rejected promise'));
             window.__artfiveShowStartupError('Startup promise failed: ' + detail);
         });
+        // If Alpine never emits its initialized event, replace the placeholder with a useful timeout diagnostic.
+        window.addEventListener('load', () => {
+            window.setTimeout(() => {
+                if (!document.documentElement.classList.contains('alpine-ready') &&
+                    !document.documentElement.classList.contains('alpine-load-failed')) {
+                    window.__artfiveShowStartupError('Alpine.js did not finish initializing within 8 seconds. Check that /vendor/alpine-3.14.9.min.js loaded successfully and that no earlier script error stopped startup.');
+                }
+            }, 8000);
+        }, { once: true });
     </script>
     <style id="artfive-design-theme">
         body { background-color: var(--artfive-design-bg, #0f172a) !important; }
