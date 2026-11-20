@@ -6,8 +6,13 @@ const MAX_BODY_BYTES = 3 * 1024 * 1024;
 const SESSION_COOKIE = "artfive_session";
 const MANAGER_SESSION_COOKIE = "artfive_manager_session";
 
-const json = (data, status = 200, headers = {}) =>
-  Response.json(data, { status, headers });
+const json = (data, status = 200, headers = {}) => {
+  const responseHeaders = new Headers(headers);
+  // Authenticated account data must never be stored in browser or intermediary HTTP caches.
+  responseHeaders.set("Cache-Control", "no-store, private, max-age=0");
+  responseHeaders.set("Pragma", "no-cache");
+  return Response.json(data, { status, headers: responseHeaders });
+};
 
 function safeEqual(a, b) {
   if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
