@@ -2897,7 +2897,7 @@
                     if (!targetId) { this.customerEnquiryMessages = []; return; }
                     try {
                         const result = await this.apiRequest('/api/customer-enquiry?customerId=' + encodeURIComponent(targetId));
-                        this.customerEnquiryMessages = (result.messages || []).map(msg => ({ ...msg, time: new Date(Number(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
+                        this.customerEnquiryMessages = (result.messages || []).map(msg => ({ ...msg, text: msg.senderRole === 'owner' || msg.sender === 'My ARTfive!' ? String(msg.text || '').replace(/^My ARTfive!\\s*/i, '') : msg.text, time: new Date(Number(msg.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
                     } catch (error) { this.showAppNotice(error.message || 'My ARTfive! Could not load the enquiry conversation.'); }
                 },
 
@@ -3251,17 +3251,36 @@
                 async apiRequest(path, options = {}) {
                     const requestHeaders = { 'Content-Type': 'application/json', ...(options.headers || {}) };
                     if (path === '/api/tickets' && this.currentUser && this.currentUser.role === 'customer' && this.ticketAccessToken) requestHeaders['X-Ticket-Access'] = this.ticketAccessToken;
-                    const response = await fetch(path, {
-                        method: options.method || 'GET',
-                        credentials: 'same-origin',
-                        cache: 'no-store',
-                        headers: requestHeaders,
-                        body: options.body ? JSON.stringify(options.body) : undefined
-                    });
+                    const method = options.method || 'GET';
+                    let response;
+                    let lastNetworkError = null;
+                    // Retry only safe GET requests after a transient network/server failure.
+                    // Never retry POST requests, so chat messages and payments cannot be duplicated.
+                    for (let attempt = 0; attempt < (method === 'GET' ? 2 : 1); attempt++) {
+                        try {
+                            response = await fetch(path, {
+                                method,
+                                credentials: 'same-origin',
+                                cache: 'no-store',
+                                headers: requestHeaders,
+                                body: options.body ? JSON.stringify(options.body) : undefined
+                            });
+                            if (!(method === 'GET' && attempt === 0 && [502, 503, 504].includes(response.status))) break;
+                        } catch (error) {
+                            lastNetworkError = error;
+                            if (method !== 'GET' || attempt > 0) break;
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 400));
+                    }
+                    if (!response) {
+                        const error = new Error('My ARTfive! Connection temporarily unavailable. Please check your internet connection and try again.');
+                        error.cause = lastNetworkError;
+                        throw error;
+                    }
                     let result = {};
                     try { result = await response.json(); } catch (e) {}
                     if (!response.ok || result.success === false) {
-                        const error = new Error(result.message || 'My ARTfive! Server request failed.');
+                        const error = new Error(result.message || 'My ARTfive! Server request failed. Please try again.');
                         error.status = response.status;
                         throw error;
                     }
