@@ -446,7 +446,7 @@
                             <i class="fa-solid fa-users-gear text-sky-400 text-xl"></i><h4 class="font-bold text-white mt-3">4. Manage Customers &amp; Staff</h4><p class="text-xs text-slate-400 mt-1">Manage accounts, access and permissions.</p>
                         </button>
                         <button type="button" @click="activeAppManagementSection = 'features'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-violet-500/50 rounded-xl p-5 transition">
-                            <i class="fa-solid fa-puzzle-piece text-violet-300 text-xl"></i><h4 class="font-bold text-white mt-3">5. Add New Features</h4><p class="text-xs text-slate-400 mt-1">Prepare modular features for future expansion.</p>
+                            <i class="fa-solid fa-puzzle-piece text-violet-300 text-xl"></i><h4 class="font-bold text-white mt-3">5. Add New Features</h4><p class="text-xs text-slate-400 mt-1">Write a feature request and send it to the Assistant workspace.</p>
                         </button>
                         <button type="button" @click="activeAppManagementSection = 'settings'" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-orange-500/50 rounded-xl p-5 transition">
                             <i class="fa-solid fa-gear text-orange-300 text-xl"></i><h4 class="font-bold text-white mt-3">6. App Settings</h4><p class="text-xs text-slate-400 mt-1">Manage general application configuration.</p>
@@ -515,10 +515,22 @@
                             <p class="text-xs text-sky-100/90">The existing My Dashboard Option 10 → Control contains the protected account and access-management tools. It requires the existing Manager verification. Passwords remain hidden and account actions continue to use the existing secure controls.</p>
                             <button type="button" @click="ownerSelectOption(10)" class="bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold px-4 py-2 rounded-lg">Open Option 10 — Control</button>
                         </div>
-                        <div x-show="activeAppManagementSection === 'features'" class="rounded-xl border border-violet-500/30 bg-violet-950/20 p-4 space-y-3">
-                            <p class="text-sm font-bold text-violet-200">Prepare a new feature request</p>
-                            <p class="text-xs text-violet-100/90">New code features must be reviewed against the current app, implemented on a separate working branch, validated and tested in Preview. The Assistant workspace prepares that request without directly changing live code.</p>
-                            <button type="button" @click="activeAppManagementSection = 'ai-github'; loadAssistantGithubStatus()" class="bg-violet-700 hover:bg-violet-600 text-white text-xs font-bold px-4 py-2 rounded-lg">Open My ARTfive! Assistant!</button>
+                        <div x-show="activeAppManagementSection === 'features'" class="rounded-xl border border-violet-500/30 bg-violet-950/20 p-4 space-y-4">
+                            <div>
+                                <p class="text-sm font-bold text-violet-200">Prepare a new feature request</p>
+                                <p class="text-xs text-violet-100/90 mt-1">Describe the feature you want to add. Your request will be carried into My ARTfive! Assistant! so it can be reviewed against the existing app before any code change is proposed.</p>
+                            </div>
+                            <label class="block text-xs font-semibold text-violet-100">Feature title
+                                <input x-model="newFeatureTitle" maxlength="120" class="mt-1 w-full rounded-lg border border-violet-500/30 bg-slate-900 px-3 py-2.5 text-sm text-white" placeholder="e.g. Customer travel history">
+                            </label>
+                            <label class="block text-xs font-semibold text-violet-100">Feature details
+                                <textarea x-model="newFeatureDetails" maxlength="3000" rows="5" class="mt-1 w-full rounded-lg border border-violet-500/30 bg-slate-900 px-3 py-2.5 text-sm text-white" placeholder="Explain what the feature should do, who will use it, and any important rules..."></textarea>
+                            </label>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" :disabled="!newFeatureTitle.trim() || !newFeatureDetails.trim()" @click="assistantTaskRequest = 'New feature request for My ARTfive! Railway Assistant!\nFeature title: ' + newFeatureTitle.trim() + '\nFeature details: ' + newFeatureDetails.trim() + '\nPlease inspect existing features and protected workflows first. Reuse existing functionality where possible, avoid duplicate options, and propose a minimal safe implementation on the integration branch. Validate and test in Preview. Do not merge or deploy Production without my explicit approval.'; assistantTaskMessage = ''; activeAppManagementSection = 'ai-github'; loadAssistantGithubStatus()" class="bg-violet-700 hover:bg-violet-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2 rounded-lg">Prepare in My ARTfive! Assistant!</button>
+                                <button type="button" @click="newFeatureTitle = ''; newFeatureDetails = ''" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg">Clear form</button>
+                            </div>
+                            <p class="text-[11px] text-violet-100/70">This prepares a request only. It does not create code, change customer data, or deploy anything.</p>
                         </div>
                         <div x-show="activeAppManagementSection === 'settings'" class="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 space-y-4">
                             <div>
@@ -2891,6 +2903,8 @@
                 assistantGithubError: '',
                 assistantTaskRequest: '',
                 assistantTaskMessage: '',
+                newFeatureTitle: '',
+                newFeatureDetails: '',
                 appServiceForm: { id: '', name: '', description: '', icon: 'fa-solid fa-layer-group', displayOrder: 0, status: 'draft' },
                 activeCustOption: null,
                 activeStaffOption: null,
