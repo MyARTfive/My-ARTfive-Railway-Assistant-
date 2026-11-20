@@ -3373,7 +3373,7 @@
                         }
                         this.ownerPreviewMode = false;
                         if (result.user.role === 'customer') {
-                            this.currentDashboard = 'public';
+                            this.currentDashboard = 'customer';
                             this.activeCustOption = null;
                             this.ticketAccessToken = '';
                         }
@@ -4562,6 +4562,7 @@
                         this.currentDashboard = this.currentUser.role === 'owner' ? 'owner' :
                             (this.currentUser.role === 'staff' ? 'staff' : 'customer');
                         if (this.loginRole === 'customer_verify') this.activeCustOption = 4;
+                        else if (this.currentUser.role === 'customer') this.activeCustOption = null;
                         this.activeMenuOption = null;
                         this.activeStaffOption = null;
                         this.ownerInspectStaffOpt = null;
