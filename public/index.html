@@ -502,9 +502,27 @@
                             <p class="text-sm text-slate-200">The existing Manage App Design editor is kept unchanged and remains the single place to edit the app's colours, welcome slides, icon and displayed words.</p>
                             <button type="button" @click="activeMenuOption = 'manageAppDesign'; activeAppManagementSection = null" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg">Open Manage App Design</button>
                         </div>
-                        <div x-show="!['services','design','ai-github'].includes(activeAppManagementSection)" class="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
-                            <p class="text-xs font-bold text-amber-200"><i class="fa-solid fa-circle-info mr-1"></i> Setup stage</p>
-                            <p class="text-xs text-amber-100/90 mt-1">This section is now placed inside My Dashboard. Its management controls and secure server connections must be implemented and tested before it can change live app data. No customer records, payments, tickets, notifications or existing services are changed by opening this page.</p>
+                        <div x-show="activeAppManagementSection === 'notifications'" class="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 space-y-3">
+                            <p class="text-sm font-bold text-amber-200">Use the existing notification controls</p>
+                            <p class="text-xs text-amber-100/90">My Dashboard Option 4 already manages customer payment notifications, including the existing SEND / UNSEND workflow. Option 5 opens the existing Edit All workspace for editable app wording and message content. These are linked directly; their existing behaviour is not duplicated or replaced.</p>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" @click="ownerSelectOption(4)" class="bg-amber-700 hover:bg-amber-600 text-white text-xs font-bold px-4 py-2 rounded-lg">Open Option 4 — Manage All Notifications</button>
+                                <button type="button" @click="ownerSelectOption(5)" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded-lg">Open Option 5 — Edit All</button>
+                            </div>
+                        </div>
+                        <div x-show="activeAppManagementSection === 'accounts'" class="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-3">
+                            <p class="text-sm font-bold text-sky-200">Customer and Staff account controls</p>
+                            <p class="text-xs text-sky-100/90">The existing My Dashboard Option 10 → Control contains the protected account and access-management tools. It requires the existing Manager verification. Passwords remain hidden and account actions continue to use the existing secure controls.</p>
+                            <button type="button" @click="ownerSelectOption(10)" class="bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold px-4 py-2 rounded-lg">Open Option 10 — Control</button>
+                        </div>
+                        <div x-show="activeAppManagementSection === 'features'" class="rounded-xl border border-violet-500/30 bg-violet-950/20 p-4 space-y-3">
+                            <p class="text-sm font-bold text-violet-200">Prepare a new feature request</p>
+                            <p class="text-xs text-violet-100/90">New code features must be reviewed against the current app, implemented on a separate working branch, validated and tested in Preview. The Assistant workspace prepares that request without directly changing live code.</p>
+                            <button type="button" @click="activeAppManagementSection = 'ai-github'; loadAssistantGithubStatus()" class="bg-violet-700 hover:bg-violet-600 text-white text-xs font-bold px-4 py-2 rounded-lg">Open My ARTfive! Assistant!</button>
+                        </div>
+                        <div x-show="activeAppManagementSection === 'settings'" class="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 space-y-2">
+                            <p class="text-sm font-bold text-amber-200">Application settings</p>
+                            <p class="text-xs text-amber-100/90">The current app already has separate protected settings within its existing Owner controls. I am keeping this section separate until each setting can be connected to its correct existing control or a tested new setting. No unrelated security or account setting is being exposed under the wrong label.</p>
                         </div>
                     </div>
                 </div>
