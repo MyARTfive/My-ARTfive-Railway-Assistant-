@@ -7,12 +7,14 @@ on:
       - feature/24-hour-chat-message-expiry
       - feature/option10-delete-customer-id
       - feature/full-app-workflow-audit-fixes
+      - feature/one-app-integration
   pull_request:
     branches:
       - main
       - feature/central-d1-ticket-sync
       - feature/24-hour-chat-message-expiry
       - feature/app-management-dashboard-foundation
+      - feature/full-app-workflow-audit-fixes
 
 jobs:
   syntax-check:
@@ -89,7 +91,22 @@ jobs:
             ['Option 10 Staff re-registration cleanup', worker.includes('DELETE FROM staff_signup_requests WHERE phone = ?')],
             ['Blocked account shows exact Error!', ui.includes("this.showAppNotice('Error!')") && worker.includes('message: "Error!"') && worker.includes('customer_login_blocked') && worker.includes('staff_owner_login_blocked')],
             ['Customer and Staff password recovery workflow', ui.includes('submitPasswordChangeRequest()') && worker.includes('path === "/api/password-change/request"') && worker.includes('path === "/api/password-change/status"') && worker.includes('path === "/api/owner/control/password-requests/decision"')],
-            ['Manager forgot-password recovery workflow', ui.includes('resetOption10ManagerPassword()') && worker.includes('path === "/api/owner/manager/reset"')]
+            ['Manager forgot-password recovery workflow', ui.includes('resetOption10ManagerPassword()') && worker.includes('path === "/api/owner/manager/reset"')],
+            ['My ARTfive! App Management entry and owner access guard', ui.includes('My ARTfive! App Management!') && ui.includes("ownerSelectOption('appManagement')") && ui.includes('Only the signed-in Owner can open App Management.')],
+            ['App Management service catalogue UI and API', ui.includes('async loadAppServices()') && ui.includes('async saveAppService()') && worker.includes('path === "/api/owner/services"')],
+            ['Manage Services Refresh visibly runs a fresh owner-authenticated catalogue load', ui.includes('async refreshAppServices()') && ui.includes('@click.prevent.stop="refreshAppServices()"') && ui.includes("appServicesBusy ? 'Refreshing...' : 'Refresh'") && ui.includes('Service catalogue refreshed successfully.') && ui.includes("cache: 'no-store'")],
+            ['Editing a service validates and persists its selected status', worker.includes('if (action === "update" || action === "status" || action === "delete")') && worker.includes('if (!["active", "inactive", "draft"].includes(status))') && worker.includes('SET name = ?, description = ?, icon = ?, display_order = ?, status = ?, updated_at = ?')],
+            ['Owner can permanently delete only the selected service catalogue record', worker.includes('action === "delete"') && worker.includes('DELETE FROM app_services WHERE id = ?') && ui.includes('async deleteAppService(service)') && ui.includes('action: \'delete\', id: service.id') && ui.includes('Permanently delete the service') && ui.includes('>Delete</button>')],
+            ['App Management service catalogue migration', fs.readFileSync('migrations/0006_app_services.sql', 'utf8').includes('CREATE TABLE IF NOT EXISTS app_services')],
+            ['App Management has exactly seven approved sections', ['1. Manage Services', '2. Manage Notifications', '3. Manage App Design', '4. Manage Customers & Staff', '5. Add New Features', '6. App Settings', '7. My ARTfive! Assistant!'].every(title => ui.includes(title)) && (ui.match(/activeAppManagementSection = '(?:services|notifications|design|accounts|features|settings|ai-github)'/g) || []).length >= 7],
+            ['Structured feature request requires title and details', ui.includes('newFeatureTitle:') && ui.includes('newFeatureDetails:') && ui.includes('maxlength="120"') && ui.includes('maxlength="3000"') && ui.includes('!newFeatureTitle.trim() || !newFeatureDetails.trim()') && ui.includes('Feature details')],
+            ['Feature request only prepares Assistant prompt; no automatic code deployment', ui.includes('Prepare in My ARTfive! Assistant!') && ui.includes('This prepares a request only. It does not create code, change customer data, or deploy anything.') && ui.includes('Do not merge or deploy Production without my explicit approval.')],
+            ['App Management links existing notification and design controls', ui.includes('ownerSelectOption(4)') && ui.includes('ownerSelectOption(5)') && ui.includes("activeMenuOption = 'manageAppDesign'")],
+            ['App Settings links existing inquiry, staff and download controls', ui.includes("ownerSelectOption('custChat')") && ui.includes("ownerSelectOption('staffChat')") && ui.includes('ownerSelectOption(3)')],
+            ['Assistant GitHub status is owner-authenticated and read-only GET', worker.includes('path === "/api/owner/assistant/github-status" && method === "GET"') && worker.includes('Only the signed-in Owner can inspect the GitHub project.') && !worker.includes('path === "/api/owner/assistant/github-status" && (method === "POST"')],
+            ['App Management services API rejects non-owner sessions', worker.includes('path === "/api/owner/services"') && worker.includes('Only the signed-in Owner can manage services.') && worker.includes('owner.role !== "owner"')],
+            ['App Management assistant composer does not request credentials or paid AI keys', ui.includes('No GitHub password, token or paid AI API key is required.') && ui.includes('https://chatgpt.com/')],
+            ['Assistant card accurately describes current read-only GitHub and ChatGPT request features', ui.includes('Prepare requests with ChatGPT and inspect read-only GitHub project status.') && !ui.includes('Future AI assistant for project inspection and approved code changes.')]
           ];
           const failed = checks.filter(([, ok]) => !ok);
           for (const [name, ok] of checks) console.log((ok ? 'PASS ' : 'FAIL ') + name);

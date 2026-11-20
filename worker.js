@@ -480,6 +480,143 @@ export default {
         return json({ success: true, recorded: Number(result.meta?.changes || 0) > 0, count: Number(count?.total || 0) });
       }
 
+      if (path === "/api/owner/services" && (method === "GET" || method === "POST")) {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the signed-in Owner can manage services." }, 403);
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS app_services (
+            id TEXT PRIMARY KEY,
+            slug TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            icon TEXT NOT NULL DEFAULT 'fa-solid fa-layer-group',
+            display_order INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('active','inactive','draft')),
+            created_by TEXT NOT NULL REFERENCES users(id),
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+          )
+        `).run();
+        if (method === "GET") {
+          const result = await env.DB.prepare(
+            "SELECT id, slug, name, description, icon, display_order AS displayOrder, status, created_at AS createdAt, updated_at AS updatedAt FROM app_services ORDER BY display_order ASC, created_at ASC"
+          ).all();
+          return json({ success: true, services: result.results || [] });
+        }
+        const body = await readJson(request);
+        const action = String(body.action || "create");
+        if (action === "create") {
+          const name = String(body.name || "").trim().slice(0, 80);
+          const description = String(body.description || "").trim().slice(0, 300);
+          const icon = String(body.icon || "fa-solid fa-layer-group").trim().slice(0, 80);
+          const displayOrder = Number.isInteger(Number(body.displayOrder)) ? Math.max(0, Math.min(9999, Number(body.displayOrder))) : 0;
+          const status = ["active", "inactive", "draft"].includes(body.status) ? body.status : "draft";
+          if (!name) return json({ success: false, message: "Enter a service name." }, 400);
+          const slug = name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "service";
+          const id = crypto.randomUUID();
+          try {
+            await env.DB.prepare(
+              "INSERT INTO app_services (id, slug, name, description, icon, display_order, status, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            ).bind(id, slug + "-" + id.slice(0, 8), name, description, icon, displayOrder, status, owner.id, now, now).run();
+          } catch (error) {
+            console.error("My ARTfive! Service create failed:", error.message);
+            return json({ success: false, message: "The service could not be saved. Please try again." }, 500);
+          }
+          return json({ success: true, id, message: "My ARTfive! Service created successfully." }, 201);
+        }
+        if (action === "update" || action === "status" || action === "delete") {
+          const id = String(body.id || "").trim();
+          if (!id) return json({ success: false, message: "Select a service first." }, 400);
+          const existing = await env.DB.prepare("SELECT id FROM app_services WHERE id = ? LIMIT 1").bind(id).first();
+          if (!existing) return json({ success: false, message: "Service was not found." }, 404);
+          if (action === "delete") {
+            await env.DB.prepare("DELETE FROM app_services WHERE id = ?").bind(id).run();
+            return json({ success: true, message: "My ARTfive! Service deleted successfully." });
+          }
+          if (action === "status") {
+            const status = String(body.status || "");
+            if (!["active", "inactive", "draft"].includes(status)) return json({ success: false, message: "Choose a valid service status." }, 400);
+            await env.DB.prepare("UPDATE app_services SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, id).run();
+          } else {
+            const name = String(body.name || "").trim().slice(0, 80);
+            const description = String(body.description || "").trim().slice(0, 300);
+            const icon = String(body.icon || "fa-solid fa-layer-group").trim().slice(0, 80);
+            const displayOrder = Number.isInteger(Number(body.displayOrder)) ? Math.max(0, Math.min(9999, Number(body.displayOrder))) : 0;
+            const status = String(body.status || "");
+            if (!name) return json({ success: false, message: "Enter a service name." }, 400);
+            if (!["active", "inactive", "draft"].includes(status)) return json({ success: false, message: "Choose a valid service status." }, 400);
+            await env.DB.prepare(
+              "UPDATE app_services SET name = ?, description = ?, icon = ?, display_order = ?, status = ?, updated_at = ? WHERE id = ?"
+            ).bind(name, description, icon, displayOrder, status, now, id).run();
+          }
+          return json({ success: true, message: "My ARTfive! Service updated successfully." });
+        }
+        return json({ success: false, message: "Unsupported service action." }, 400);
+      }
+
+      if (path === "/api/owner/assistant/github-status" && method === "GET") {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the signed-in Owner can inspect the GitHub project." }, 403);
+        const repository = "MyARTfive/My-ARTfive-Railway-Assistant-";
+        const branch = "feature/one-app-integration";
+        const headers = {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "My-ARTfive-Railway-Assistant"
+        };
+        try {
+          const endpoints = [
+            fetch("https://api.github.com/repos/" + repository, { headers }),
+            fetch("https://api.github.com/repos/" + repository + "/branches/" + encodeURIComponent(branch), { headers }),
+            fetch("https://api.github.com/repos/" + repository + "/commits?sha=" + encodeURIComponent(branch) + "&per_page=5", { headers }),
+            fetch("https://api.github.com/repos/" + repository + "/actions/runs?branch=" + encodeURIComponent(branch) + "&per_page=5", { headers })
+          ];
+          const [repoResponse, branchResponse, commitsResponse, runsResponse] = await Promise.all(endpoints);
+          if (!repoResponse.ok || !branchResponse.ok || !commitsResponse.ok) {
+            const response = [repoResponse, branchResponse, commitsResponse].find(item => !item.ok);
+            const status = response?.status || 502;
+            return json({ success: false, message: status === 404
+              ? "My ARTfive! GitHub could not find this public repository or branch. Check repository visibility and branch name."
+              : status === 403
+                ? "My ARTfive! GitHub rate limit or access restriction reached. Please wait and try again."
+                : "My ARTfive! GitHub status is temporarily unavailable. Please try again later." }, status === 404 ? 404 : status === 403 ? 429 : 502);
+          }
+          const [repoData, branchData, commitsData] = await Promise.all([
+            repoResponse.json(), branchResponse.json(), commitsResponse.json()
+          ]);
+          let workflowRuns = [];
+          if (runsResponse.ok) {
+            const runsData = await runsResponse.json();
+            workflowRuns = (runsData.workflow_runs || []).slice(0, 5).map(run => ({
+              id: run.id,
+              name: String(run.name || "GitHub Actions").slice(0, 120),
+              status: String(run.status || "unknown"),
+              conclusion: run.conclusion ? String(run.conclusion) : "",
+              url: String(run.html_url || "")
+            }));
+          }
+          const commits = (Array.isArray(commitsData) ? commitsData : []).map(commit => ({
+            sha: String(commit.sha || "").slice(0, 7),
+            message: String(commit.commit?.message || "Commit").split("\n")[0].slice(0, 180),
+            date: String(commit.commit?.author?.date || "").slice(0, 10)
+          }));
+          return json({
+            success: true,
+            status: {
+              repository: String(repoData.full_name || repository),
+              visibility: repoData.private ? "Private repository" : "Public repository",
+              branch,
+              latestCommit: String(branchData.commit?.sha || "").slice(0, 7),
+              commits,
+              workflowRuns
+            }
+          });
+        } catch (error) {
+          console.error("My ARTfive! GitHub assistant status failed:", error?.message || error);
+          return json({ success: false, message: "My ARTfive! Could not reach GitHub. Check your connection and try again." }, 502);
+        }
+      }
+
       if (path === "/api/owner/analysis" && method === "GET") {
         const owner = await getSessionUser(request, env, now);
         if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the Owner can view private app analysis." }, 403);
