@@ -524,11 +524,15 @@ export default {
           }
           return json({ success: true, id, message: "My ARTfive! Service created successfully." }, 201);
         }
-        if (action === "update" || action === "status") {
+        if (action === "update" || action === "status" || action === "delete") {
           const id = String(body.id || "").trim();
           if (!id) return json({ success: false, message: "Select a service first." }, 400);
           const existing = await env.DB.prepare("SELECT id FROM app_services WHERE id = ? LIMIT 1").bind(id).first();
           if (!existing) return json({ success: false, message: "Service was not found." }, 404);
+          if (action === "delete") {
+            await env.DB.prepare("DELETE FROM app_services WHERE id = ?").bind(id).run();
+            return json({ success: true, message: "My ARTfive! Service deleted successfully." });
+          }
           if (action === "status") {
             const status = String(body.status || "");
             if (!["active", "inactive", "draft"].includes(status)) return json({ success: false, message: "Choose a valid service status." }, 400);
