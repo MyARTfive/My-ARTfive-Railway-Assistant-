@@ -2319,7 +2319,7 @@
                 <template x-if="loginRole === 'staff'">
                     <div class="space-y-4">
                         <p x-show="staffSignupError" x-text="staffSignupError" class="text-center text-sm font-extrabold text-red-500"></p>
-                        <div><label class="block text-xs font-bold text-slate-300 mb-1">Staff Full Name</label><input type="text" x-model="loginStaffName" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter staff full name"></div>
+                        
                         <div><label class="block text-xs font-bold text-slate-300 mb-1">Phone Number</label><input type="text" x-model="loginPhone" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white" placeholder="Enter phone number"></div>
                         <div class="relative">
                             <label class="block text-xs font-bold text-slate-300 mb-1">Password</label>
@@ -4545,7 +4545,7 @@
                         if (this.loginRole === 'owner' || this.loginRole === 'staff' || this.loginRole === 'staff_new') {
                             const identifier = this.loginRole === 'owner' ? this.loginEmail.trim() : this.loginPhone.trim();
                             if (!identifier || !password) {
-                                alert('My ARTfive! Enter your registered login ID and password.');
+                                alert(this.loginRole === 'staff' ? 'My ARTfive! Enter your registered phone number and password.' : 'My ARTfive! Enter your registered login ID and password.');
                                 return;
                             }
                             if (this.loginRole === 'staff_new') {
