@@ -3370,6 +3370,25 @@
                     } catch (profileError) {}
                     try {
                         const result = await this.apiRequest('/api/me');
+                        // Customer sign-in lasts for one open-app session only.
+                        // sessionStorage survives in-app navigation and reloads, but is cleared
+                        // when the app/browser tab is fully closed. On a new app session, end
+                        // any server cookie session so Options 1–3 require sign-in again.
+                        if (result.user && result.user.role === 'customer') {
+                            let customerAppSessionActive = false;
+                            try {
+                                customerAppSessionActive = sessionStorage.getItem('artfive_customer_app_session') === 'active';
+                            } catch (sessionError) {}
+                            if (!customerAppSessionActive) {
+                                try { await this.apiRequest('/api/logout', { method: 'POST' }); } catch (logoutError) {}
+                                this.currentUser = null;
+                                this.currentDashboard = 'public';
+                                this.activeCustOption = null;
+                                this.ticketAccessToken = '';
+                                localStorage.removeItem('artfive_last_signed_in_profile');
+                                return;
+                            }
+                        }
                         this.currentUser = result.user;
                         if (result.user && result.user.role === 'staff') {
                             await this.loadStaffNotifications();
@@ -3380,7 +3399,9 @@
                         }
                         this.ownerPreviewMode = false;
                         if (result.user.role === 'customer') {
-                            this.currentDashboard = 'customer';
+                            // A returning customer lands on the complete public first page.
+                            // The authenticated session remains available to Options 1–3.
+                            this.currentDashboard = 'public';
                             this.activeCustOption = null;
                             this.ticketAccessToken = '';
                         }
@@ -3393,8 +3414,17 @@
                         this.customers = [];
                         if (!navigator.onLine) {
                             if (cachedProfile && ['owner', 'staff', 'customer'].includes(cachedProfile.role)) {
+                                if (cachedProfile.role === 'customer') {
+                                    // Do not treat a device-cached profile as a live customer login.
+                                    this.currentUser = null;
+                                    this.currentDashboard = 'public';
+                                    try { sessionStorage.removeItem('artfive_customer_app_session'); } catch (sessionError) {}
+                                    localStorage.removeItem('artfive_last_signed_in_profile');
+                                    this.offlineMode = true;
+                                    return;
+                                }
                                 this.currentUser = cachedProfile;
-                                this.currentDashboard = cachedProfile.role === 'customer' ? 'public' : cachedProfile.role;
+                                this.currentDashboard = cachedProfile.role;
                                 this.offlineMode = true;
                                 this.showAppNotice('My ARTfive! You are offline. Dashboard options are available, but requests, messages, payments and ticket downloads cannot be sent or verified until you reconnect.');
                                 return;
@@ -4567,9 +4597,14 @@
                         }
                         this.ownerPreviewMode = false;
                         localStorage.setItem('artfive_last_signed_in_profile', JSON.stringify(result.user));
+                        if (result.user && result.user.role === 'customer') {
+                            // Keep Options 1–3 signed in while this app session remains open.
+                            try { sessionStorage.setItem('artfive_customer_app_session', 'active'); } catch (sessionError) {}
+                        }
                         this.offlineMode = false;
                         this.currentDashboard = this.currentUser.role === 'owner' ? 'owner' :
-                            (this.currentUser.role === 'staff' ? 'staff' : 'customer');
+                            (this.currentUser.role === 'staff' ? 'staff' :
+                                (this.loginRole === 'customer_verify' ? 'customer' : 'public'));
                         if (this.loginRole === 'customer_verify') this.activeCustOption = 4;
                         else if (this.currentUser.role === 'customer') this.activeCustOption = null;
                         this.activeMenuOption = null;
@@ -4624,6 +4659,7 @@
                     this.ownerPreviewMode = false;
                     this.ticketAccessToken = '';
                     localStorage.removeItem('artfive_last_signed_in_profile');
+                    try { sessionStorage.removeItem('artfive_customer_app_session'); } catch (sessionError) {}
                     this.offlineMode = false;
                     this.ticketRequests = [];
                     this.assignedTickets = [];
