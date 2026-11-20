@@ -3935,13 +3935,13 @@
 
                 appManagementSectionDescription() {
                     const descriptions = {
-                        services: 'The planned service catalogue will let the Owner add, edit, activate, deactivate and organise services. Existing ticket and payment records must remain preserved when a service is deactivated.',
-                        notifications: 'The planned notification manager will let the Owner manage approved announcement and message settings while preserving the existing ticket and manual payment notification workflows.',
-                        design: 'The planned design manager will provide controlled editing of colours, images, headings and visible text, with a preview and a way to restore the previous configuration.',
-                        accounts: 'The planned account manager will provide secure customer and staff account administration, role permissions and account status controls. Passwords will never be displayed.',
-                        features: 'The planned feature manager will support reusable modules and controlled activation. Code, database or dependency changes will still require a build and Preview validation.',
-                        settings: 'The planned settings workspace will contain general application configuration and security controls restricted to authorised Owner access.',
-                        'ai-github': 'The planned AI Assistant will accept natural-language requests, inspect the authorised GitHub repository, explain proposed changes and prepare a branch or Pull Request. Code changes, merges and Production deployment will follow separate approval steps.'
+                        services: 'Manage the D1-backed service catalogue. Add, edit, activate and deactivate services; deactivation preserves existing records.',
+                        notifications: 'Open the existing Owner Option 4 notification workflow and Option 5 Edit All workspace. Their current notification and CMS behaviour is preserved.',
+                        design: 'Open the existing single Manage App Design editor to update supported colours, welcome slides, app icon and displayed words.',
+                        accounts: 'Open the existing protected Option 10 account and access controls. Manager verification remains required and passwords are never displayed.',
+                        features: 'Prepare new feature requests through My ARTfive! Assistant! Changes must be reviewed, validated and tested in Preview before approval.',
+                        settings: 'A dedicated settings hub is being mapped to the correct existing Owner controls. This section does not expose unrelated security or account actions.',
+                        'ai-github': 'Use the free-first ChatGPT request composer and read-only GitHub project status. Repository writes, merges and Production deployment are not automatic.'
                     };
                     return descriptions[this.activeAppManagementSection] || 'Choose a management section.';
                 },
