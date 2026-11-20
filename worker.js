@@ -548,6 +548,69 @@ export default {
         return json({ success: false, message: "Unsupported service action." }, 400);
       }
 
+      if (path === "/api/owner/assistant/github-status" && method === "GET") {
+        const owner = await getSessionUser(request, env, now);
+        if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the signed-in Owner can inspect the GitHub project." }, 403);
+        const repository = "MyARTfive/My-ARTfive-Railway-Assistant-";
+        const branch = "feature/one-app-integration";
+        const headers = {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "My-ARTfive-Railway-Assistant"
+        };
+        try {
+          const endpoints = [
+            fetch("https://api.github.com/repos/" + repository, { headers }),
+            fetch("https://api.github.com/repos/" + repository + "/branches/" + encodeURIComponent(branch), { headers }),
+            fetch("https://api.github.com/repos/" + repository + "/commits?sha=" + encodeURIComponent(branch) + "&per_page=5", { headers }),
+            fetch("https://api.github.com/repos/" + repository + "/actions/runs?branch=" + encodeURIComponent(branch) + "&per_page=5", { headers })
+          ];
+          const [repoResponse, branchResponse, commitsResponse, runsResponse] = await Promise.all(endpoints);
+          if (!repoResponse.ok || !branchResponse.ok || !commitsResponse.ok) {
+            const response = [repoResponse, branchResponse, commitsResponse].find(item => !item.ok);
+            const status = response?.status || 502;
+            return json({ success: false, message: status === 404
+              ? "My ARTfive! GitHub could not find this public repository or branch. Check repository visibility and branch name."
+              : status === 403
+                ? "My ARTfive! GitHub rate limit or access restriction reached. Please wait and try again."
+                : "My ARTfive! GitHub status is temporarily unavailable. Please try again later." }, status === 404 ? 404 : status === 403 ? 429 : 502);
+          }
+          const [repoData, branchData, commitsData] = await Promise.all([
+            repoResponse.json(), branchResponse.json(), commitsResponse.json()
+          ]);
+          let workflowRuns = [];
+          if (runsResponse.ok) {
+            const runsData = await runsResponse.json();
+            workflowRuns = (runsData.workflow_runs || []).slice(0, 5).map(run => ({
+              id: run.id,
+              name: String(run.name || "GitHub Actions").slice(0, 120),
+              status: String(run.status || "unknown"),
+              conclusion: run.conclusion ? String(run.conclusion) : "",
+              url: String(run.html_url || "")
+            }));
+          }
+          const commits = (Array.isArray(commitsData) ? commitsData : []).map(commit => ({
+            sha: String(commit.sha || "").slice(0, 7),
+            message: String(commit.commit?.message || "Commit").split("\n")[0].slice(0, 180),
+            date: String(commit.commit?.author?.date || "").slice(0, 10)
+          }));
+          return json({
+            success: true,
+            status: {
+              repository: String(repoData.full_name || repository),
+              visibility: repoData.private ? "Private repository" : "Public repository",
+              branch,
+              latestCommit: String(branchData.commit?.sha || "").slice(0, 7),
+              commits,
+              workflowRuns
+            }
+          });
+        } catch (error) {
+          console.error("My ARTfive! GitHub assistant status failed:", error?.message || error);
+          return json({ success: false, message: "My ARTfive! Could not reach GitHub. Check your connection and try again." }, 502);
+        }
+      }
+
       if (path === "/api/owner/analysis" && method === "GET") {
         const owner = await getSessionUser(request, env, now);
         if (!owner || owner.role !== "owner") return json({ success: false, message: "Only the Owner can view private app analysis." }, 403);
