@@ -143,7 +143,7 @@
                     <i class="fa-solid fa-train-subway text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-lg tracking-tight text-white flex items-center">
+                    <h1 class="font-bold text-lg tracking-tight text-white flex items-center cursor-pointer" @click.stop="installApp()" @keydown.enter.stop="installApp()" @keydown.space.prevent.stop="installApp()" role="button" tabindex="0" aria-label="Install My ARTfive! app">
                         My AR<span @click.stop="showPortalModal = true" class="cursor-pointer select-none">T</span>five!
                     </h1>
                     <p class="text-[11px] text-emerald-400 font-medium" x-text="cms.headerSubtitle"></p>
@@ -2436,6 +2436,31 @@
                     this.newStaffChatText = '';
                 },
 
+                async installApp() {
+                    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+                        alert('My ARTfive! is already installed on this device.');
+                        return;
+                    }
+
+                    const installPrompt = window.myArtfiveInstallPrompt;
+                    if (installPrompt) {
+                        installPrompt.prompt();
+                        const choice = await installPrompt.userChoice;
+                        window.myArtfiveInstallPrompt = null;
+                        if (choice && choice.outcome === 'accepted') {
+                            console.info('My ARTfive! installation accepted.');
+                        }
+                        return;
+                    }
+
+                    const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+                    if (isIOS) {
+                        alert('My ARTfive! To install: tap the Share button in Safari, then choose “Add to Home Screen”.');
+                    } else {
+                        alert('My ARTfive! If the Install App prompt is not available, open your browser menu and choose “Install app” or “Add to Home screen”.');
+                    }
+                },
+
                 async shareApp() {
                     const appTitle = 'My ARTfive! (Railway Assistant!)';
                     const appUrl = window.location.origin + '/';
@@ -2714,6 +2739,15 @@
         </script>
 
 <script>
+  window.myArtfiveInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    window.myArtfiveInstallPrompt = event;
+  });
+  window.addEventListener('appinstalled', () => {
+    window.myArtfiveInstallPrompt = null;
+  });
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/pwabuilder-sw.js');
   }
