@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#059669">
+  <meta name="description" content="Install My ARTfive! Railway Assistant on your device.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon-192.svg" type="image/svg+xml">
+  <title>Install My ARTfive! (Railway Assistant!)</title>
+  <style>
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;background:#0f172a;color:#f8fafc;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}
+    main{width:100%;max-width:480px;text-align:center;background:linear-gradient(145deg,#1e293b,#064e3b);border:1px solid #334155;border-radius:28px;padding:32px 24px;box-shadow:0 24px 60px #0005}
+    .logo{width:76px;height:76px;margin:0 auto 18px;border-radius:22px;background:#059669;display:grid;place-items:center;font-size:36px}
+    h1{font-size:28px;margin:0 0 8px} .sub{color:#6ee7b7;font-weight:bold;margin:0 0 22px}
+    p{color:#cbd5e1;line-height:1.6} button{width:100%;border:0;border-radius:14px;padding:16px;background:#059669;color:white;font-size:17px;font-weight:bold;margin-top:18px;cursor:pointer}
+    button:disabled{opacity:.65;cursor:default}.hint{font-size:13px;color:#94a3b8;margin-top:18px}.status{margin-top:16px;color:#a7f3d0;font-size:14px;line-height:1.5}
+    .steps{display:none;text-align:left;background:#0f172a88;border-radius:14px;padding:14px 18px;margin-top:18px;color:#e2e8f0;font-size:14px;line-height:1.7}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="logo" aria-hidden="true">🚆</div>
+    <h1>My ARTfive!</h1>
+    <p class="sub">(Railway Assistant!)</p>
+    <p>Install My ARTfive! on your phone for a convenient app experience. After installation, open it from your phone's app screen without the browser address bar.</p>
+    <button id="installButton" type="button">Install My ARTfive! App</button>
+    <div id="status" class="status" role="status" aria-live="polite">Preparing your installation…</div>
+    <div id="steps" class="steps"></div>
+    <p class="hint">My ARTfive! Safe journey and thank you for choosing us.</p>
+  </main>
+<script>
+(function(){
+  const button=document.getElementById('installButton');
+  const status=document.getElementById('status');
+  const steps=document.getElementById('steps');
+  let installEvent=null;
+  const isApple=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const standalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+  function showSteps(html){steps.innerHTML=html;steps.style.display='block';}
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('/pwabuilder-sw.js').catch(()=>{});}
+  window.addEventListener('beforeinstallprompt',event=>{
+    event.preventDefault();installEvent=event;button.disabled=false;
+    status.textContent='Your device is ready to install My ARTfive!.';
+  });
+  window.addEventListener('appinstalled',()=>{
+    installEvent=null;button.disabled=true;button.textContent='App Installed';
+    status.textContent='My ARTfive! has been installed. Open it from your phone’s app screen.';
+  });
+  if(standalone){
+    button.disabled=true;button.textContent='Already Installed';
+    status.textContent='My ARTfive! is already running as an installed app.';
+  } else if(isApple){
+    status.textContent='On iPhone or iPad, install using Safari’s Share menu.';
+    showSteps('<strong>Install on iPhone or iPad</strong><ol><li>Open this page in Safari.</li><li>Tap Safari’s Share button.</li><li>Choose “Add to Home Screen”.</li><li>Tap “Add”.</li></ol>');
+  } else {
+    status.textContent='Tap Install App when your browser offers the installation option.';
+  }
+  button.addEventListener('click',async()=>{
+    if(standalone){status.textContent='My ARTfive! is already installed.';return;}
+    if(installEvent){
+      installEvent.prompt();
+      const choice=await installEvent.userChoice;
+      installEvent=null;
+      if(choice&&choice.outcome==='accepted'){
+        status.textContent='Installation accepted. Follow your device’s confirmation to finish installing My ARTfive!.';
+      }else{
+        status.textContent='Installation was not completed. You can try again from your browser menu.';
+      }
+      return;
+    }
+    if(isApple){
+      status.textContent='Please use Safari’s Share menu and choose Add to Home Screen.';
+      showSteps('<strong>Install on iPhone or iPad</strong><ol><li>Open this page in Safari.</li><li>Tap Share.</li><li>Choose “Add to Home Screen”.</li><li>Tap “Add”.</li></ol>');
+    }else{
+      status.textContent='Your browser has not offered the automatic install prompt. Open the browser menu (⋮) and choose “Install app” or “Add to Home screen”.';
+      showSteps('<strong>Install on Android</strong><ol><li>Open this page in Chrome.</li><li>Tap the three-dot menu (⋮).</li><li>Choose “Install app” or “Add to Home screen”.</li><li>Confirm Install.</li></ol>');
+    }
+  });
+  button.disabled=standalone;
+})();
+</script>
+</body>
+</html>
