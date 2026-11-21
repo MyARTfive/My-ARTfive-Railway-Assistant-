@@ -1125,6 +1125,9 @@ export default {
           await logSecurity(env, ip, "manager_access_denied", "Non-owner attempted Manager verification", now);
           return json({ success: false, message: "Only the Owner can access Manager." }, 403);
         }
+        if (await loginRateLimited(env, ip, "manager_login_failed", now)) {
+          return json({ success: false, message: "Too many failed Manager verification attempts. Please wait 15 minutes and try again." }, 429);
+        }
         const body = await readJson(request);
         const phone = String(body.phone || "").trim();
         const password = String(body.password || "");
@@ -1349,6 +1352,9 @@ export default {
           statements.push(env.DB.prepare(
             "UPDATE users SET password_hash = ? WHERE id = ? AND active = 1 AND EXISTS (SELECT 1 FROM password_change_requests WHERE id = ? AND status = 'pending' AND user_id = ?)"
           ).bind(row.requested_password_hash, row.user_id, requestId, row.user_id));
+          statements.push(env.DB.prepare(
+            "DELETE FROM sessions WHERE user_id = ? AND EXISTS (SELECT 1 FROM users WHERE id = ? AND active = 1 AND password_hash = ?) AND EXISTS (SELECT 1 FROM password_change_requests WHERE id = ? AND status = 'pending' AND user_id = ?)"
+          ).bind(row.user_id, row.user_id, row.requested_password_hash, requestId, row.user_id));
         }
         statements.push(env.DB.prepare(
           "UPDATE password_change_requests SET status = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ? AND status = 'pending' AND user_id IS NOT NULL"
