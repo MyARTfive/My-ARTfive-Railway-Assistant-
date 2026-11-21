@@ -130,55 +130,10 @@
     <div x-show="showIntroSplash" class="fixed inset-0 z-50 bg-sky-100 flex flex-col items-center justify-center p-0">
         <div class="relative w-full max-w-none h-full min-h-0 rounded-none overflow-hidden shadow-none bg-gradient-to-b from-sky-100 via-white to-sky-200 flex flex-col items-center justify-between p-0 border-0">
             
-            <!-- BANNER 1: FULL-SCREEN WELCOME DESIGN -->
-            <div x-show="activeSplashIndex === 0" data-artfive-splash="1" class="w-full h-full min-h-0 flex flex-col items-center justify-between text-center px-4 pt-5 pb-3 sm:px-8 sm:pt-7">
-                <div class="w-full max-w-2xl space-y-2">
-                    <div class="flex items-center justify-center gap-3">
-                        <img src="/icon-192.svg" alt="My ARTfive! app logo" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover shadow-lg border border-white" width="80" height="80">
-                        <div class="text-left">
-                            <p class="text-2xl sm:text-4xl font-black italic tracking-tight text-blue-950">My <span class="text-red-600">ARTfive!</span></p>
-                            <p class="text-xs sm:text-base font-bold text-blue-900">Railway Assistant</p>
-                        </div>
-                    </div>
-                    <h2 data-design-slide-title class="text-2xl sm:text-4xl font-extrabold text-blue-950 tracking-tight drop-shadow-sm">Start your Journey</h2>
-                    <p data-design-slide-subtitle class="text-amber-600 font-extrabold text-lg sm:text-2xl">Happy journey!</p>
-                </div>
-
-                <div class="w-full max-w-3xl flex-1 min-h-0 flex flex-col items-center justify-center gap-3 py-2">
-                    <div class="w-full rounded-3xl overflow-hidden bg-gradient-to-b from-sky-400 via-sky-200 to-white border-4 border-white shadow-xl px-3 py-4 sm:py-6">
-                        <div class="flex items-center justify-center gap-3 text-sky-700/70 text-2xl mb-1" aria-hidden="true">
-                            <i class="fa-solid fa-cloud"></i><i class="fa-solid fa-cloud text-4xl"></i><i class="fa-solid fa-cloud"></i>
-                        </div>
-                        <div class="flex items-center justify-center gap-2 sm:gap-5 text-blue-900">
-                            <i class="fa-solid fa-train-subway text-6xl sm:text-8xl drop-shadow-lg" aria-hidden="true"></i>
-                            <div class="text-left">
-                                <p class="text-xl sm:text-3xl font-black">My ARTfive!</p>
-                                <p class="text-xs sm:text-base font-bold text-blue-800">Your railway journey starts here</p>
-                            </div>
-                        </div>
-                        <div class="mt-3 h-2 rounded-full bg-gradient-to-r from-amber-500 via-white to-emerald-600"></div>
-                    </div>
-
-                    <div class="rounded-2xl bg-white/95 border border-sky-200 shadow-md px-5 py-2 sm:py-3">
-                        <p class="text-xl sm:text-3xl font-extrabold text-blue-950">You’re welcome to <span class="text-red-600 italic">REST!</span></p>
-                    </div>
-
-                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 w-full max-w-2xl text-blue-900">
-                        <div class="rounded-xl bg-white/90 shadow-sm p-2"><i class="fa-solid fa-people-group text-2xl sm:text-3xl text-pink-600" aria-hidden="true"></i><p class="text-[10px] sm:text-xs font-bold mt-1">Family</p></div>
-                        <div class="rounded-xl bg-white/90 shadow-sm p-2"><i class="fa-solid fa-bicycle text-2xl sm:text-3xl text-emerald-600" aria-hidden="true"></i><p class="text-[10px] sm:text-xs font-bold mt-1">Cycle</p></div>
-                        <div class="rounded-xl bg-white/90 shadow-sm p-2"><i class="fa-solid fa-bus text-2xl sm:text-3xl text-blue-600" aria-hidden="true"></i><p class="text-[10px] sm:text-xs font-bold mt-1">Bus</p></div>
-                        <div class="rounded-xl bg-white/90 shadow-sm p-2"><i class="fa-solid fa-train text-2xl sm:text-3xl text-red-600" aria-hidden="true"></i><p class="text-[10px] sm:text-xs font-bold mt-1">Train</p></div>
-                        <div class="rounded-xl bg-white/90 shadow-sm p-2"><i class="fa-solid fa-plane text-2xl sm:text-3xl text-sky-600" aria-hidden="true"></i><p class="text-[10px] sm:text-xs font-bold mt-1">Flight</p></div>
-                        <div class="rounded-xl bg-white/90 shadow-sm p-2"><i class="fa-solid fa-school text-2xl sm:text-3xl text-amber-600" aria-hidden="true"></i><p class="text-[10px] sm:text-xs font-bold mt-1">School</p></div>
-                    </div>
-                </div>
-
-                <div class="w-full max-w-lg pb-2">
-                    <button type="button" @click="showIntroSplash = false" class="w-full rounded-full bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-800 hover:to-blue-700 px-6 py-3 sm:py-4 text-lg sm:text-2xl font-extrabold text-white shadow-xl border-b-4 border-blue-950/30">
-                        Start Your Journey <i class="fa-solid fa-chevron-right ml-2" aria-hidden="true"></i>
-                    </button>
-                    <div class="mt-3 h-2 w-full overflow-hidden rounded-full flex" aria-hidden="true"><span class="w-1/3 bg-amber-500"></span><span class="w-1/3 bg-white"></span><span class="w-1/3 bg-emerald-600"></span></div>
-                </div>
+            <!-- BANNER 1: illustrated welcome poster; only this first banner is customized -->
+            <div x-show="activeSplashIndex === 0" data-artfive-splash="1" class="absolute inset-0 w-full h-full overflow-hidden bg-sky-300">
+                <img src="/welcome-screen.svg" alt="My ARTfive! Railway Assistant. Happy journey! A standing family with luggage, bicycle rider, bus, train, airplane and school, with a Start Your Journey button." class="absolute inset-0 w-full h-full object-cover object-center" />
+                <button type="button" aria-label="Start Your Journey" @click="showIntroSplash = false" class="absolute z-10 border-0 bg-transparent" style="left:5%;width:90%;bottom:1.3%;height:8.3%;"></button>
             </div>
 
             <!-- BANNER 2 -->
