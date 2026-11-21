@@ -43,6 +43,15 @@ bubblewrap init --manifest https://my-artfive-railway-assistant-preview.myartfiv
 
 During initialization, use the approved application ID `in.myartfive.railwayassistant`, app name `My ARTfive! Railway Assistant`, launcher name `My ARTfive!`, and Preview origin above. Keep the generated signing keystore private; do not upload it to GitHub or send its password/private key in chat.
 
+After initialization, copy the approved project manifest into the generated project and regenerate the Android files:
+
+```sh
+cp ../android/twa/twa-manifest.json twa-manifest.json
+bubblewrap update
+```
+
+Run the commands from the repository root's `android-build` directory, so the relative copy path above resolves as written. The checked-in manifest is the approved source for the package ID and Preview origin.
+
 Build outputs:
 
 ```sh
