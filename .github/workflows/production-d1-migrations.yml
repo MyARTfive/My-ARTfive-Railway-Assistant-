@@ -1,0 +1,71 @@
+name: My ARTfive! Fresh Production D1 Migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type exactly I APPROVE APPLY PRODUCTION D1 MIGRATIONS
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: my-artfive-fresh-production-d1-migrations
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply migrations to fresh Production D1 only
+    if: ${{ github.ref == 'refs/heads/main' && inputs.confirmation == 'I APPROVE APPLY PRODUCTION D1 MIGRATIONS' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out production release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: production-release-candidate
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify Cloudflare credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN GitHub Actions secret."; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID GitHub Actions secret."; exit 1; }
+
+      - name: Verify this workflow targets the fresh Production database
+        run: |
+          grep -Fq '"database_name": "my-artfive-railway-production"' wrangler.jsonc
+          grep -Fq '"database_id": "fb8d5ea1-21ac-4091-a511-405ababd6ff0"' wrangler.jsonc
+          test -f migrations/0001_central_d1_schema.sql
+          test -f migrations/0002_allow_shared_email.sql
+          test -f migrations/0003_secure_manager_credentials.sql
+          test -f migrations/0004_option10_visitor_control.sql
+          test -f migrations/0005_customer_passenger_profiles.sql
+          test -f migrations/0006_app_services.sql
+          test -f migrations/0007_complete_fresh_production_schema.sql
+          echo "Verified fresh Production D1 ID and all seven migration files."
+
+      - name: Show current remote migration status
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.165.0 d1 migrations list my-artfive-railway-production --remote --config wrangler.jsonc
+
+      - name: Apply migrations to fresh Production D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.165.0 d1 migrations apply my-artfive-railway-production --remote --config wrangler.jsonc
+
+      - name: Verify remote migration status after applying
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.165.0 d1 migrations list my-artfive-railway-production --remote --config wrangler.jsonc
