@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1280" role="img" aria-labelledby="title desc">
 <title id="title">My ARTfive! Railway Assistant — Happy journey!</title>
-<desc id="desc">A bright sky-blue railway welcome poster with a modern blue-and-white train, a standing family with luggage, a cyclist, bus, passenger train, airplane, school and a Start Your Journey button.</desc>
+<desc id="desc">A bright sky-blue railway welcome poster with a modern blue-and-white train, a standing family with luggage, a cyclist, bus, passenger train, airplane and a Start Your Journey button.</desc>
 <defs>
  <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#00a8f5"/><stop offset=".45" stop-color="#9ee7ff"/><stop offset="1" stop-color="#e9fbff"/></linearGradient>
  <linearGradient id="blue" x2="0" y2="1"><stop stop-color="#168bff"/><stop offset="1" stop-color="#052fc7"/></linearGradient>
@@ -14,7 +14,7 @@
 <g opacity=".45"><use href="#cloud" x="60" y="190"/><use href="#cloud" x="650" y="270"/><use href="#cloud" x="80" y="470"/><use href="#cloud" x="650" y="570"/><use href="#cloud" x="350" y="860"/></g>
 <!-- brand -->
 <g transform="translate(0 32)" font-family="Arial, sans-serif" font-weight="900" text-anchor="middle" filter="url(#shadow)">
- <text x="360" y="145" font-size="74" font-style="italic" fill="#09277d">My</text>
+ <text x="360" y="170" font-size="74" font-style="italic" fill="#09277d">My</text>
  <text x="360" y="245" font-size="112" font-style="italic" letter-spacing="-6"><tspan fill="#082a91">ART</tspan><tspan fill="#ed171b">five!</tspan></text>
  <path d="M315 117 Q470 2 646 105 Q485 42 315 117Z" fill="#ff8700"/>
  <path d="M318 128 Q482 55 642 115 Q480 87 318 128Z" fill="#008a35"/>
