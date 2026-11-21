@@ -13,7 +13,7 @@
 <rect width="720" height="1280" fill="url(#sky)"/>
 <g opacity=".45"><use href="#cloud" x="60" y="190"/><use href="#cloud" x="650" y="270"/><use href="#cloud" x="80" y="470"/><use href="#cloud" x="650" y="570"/><use href="#cloud" x="350" y="860"/></g>
 <!-- brand -->
-<g font-family="Arial, sans-serif" font-weight="900" text-anchor="middle" filter="url(#shadow)">
+<g transform="translate(0 32)" font-family="Arial, sans-serif" font-weight="900" text-anchor="middle" filter="url(#shadow)">
  <text x="360" y="145" font-size="74" font-style="italic" fill="#09277d">My</text>
  <text x="360" y="245" font-size="112" font-style="italic" letter-spacing="-6"><tspan fill="#082a91">ART</tspan><tspan fill="#ed171b">five!</tspan></text>
  <path d="M315 117 Q470 2 646 105 Q485 42 315 117Z" fill="#ff8700"/>
@@ -101,16 +101,6 @@
  <path d="M120 72 L75 112 L110 115 L180 75Z" fill="#d9efff"/>
  <path d="M35 60 L10 35 L40 36 L70 56Z" fill="#d9efff"/>
  <circle cx="245" cy="57" r="5" fill="#0a4a9a" stroke="none"/>
-</g>
-<!-- school -->
-<g transform="translate(520 1110)" stroke="#754126" stroke-width="5" stroke-linejoin="round">
- <path d="M0 68 L82 0 L164 68Z" fill="#e64b2e"/>
- <rect x="15" y="65" width="134" height="100" fill="#fff1c8"/>
- <rect x="66" y="108" width="35" height="57" fill="#a85a2b"/>
- <g fill="#7bd5ff"><rect x="27" y="83" width="25" height="25"/><rect x="112" y="83" width="25" height="25"/></g>
- <path d="M60 54h45" stroke="#fff" stroke-width="9"/>
- <text x="82" y="48" font-family="Arial,sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#173b85" stroke="none">SCHOOL</text>
- <path d="M82 0v-20" stroke="#754126"/><path d="M82 -20l28 8 -28 8Z" fill="#e3262e"/>
 </g>
 <!-- tricolour footer -->
 <path d="M0 1195 Q155 1145 310 1195 T720 1180 V1280 H0Z" fill="#ff8500"/>
