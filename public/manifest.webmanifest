@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "My ARTfive! Railway Assistant",
+  "short_name": "My ARTfive!",
+  "description": "My ARTfive! Railway Assistant helps customers request railway tickets, make payments, receive tickets and manage their railway journeys.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#dff7ff",
+  "theme_color": "#123b9a",
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

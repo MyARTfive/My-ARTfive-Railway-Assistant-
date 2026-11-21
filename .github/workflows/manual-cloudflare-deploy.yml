@@ -1,0 +1,62 @@
+name: My ARTfive! Manual Cloudflare Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Deployment target
+        required: true
+        type: choice
+        options:
+          - preview
+          - production
+        default: preview
+      production_confirmation:
+        description: For Production only, type exactly I APPROVE PRODUCTION DEPLOY
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: my-artfive-cloudflare-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy My ARTfive! to Cloudflare (${{ inputs.target }})
+    if: >-
+      ${{ inputs.target == 'preview' ||
+          (inputs.target == 'production' &&
+           github.ref == 'refs/heads/main' &&
+           inputs.production_confirmation == 'I APPROVE PRODUCTION DEPLOY') }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.target == 'production' && 'production' || 'preview' }}
+    steps:
+      - name: Check out approved source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify Cloudflare credentials are configured
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Add CLOUDFLARE_API_TOKEN in GitHub Actions secrets."; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Add CLOUDFLARE_ACCOUNT_ID in GitHub Actions secrets."; exit 1; }
+      - name: Deploy isolated Preview Worker
+        if: ${{ inputs.target == 'preview' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.165.0 deploy --env preview
+      - name: Deploy Production Worker (main branch and explicit confirmation only)
+        if: ${{ inputs.target == 'production' && github.ref == 'refs/heads/main' && inputs.production_confirmation == 'I APPROVE PRODUCTION DEPLOY' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.165.0 deploy
