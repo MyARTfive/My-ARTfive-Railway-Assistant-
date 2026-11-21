@@ -112,7 +112,7 @@ jobs:
             ['Share App uses native device share sheet with branded app title', ui.includes('async shareApp()') && ui.includes('navigator.share(shareData)') && ui.includes('My ARTfive! (Railway Assistant!)') && ui.includes('url: shareUrl')],
             ['Install App supports browser PWA prompt and iPhone/iPad Add to Home Screen guidance', ui.includes('beforeinstallprompt') && ui.includes('async installApp()') && ui.includes('Add to Home Screen')],
             ['PWA orientation adapts to phones, tablets and desktop screens', !JSON.parse(fs.readFileSync('public/manifest.webmanifest', 'utf8')).orientation],
-            ['PWA shell cache refreshes after sharing and install update', fs.readFileSync('public/pwabuilder-sw.js', 'utf8').includes('my-artfive-shell-v8')],
+            ['PWA shell cache refreshes after sharing and install update', fs.readFileSync('public/pwabuilder-sw.js', 'utf8').includes('my-artfive-shell-v9')],
             ['Social share preview identifies the My ARTfive! app', ui.includes('property="og:title" content="My ARTfive! (Railway Assistant!)"') && ui.includes('property="og:description"')]
           ];
           const failed = checks.filter(([, ok]) => !ok);
