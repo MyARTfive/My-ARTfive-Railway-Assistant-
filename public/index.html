@@ -262,12 +262,17 @@
                             <p class="text-slate-300 text-base sm:text-lg mt-2" x-text="cms.heroSubtitle"></p>
                         </div>
 
-                        <div class="flex flex-wrap items-center gap-3 pt-2">
-                            <button @click="openLoginModal('customer_new')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl text-sm transition shadow flex items-center gap-2">
-                                <i class="fa-solid fa-user-plus"></i> <span x-text="cms.signUpBtnText"></span>
-                            </button>
-                            <button @click="openLoginModal('customer')" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-6 py-3 rounded-xl text-sm transition shadow flex items-center gap-2 border border-slate-600">
-                                <i class="fa-solid fa-right-to-bracket"></i> <span x-text="cms.signInBtnText"></span>
+                        <div class="grid w-full max-w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 pt-2">
+                            <div class="flex min-w-0 flex-col items-start gap-3">
+                                <button @click="openLoginModal('customer_new')" class="whitespace-nowrap bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-3 rounded-xl text-xs transition shadow flex items-center gap-2">
+                                    <i class="fa-solid fa-user-plus"></i> <span x-text="cms.signUpBtnText"></span>
+                                </button>
+                                <button @click="openLoginModal('customer')" class="whitespace-nowrap bg-slate-700 hover:bg-slate-600 text-white font-bold px-3 py-3 rounded-xl text-xs transition shadow flex items-center gap-2 border border-slate-600">
+                                    <i class="fa-solid fa-right-to-bracket"></i> <span x-text="cms.signInBtnText"></span>
+                                </button>
+                            </div>
+                            <button type="button" @click="shareApp()" aria-label="Share My ARTfive! app" class="justify-self-end whitespace-nowrap rounded-xl bg-emerald-700 hover:bg-emerald-600 px-4 py-3 text-xs font-extrabold text-white shadow inline-flex flex-row flex-nowrap items-center justify-center gap-2">
+                                <i class="fa-solid fa-share-nodes shrink-0"></i><span class="whitespace-nowrap">Share App!</span>
                             </button>
                         </div>
                     </div>
@@ -2568,14 +2573,6 @@
         <!-- FOOTER -->
         <footer class="bg-slate-800 border-t border-slate-700 py-4 px-6 text-center text-xs text-slate-400">
             <p x-text="cms.footerText"></p>
-            <div class="mt-3 flex flex-wrap justify-center gap-2">
-                <button type="button" @click="shareApp()" class="rounded-xl bg-emerald-700 hover:bg-emerald-600 px-4 py-2 text-xs font-extrabold text-white">
-                    <i class="fa-solid fa-share-nodes mr-1"></i> Share App
-                </button>
-                <button type="button" @click="installApp()" class="rounded-xl border border-emerald-500/50 bg-slate-900 hover:bg-slate-700 px-4 py-2 text-xs font-extrabold text-emerald-300">
-                    <i class="fa-solid fa-download mr-1"></i> Install App
-                </button>
-            </div>
         </footer>
 
     </div>
