@@ -15,8 +15,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "my-artfive-railway-db",
-      "database_id": "9ccc1d01-a125-4430-8ad4-47eef289a85e"
+      "database_name": "my-artfive-railway-production",
+      "database_id": "fb8d5ea1-21ac-4091-a511-405ababd6ff0"
     }
   ],
   "previews": {
