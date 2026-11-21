@@ -2573,9 +2573,10 @@
 
                 async shareApp() {
                     const shareUrl = window.location.origin + "/install.html";
+                    const shareText = "My ARTfive! (Railway Assistant!)\\n" + shareUrl;
                     const shareData = {
                         title: "My ARTfive! (Railway Assistant!)",
-                        text: "My ARTfive! (Railway Assistant!)",
+                        text: shareText,
                         url: shareUrl
                     };
                     try {
@@ -2584,7 +2585,7 @@
                             return;
                         }
                         if (navigator.clipboard && navigator.clipboard.writeText) {
-                            await navigator.clipboard.writeText(shareUrl);
+                            await navigator.clipboard.writeText(shareText);
                             this.showAppNotice("My ARTfive! App link copied. Share it with your friends.");
                             return;
                         }
@@ -2592,7 +2593,7 @@
                     } catch (error) {
                         if (error && error.name === "AbortError") return;
                         try {
-                            await navigator.clipboard.writeText(shareUrl);
+                            await navigator.clipboard.writeText(shareText);
                             this.showAppNotice("My ARTfive! App link copied. Share it with your friends.");
                         } catch (_) {
                             this.showAppNotice("My ARTfive! Sharing is not available in this browser. Please copy the page address and share it.");
