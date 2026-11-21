@@ -18,8 +18,9 @@ concurrency:
 jobs:
   migrate:
     name: Apply migrations to fresh Production D1 only
-    if: ${{ github.ref == 'refs/heads/production-release-candidate' && inputs.confirmation == 'I APPROVE APPLY PRODUCTION D1 MIGRATIONS' }}
+    if: ${{ github.ref == 'refs/heads/main' && inputs.confirmation == 'I APPROVE APPLY PRODUCTION D1 MIGRATIONS' }}
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Check out production release candidate
         uses: actions/checkout@v4
