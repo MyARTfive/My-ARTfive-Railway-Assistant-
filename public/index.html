@@ -127,12 +127,12 @@
     </div>
 
     <!-- ================= INTRO SPLASH SCREEN ================= -->
-    <div x-show="showIntroSplash" class="fixed inset-0 z-50 bg-sky-100 flex flex-col items-center justify-center p-0">
-        <div class="relative w-full max-w-none h-full min-h-0 rounded-none overflow-hidden shadow-none bg-gradient-to-b from-sky-100 via-white to-sky-200 flex flex-col items-center justify-between p-0 border-0">
+    <div x-show="showIntroSplash" class="fixed inset-0 z-50 flex flex-col items-center justify-center" :class="activeSplashIndex === 0 ? 'bg-sky-100 p-0' : 'bg-slate-950 p-4'">
+        <div class="relative flex flex-col items-center justify-between" :class="activeSplashIndex === 0 ? 'w-full max-w-none h-full min-h-0 rounded-none overflow-hidden shadow-none bg-sky-100 p-0 border-0' : 'w-full max-w-4xl h-[85vh] rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-b from-sky-900 via-slate-900 to-slate-950 p-6 border border-emerald-500/30'">
             
             <!-- BANNER 1: illustrated welcome poster; only this first banner is customized -->
             <div x-show="activeSplashIndex === 0" data-artfive-splash="1" class="absolute inset-0 w-full h-full overflow-hidden bg-sky-300">
-                <img src="/welcome-screen.svg" alt="My ARTfive! Railway Assistant. Happy journey! A standing family with luggage, bicycle rider, bus, train, airplane and school, with a Start Your Journey button." class="absolute inset-0 w-full h-full object-cover object-center" />
+                <img src="/welcome-screen.svg" alt="My ARTfive! Railway Assistant. Happy journey! A standing family with luggage, bicycle rider, bus, train and airplane, with a Start Your Journey button." class="absolute inset-0 w-full h-full object-contain object-center" />
                 <button type="button" aria-label="Start Your Journey" @click="showIntroSplash = false" class="absolute z-10 border-0 bg-transparent" style="left:5%;width:90%;bottom:1.3%;height:8.3%;"></button>
             </div>
 
