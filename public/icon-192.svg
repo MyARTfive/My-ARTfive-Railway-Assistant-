@@ -17,8 +17,7 @@
  <path d="M0 -5V-32" transform="rotate(0)"/><path d="M0 -5V-32" transform="rotate(15)"/><path d="M0 -5V-32" transform="rotate(30)"/><path d="M0 -5V-32" transform="rotate(45)"/><path d="M0 -5V-32" transform="rotate(60)"/><path d="M0 -5V-32" transform="rotate(75)"/><path d="M0 -5V-32" transform="rotate(90)"/><path d="M0 -5V-32" transform="rotate(105)"/><path d="M0 -5V-32" transform="rotate(120)"/><path d="M0 -5V-32" transform="rotate(135)"/><path d="M0 -5V-32" transform="rotate(150)"/><path d="M0 -5V-32" transform="rotate(165)"/><path d="M0 -5V-32" transform="rotate(180)"/><path d="M0 -5V-32" transform="rotate(195)"/><path d="M0 -5V-32" transform="rotate(210)"/><path d="M0 -5V-32" transform="rotate(225)"/><path d="M0 -5V-32" transform="rotate(240)"/><path d="M0 -5V-32" transform="rotate(255)"/><path d="M0 -5V-32" transform="rotate(270)"/><path d="M0 -5V-32" transform="rotate(285)"/><path d="M0 -5V-32" transform="rotate(300)"/><path d="M0 -5V-32" transform="rotate(315)"/><path d="M0 -5V-32" transform="rotate(330)"/><path d="M0 -5V-32" transform="rotate(345)"/>
  </g><circle cx="420" cy="116" r="5" fill="#123b9a"/>
  <text x="43" y="212" font-family="Arial,sans-serif" font-size="62" font-weight="800" fill="#082b83">My</text>
- <text x="31" y="285" font-family="Arial,sans-serif" font-size="76" font-weight="900" letter-spacing="-4" fill="#082b83">ART</text>
- <text x="225" y="285" font-family="Arial,sans-serif" font-size="76" font-weight="900" letter-spacing="-4" fill="#ef1c24">five!</text>
+ <text x="31" y="285" font-family="Arial,sans-serif" font-size="76" font-weight="900" letter-spacing="-4"><tspan fill="#082b83">ART</tspan><tspan fill="#ef1c24">five!</tspan></text>
  <path d="M-12 390 Q130 368 240 386 T535 367 L535 512H-12Z" fill="#2e8d3e" opacity=".35"/>
  <path d="M-10 415 L522 415" stroke="#334155" stroke-width="8"/>
  <path d="M-10 428 L522 428" stroke="#fff" stroke-width="4" opacity=".9"/>
