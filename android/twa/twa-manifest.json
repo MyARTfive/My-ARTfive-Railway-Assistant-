@@ -1,0 +1,33 @@
+{
+  "packageId": "in.myartfive.railwayassistant",
+  "host": "my-artfive-railway-assistant-preview.myartfiverailwayassistant.workers.dev",
+  "name": "My ARTfive! Railway Assistant",
+  "launcherName": "My ARTfive!",
+  "display": "standalone",
+  "themeColor": "#123b9a",
+  "themeColorDark": "#123b9a",
+  "navigationColor": "#123b9a",
+  "navigationColorDark": "#123b9a",
+  "navigationDividerColor": "#00000000",
+  "navigationDividerColorDark": "#00000000",
+  "backgroundColor": "#dff7ff",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://my-artfive-railway-assistant-preview.myartfiverailwayassistant.workers.dev/icon-512.svg",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./keystore/my-artfive-upload-key.keystore",
+    "alias": "myartfiveupload"
+  },
+  "appVersionCode": 1,
+  "appVersion": "1.0.0",
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://my-artfive-railway-assistant-preview.myartfiverailwayassistant.workers.dev/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "enableSiteSettingsShortcut": true,
+  "minSdkVersion": 23,
+  "orientation": "default",
+  "shortcuts": [],
+  "fingerprints": [],
+  "additionalTrustedOrigins": []
+}
