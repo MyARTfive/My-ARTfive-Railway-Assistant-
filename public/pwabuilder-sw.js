@@ -1,5 +1,5 @@
-const CACHE_NAME = 'my-artfive-shell-v8';
-const SHELL_ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/vendor/alpine-3.14.9.min.js'];
+const CACHE_NAME = 'my-artfive-shell-v9';
+const SHELL_ASSETS = ['/', '/index.html', '/install.html', '/manifest.webmanifest', '/vendor/alpine-3.14.9.min.js'];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
